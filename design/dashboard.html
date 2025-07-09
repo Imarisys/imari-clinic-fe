@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+    .material-icons {
+      font-family: 'Material Icons';
+      font-size: 24px;
+      display: inline-block;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white p-6 shadow-lg rounded-r-xl flex flex-col justify-between">
+      <div>
+        <div class="flex items-center space-x-2 mb-10">
+          <img alt="Imarisys Clinic Logo" class="h-8 w-8 rounded-full bg-blue-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV4kNg8b4DFzGVkWUOIPixJfbl60q8DYRzdQarIe5hL21gGGbd27Mva1fXnQPbqlXXES0md9UUKGMc40e14jlQvmSkA2ItGfCnmqhSR-VGmVJrrht4QZhFN7mqEmhcfV2eH38Q_F30snB_dQxq2Td63ZvKIYeVJFym2j28v2c4G9NyqtUWOxFAy2U232pNYPg6fvYOIE1_ukgBmllT8SbV5Ll0zcY72kAMhk_ndCY9SmFHyLfG1Lq0QVoHwpbft1R5wzBSWe8d1_4"/>
+          <h1 class="text-xl font-semibold text-gray-700">Imarisys Clinic</h1>
+        </div>
+        <nav class="space-y-2">
+          <a class="flex items-center space-x-3 bg-blue-100 text-blue-600 p-2 rounded-lg font-medium" href="#"> 
+            <span class="material-icons">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="calendar.html">
+            <span class="material-icons">calendar_today</span>
+            <span>Calendar</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="#patient.html">
+            <span class="material-icons">people</span>
+            <span>Patients</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="#">
+            <span class="material-icons">bar_chart</span>
+            <span>Reports</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="#">
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+      </div>
+      <a class="flex items-center space-x-3 text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors duration-150" href="#">
+        <span class="material-icons">logout</span>
+        <span>Logout</span>
+      </a>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6 overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-800">Dashboard</h2>
+          <p class="text-gray-500">Overview of your clinic activity.</p>
+        </div>
+      </div>
+
+      <!-- Metrics Cards -->
+      <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex items-center justify-between">
+            <span class="material-icons text-blue-500 text-3xl">event_available</span>
+            <span class="text-3xl font-bold text-gray-800">12</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Appointments</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex items-center justify-between">
+            <span class="material-icons text-green-500 text-3xl">check_circle_outline</span>
+            <span class="text-3xl font-bold text-gray-800">8</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Done</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex items-center justify-between">
+            <span class="material-icons text-yellow-500 text-3xl">hourglass_empty</span>
+            <span class="text-3xl font-bold text-gray-800">4</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Remaining</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex items-center justify-between">
+            <span class="material-icons text-purple-500 text-3xl">payments</span>
+            <span class="text-3xl font-bold text-gray-800">$950</span>
+          </div>
+          <p class="text-sm text-gray-500 mt-1">Expected</p>
+        </div>
+      </div>
+
+      <!-- Next Appointment -->
+      <div class="bg-white p-4 rounded-xl shadow mb-6">
+        <h3 class="font-semibold text-gray-700 mb-3">Next Appointment</h3>
+        <p class="text-lg font-medium text-gray-800">John Doe</p>
+        <p class="text-sm text-gray-500">10:30 AM</p>
+        <p class="text-sm text-gray-500 mb-3">Cleaning</p>
+        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors duration-150">Start Consultation</button>
+      </div>
+
+      <!-- Waiting Patients -->
+      <div class="bg-white p-4 rounded-xl shadow mb-6">
+        <h3 class="font-semibold text-gray-700 mb-3">Waiting Patients</h3>
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <p class="text-gray-800">Jane Smith</p>
+            <p class="text-xs text-gray-500">Janmaxein</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-sm text-gray-500">10 min</span>
+            <button class="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded-lg text-sm transition-colors duration-150">Call</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Patients Table -->
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h3 class="font-semibold text-gray-700 mb-3">Today's Patients</h3>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500">
+              <th class="pb-2 font-normal">Patient</th>
+              <th class="pb-2 font-normal">Time</th>
+              <th class="pb-2 font-normal">Status</th>
+              <th class="pb-2 font-normal">Payment</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 text-gray-700">Mary Johnson</td>
+              <td class="py-2 text-gray-600">9:00 AM</td>
+              <td class="py-2">
+                <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs">Done</span>
+              </td>
+              <td class="py-2 text-green-600">Paid</td>
+            </tr>
+            <tr>
+              <td class="py-2 text-gray-700">Michael Brown</td>
+              <td class="py-2 text-gray-600">11:00 AM</td>
+              <td class="py-2">
+                <span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs">Waiting</span>
+              </td>
+              <td class="py-2 text-yellow-600">Pending</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

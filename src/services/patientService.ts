@@ -1,0 +1,168 @@
+import { API_CONFIG, buildApiUrl } from '../config/api';
+import { Patient, PatientCreate, PatientUpdate, PatientRead } from '../types/Patient';
+
+// Helper function to extract error message from response
+const extractErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const errorData = await response.json();
+
+    // Handle different error response formats
+    if (errorData.detail) {
+      return errorData.detail;
+    }
+
+    if (errorData.message) {
+      return errorData.message;
+    }
+
+    if (errorData.error) {
+      return errorData.error;
+    }
+
+    // Handle validation errors (array format)
+    if (Array.isArray(errorData) && errorData.length > 0) {
+      return errorData.map(err => err.msg || err.message || err).join(', ');
+    }
+
+    // Handle field-specific errors
+    if (typeof errorData === 'object') {
+      const fieldErrors = Object.entries(errorData)
+        .map(([field, error]) => `${field}: ${error}`)
+        .join(', ');
+      if (fieldErrors) return fieldErrors;
+    }
+
+    return `HTTP ${response.status}: ${response.statusText}`;
+  } catch {
+    // If response is not JSON, return status text
+    return `HTTP ${response.status}: ${response.statusText}`;
+  }
+};
+
+// API service for patient operations
+export class PatientService {
+  // List patients with pagination
+  static async listPatients(offset = 0, limit = 100): Promise<Patient[]> {
+    try {
+      const url = buildApiUrl(`${API_CONFIG.endpoints.patients.list}?offset=${offset}&limit=${limit}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while loading patients');
+    }
+  }
+
+  // Get a single patient by ID
+  static async getPatient(patientId: string): Promise<PatientRead> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.get(patientId));
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while fetching patient');
+    }
+  }
+
+  // Create a new patient
+  static async createPatient(patientData: PatientCreate): Promise<PatientRead> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.create);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patientData),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while creating patient');
+    }
+  }
+
+  // Update an existing patient
+  static async updatePatient(patientId: string, patientData: PatientUpdate): Promise<PatientRead> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.update(patientId));
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(patientData),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while updating patient');
+    }
+  }
+
+  // Delete a patient
+  static async deletePatient(patientId: string): Promise<void> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.delete(patientId));
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while deleting patient');
+    }
+  }
+}

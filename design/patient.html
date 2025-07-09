@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient File - CNAM Reimbursement</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+
+    .material-icons {
+      font-family: 'Material Icons';
+      font-size: 24px;
+      display: inline-block;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <aside class="w-64 bg-white p-6 shadow-lg rounded-r-xl flex flex-col justify-between">
+      <div>
+        <div class="flex items-center space-x-2 mb-10">
+          <img alt="Imarisys Clinic Logo"
+            class="h-8 w-8 rounded-full bg-blue-500"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV4kNg8b4DFzGVkWUOIPixJfbl60q8DYRzdQarIe5hL21gGGbd27Mva1fXnQPbqlXXES0md9UUKGMc40e14jlQvmSkA2ItGfCnmqhSR-VGmVJrrht4QZhFN7mqEmhcfV2eH38Q_F30snB_dQxq2Td63ZvKIYeVJFym2j28v2c4G9NyqtUWOxFAy2U232pNYPg6fvYOIE1_ukgBmllT8SbV5Ll0zcY72kAMhk_ndCY9SmFHyLfG1Lq0QVoHwpbft1R5wzBSWe8d1_4" />
+          <h1 class="text-xl font-semibold text-gray-700">Imarisys Clinic</h1>
+        </div>
+        <nav class="space-y-2">
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="dashboard.html">
+            <span class="material-icons">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150"
+            href="calendar.html">
+            <span class="material-icons">calendar_today</span>
+            <span>Calendar</span>
+          </a>
+          <a class="flex items-center space-x-3 bg-blue-100 text-blue-600 p-2 rounded-lg font-medium"
+            href="patients.html">
+            <span class="material-icons">people</span>
+            <span>Patients</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150"
+            href="reports.html">
+            <span class="material-icons">bar_chart</span>
+            <span>Reports</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150"
+            href="settings.html">
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+      </div>
+      <a class="flex items-center space-x-3 text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors duration-150"
+        href="logout.html">
+        <span class="material-icons">logout</span>
+        <span>Logout</span>
+      </a>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-800">Patient Information</h2>
+          <p class="text-gray-500">Fill in patient details and view reimbursement form.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <input type="text" placeholder="John Doe"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+          <input type="date"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">CNSS ID</label>
+          <input type="text" placeholder="Unique CNSS Identifier"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <input type="tel" placeholder="+216..."
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl shadow mb-6 flex justify-center items-center min-h-[500px]">
+        <img src="remb.jpg"
+          alt="CNAM Reimbursement Form PDF Preview" class="max-w-full h-auto rounded shadow-md" />
+      </div>
+
+      <div class="fixed bottom-6 right-6">
+        <button onclick="downloadForm()"
+          class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center space-x-2 transition-transform transform hover:scale-105">
+          <span class="material-icons">file_download</span>
+          <span>Download Form</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function downloadForm() {
+      alert("Downloading reimbursement form...");
+      // Simulate download
+      const link = document.createElement('a');
+      link.href = '#'; // Replace with real PDF URL or base64 if needed 
+      link.download = 'reimbursement_form.pdf';
+      link.click();
+    }
+  </script>
+</body>
+</html>

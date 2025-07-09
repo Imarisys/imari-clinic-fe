@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+@layer base {
+  :root {
+    --primary-blue: #0057A3;
+    --secondary-blue: #D6EBFF;
+    --neutral-background-light: #F8F9FA;
+    --neutral-background-card: #FFFFFF;
+    --neutral-text-primary: #212529;
+    --neutral-text-secondary: #6C757D;
+    --green-informational: #00B09B;
+    --orange-highlight: #FFA500;
+    --pink-decorative: #FFC0CB;
+  }
+
+  body {
+    @apply bg-neutral-background-light text-neutral-text-primary;
+    font-family: 'Roboto', sans-serif;
+  }
+}
+
+/* Calendar Grid Styles */
+.calendar-grid {
+  @apply grid;
+  grid-template-columns: auto repeat(7, 1fr);
+  grid-template-rows: auto repeat(10, 5rem);
+}
+
+.time-label {
+  @apply text-right pr-4 text-xs text-gray-500;
+  grid-column: 1;
+}
+
+.day-column {
+  @apply relative border-r border-b border-gray-200;
+}
+
+/* Material Icons */
+.material-icons {
+  font-family: 'Material Icons';
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+}

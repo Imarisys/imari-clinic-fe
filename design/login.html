@@ -1,0 +1,139 @@
+<!-- login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Doctor Appointment App</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary-blue: #0057A3; 
+      --secondary-blue: #D6EBFF;
+      --neutral-background-light: #F8F9FA;
+      --neutral-background-card: #FFFFFF;
+      --neutral-text-primary: #212529;
+      --neutral-text-secondary: #6C757D;
+      --green-informational: #00B09B;
+      --orange-highlight: #FFA500;
+      --pink-decorative: #FFC0CB;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--neutral-background-light);
+      color: var(--neutral-text-primary);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen px-4 py-8 md:py-12 bg-neutral-background-light">
+  <div class="relative p-8 md:p-12 rounded-xl w-full max-w-md bg-neutral-background-card shadow-lg border border-gray-200">
+    <div class="absolute top-0 left-0 w-full h-2.5 bg-gradient-to-r from-[#0057A3] via-[#00B09B] to-[#FFA500] rounded-tl-xl rounded-tr-xl"></div>
+
+    <!-- Logo -->
+    <div class="flex justify-center mb-6 pt-6">
+      <div class="bg-[var(--secondary-blue)] p-3 rounded-full shadow-md">
+        <span class="material-icons text-[var(--primary-blue)] text-4xl">medical_services</span>
+      </div>
+    </div>
+
+    <h1 class="text-2xl font-bold text-main text-center mb-2">Doctor Portal Login</h1>
+    <p class="text-secondary text-center mb-8 text-sm">Access your dashboard to manage patient appointments.</p>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="space-y-6">
+      <div class="mb-5">
+        <label class="block text-xs font-medium text-main mb-1" for="email">Email Address</label>
+        <div class="relative">
+          <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 icon-informational text-lg">
+            alternate_email
+          </span>
+          <input type="email"
+                 id="email"
+                 name="email"
+                 placeholder="e.g., dr.smith@clinic.com"
+                 required
+                 class="pl-10 pr-3 py-2.5 w-full border rounded-md focus:ring-2 focus:ring-opacity-50 transition duration-150 ease-in-out text-sm bg-white text-gray-800 border-gray-300 focus:border-[#0057A3] focus:outline-none focus:ring-[#0057A3]"/>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <label class="block text-xs font-medium text-main mb-1" for="password">Password</label>
+        <div class="relative">
+          <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 icon-informational text-lg">
+            lock_outline
+          </span>
+          <input type="password"
+                 id="password"
+                 name="password"
+                 placeholder="Enter your secure password"
+                 required
+                 class="pl-10 pr-3 py-2.5 w-full border rounded-md focus:ring-2 focus:ring-opacity-50 transition duration-150 ease-in-out text-sm bg-white text-gray-800 border-gray-300 focus:border-[#0057A3] focus:outline-none focus:ring-[#0057A3]"/>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+          <input type="checkbox"
+                 id="remember-me"
+                 name="remember-me"
+                 class="h-4 w-4 border-gray-300 rounded text-[var(--primary-blue)] focus:ring-[var(--primary-blue)]"/>
+          <label for="remember-me" class="ml-2 block text-xs text-main">Remember me</label>
+        </div>
+        <a class="font-medium text-[#0057A3] hover:text-[#004580] text-sm" href="#">Forgot password?</a>
+      </div>
+
+      <button type="submit"
+              class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium bg-[var(--primary-blue)] text-white hover:bg-[#004580] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-blue)] transition duration-150 ease-in-out">
+        <span class="material-icons mr-2">login</span>
+        Sign In
+      </button>
+    </form>
+
+    <p class="mt-6 text-center text-xs text-secondary">
+      New to our platform?
+      <a class="font-medium text-[#0057A3] hover:underline" href="#">Create an account</a>
+    </p>
+
+    <div class="mt-6 relative py-2">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-gray-200"></div>
+      </div>
+      <div class="relative flex justify-center text-xs bg-white px-2 text-gray-500">Or continue with</div>
+    </div>
+
+    <div class="mt-4 space-y-2">
+      <button class="w-full flex justify-center items-center py-2.5 px-4 rounded-md text-sm font-medium bg-[#D6EBFF] text-[#0057A3] hover:bg-[#b9d9f7] border border-[#0057A3] focus:outline-none transition duration-150 ease-in-out">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <button class="w-full flex justify-center items-center py-2.5 px-4 rounded-md text-sm font-medium bg-red-100 text-red-600 hover:bg-red-200 border border-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
+        <span class="material-icons mr-2 text-base text-red-600">emergency</span>
+        Emergency Access
+      </button>
+    </div>
+
+    <div class="mt-8 text-center">
+      <p class="text-xs text-secondary">© 2025 Imarisys All rights reserved.</p>
+      <p class="text-xs text-secondary">
+        <a class="text-[#0057A3] hover:underline" href="#">Privacy Policy</a> ·
+        <a class="text-[#0057A3] hover:underline" href="#">Terms of Service</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      window.location.href = 'dashboard.html';
+    });
+  </script>
+</body>
+</html>

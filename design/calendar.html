@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+    .material-icons {
+      font-family: 'Material Icons';
+      font-size: 24px;
+      display: inline-block;
+      line-height: 1;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: auto repeat(7, 1fr);
+        grid-template-rows: auto repeat(10, 5rem); /* 10 hours from 8am to 5pm */
+    }
+    .time-label {
+        grid-column: 1;
+        text-align: right;
+        padding-right: 1rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+    .day-column {
+        position: relative;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <aside class="w-64 bg-white p-6 shadow-lg rounded-r-xl flex flex-col justify-between">
+      <div>
+        <div class="flex items-center space-x-2 mb-10">
+          <img alt="Imarisys Clinic Logo" class="h-8 w-8 rounded-full bg-blue-500"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV4kNg8b4DFzGVkWUOIPixJfbl60q8DYRzdQarIe5hL21gGGbd27Mva1fXnQPbqlXXES0md9UUKGMc40e14jlQvmSkA2ItGfCnmqhSR-VGmVJrrht4QZhFN7mqEmhcfV2eH38Q_F30snB_dQxq2Td63ZvKIYeVJFym2j28v2c4G9NyqtUWOxFAy2U232pNYPg6fvYOIE1_ukgBmllT8SbV5Ll0zcY72kAMhk_ndCY9SmFHyLfG1Lq0QVoHwpbft1R5wzBSWe8d1_4"/>
+          <h1 class="text-xl font-semibold text-gray-700">Imarisys Clinic</h1>
+        </div>
+        <nav class="space-y-2">
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="dashboard.html">
+            <span class="material-icons">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+          <a class="flex items-center space-x-3 bg-blue-100 text-blue-600 p-2 rounded-lg font-medium" href="calendar.html">
+            <span class="material-icons">calendar_today</span>
+            <span>Calendar</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="patient.html">
+            <span class="material-icons">people</span>
+            <span>Patients</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="#">
+            <span class="material-icons">bar_chart</span>
+            <span>Reports</span>
+          </a>
+          <a class="flex items-center space-x-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 p-2 rounded-lg transition-colors duration-150" href="#">
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+      </div>
+      <a class="flex items-center space-x-3 text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors duration-150" href="#">
+        <span class="material-icons">logout</span>
+        <span>Logout</span>
+      </a>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 class="text-2xl font-semibold text-gray-800">Appointment Calendar</h2>
+          <p class="text-gray-500">Manage and schedule patient appointments.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md flex items-center space-x-2 transition-colors duration-150">
+            <span class="material-icons text-base">add</span>
+            <span>New Appointment</span>
+          </button>
+          <button class="p-2 text-gray-500 hover:text-gray-700 transition-colors duration-150">
+            <span class="material-icons">menu</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex space-x-2 mb-4">
+        <button onclick="switchView('month')" class="view-tab active bg-blue-500 text-white px-4 py-2 rounded-md">Month</button>
+        <button onclick="switchView('week')" class="view-tab bg-gray-200 text-gray-700 px-4 py-2 rounded-md">Week</button>
+        <button onclick="switchView('day')" class="view-tab bg-gray-200 text-gray-700 px-4 py-2 rounded-md">Day</button>
+      </div>
+
+      <div id="month-view" class="calendar-view">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center space-x-2">
+              <button class="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors duration-150">
+                <span class="material-icons">chevron_left</span>
+              </button>
+              <h3 class="text-lg font-medium text-gray-700">October 2023</h3>
+              <button class="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors duration-150">
+                <span class="material-icons">chevron_right</span>
+              </button>
+              <button class="text-sm text-gray-600 hover:text-gray-800 border border-gray-300 px-3 py-1 rounded-md hover:bg-gray-50 transition-colors duration-150">Today</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-lg overflow-hidden">
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Sun</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Mon</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Tue</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Wed</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Thu</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Fri</div>
+            <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider">Sat</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">24</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">25</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">26</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">27</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">28</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">29</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-400">30</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700 relative">1
+              <div class="bg-red-100 text-red-700 text-xs p-1 rounded mt-1">9:00 AM J. Doe</div>
+            </div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700">2</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700 relative">3
+              <div class="bg-green-100 text-green-700 text-xs p-1 rounded mt-1">11:00 AM A. Smi...</div>
+              <div class="bg-blue-100 text-blue-700 text-xs p-1 rounded mt-1">2:00 PM P. Jones</div>
+            </div>
+            <div class="bg-blue-50 p-2 h-32 text-sm text-blue-700 font-medium border-2 border-blue-500 rounded-md">4</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700">5</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700">6</div>
+            <div class="bg-white p-2 h-32 text-sm text-gray-700">7</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="week-view" class="calendar-view hidden">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h3 class="text-lg font-medium text-gray-700 mb-4">Week of October 1–7, 2023</h3>
+          <div class="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr] border-t border-l border-gray-200">
+              <div class="p-2"></div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Sun 1</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Mon 2</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Tue 3</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Wed 4</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Thu 5</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Fri 6</div>
+              <div class="text-center py-3 bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-r">Sat 7</div>
+
+              <script>
+                  for (let i = 8; i <= 17; i++) {
+                      const ampm = i < 12 ? 'AM' : 'PM';
+                      const hour = i % 12 === 0 ? 12 : i % 12;
+                      document.write(`
+                          <div class="text-right pr-2 pt-2 text-xs text-gray-400 border-b border-r">${hour}:00 ${ampm}</div>
+                          <div class="day-column relative p-1"><hr class="absolute bottom-0 left-0 w-full"></div>
+                          <div class="day-column relative p-1"><hr class="absolute bottom-0 left-0 w-full"></div>
+                          <div class="day-column relative p-1">
+                            ${i === 11 ? `<div class="absolute w-full left-0 p-1"><div class="bg-green-100 text-green-700 text-xs p-1 rounded">11:00 AM A. Smi...</div></div>` : ''}
+                            ${i === 14 ? `<div class="absolute w-full left-0 p-1"><div class="bg-blue-100 text-blue-700 text-xs p-1 rounded">2:00 PM P. Jones</div></div>` : ''}
+                            <hr class="absolute bottom-0 left-0 w-full">
+                          </div>
+                          <div class="day-column relative p-1"><hr class="absolute bottom-0 left-0 w-full"></div>
+                          <div class="day-column relative p-1"><hr class="absolute bottom-0 left-0 w-full"></div>
+                          <div class="day-column relative p-1"><hr class="absolute bottom-0 left-0 w-full"></div>
+                          <div class="day-column relative p-1">
+                            ${i === 9 ? `<div class="absolute w-full left-0 p-1"><div class="bg-red-100 text-red-700 text-xs p-1 rounded">9:00 AM J. Doe</div></div>` : ''}
+                            <hr class="absolute bottom-0 left-0 w-full">
+                           </div>
+                      `);
+                  }
+              </script>
+          </div>
+        </div>
+      </div>
+
+
+      <div id="day-view" class="calendar-view hidden">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h3 class="text-lg font-medium text-gray-700 mb-4">Appointments for October 1, 2023</h3>
+          <div class="flex">
+            <div class="w-20 text-right pr-4 text-sm text-gray-400">
+              <div class="h-16 pt-3">8:00 AM</div>
+              <div class="h-16 pt-3">9:00 AM</div>
+              <div class="h-16 pt-3">10:00 AM</div>
+              <div class="h-16 pt-3">11:00 AM</div>
+              <div class="h-16 pt-3">12:00 PM</div>
+              <div class="h-16 pt-3">1:00 PM</div>
+              <div class="h-16 pt-3">2:00 PM</div>
+              <div class="h-16 pt-3">3:00 PM</div>
+              <div class="h-16 pt-3">4:00 PM</div>
+              <div class="h-16 pt-3">5:00 PM</div>
+            </div>
+            <div class="flex-1 border-l border-gray-200">
+              <div class="relative h-full">
+                <div class="absolute w-full" style="top: 3.5rem; height: 4rem;">
+                  <div class="bg-red-100 text-red-800 p-3 rounded-lg mx-4 h-full">
+                    <p class="font-semibold">9:00 AM - John Doe</p>
+                    <p class="text-sm">Cleaning</p>
+                  </div>
+                </div>
+                <div class="absolute w-full" style="top: 11.5rem; height: 4rem;">
+                   <div class="bg-green-100 text-green-800 p-3 rounded-lg mx-4 h-full">
+                    <p class="font-semibold">11:00 AM - Anna Smith</p>
+                    <p class="text-sm">Checkup</p>
+                  </div>
+                </div>
+                <div class="absolute w-full" style="top: 23.5rem; height: 4rem;">
+                  <div class="bg-blue-100 text-blue-800 p-3 rounded-lg mx-4 h-full">
+                    <p class="font-semibold">2:00 PM - Peter Jones</p>
+                    <p class="text-sm">Consultation</p>
+                  </div>
+                </div>
+                <script>
+                  for (let i = 0; i < 10; i++) {
+                    document.write('<hr class="ml-4" style="margin-top: 4rem;">');
+                  }
+                </script>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function switchView(view) {
+      document.querySelectorAll('.calendar-view').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`${view}-view`).classList.remove('hidden');
+
+      document.querySelectorAll('.view-tab').forEach(btn => {
+        btn.classList.remove('bg-blue-500', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-700');
+      });
+
+      // It's better to not rely on the global 'event' object as it's being deprecated
+      // Instead, we pass 'this' from the button's onclick attribute.
+      // However, to avoid changing the original HTML, we will find the active button by its onclick attribute.
+      const activeButton = Array.from(document.querySelectorAll('.view-tab')).find(btn => btn.getAttribute('onclick') === `switchView('${view}')`);
+      if (activeButton) {
+        activeButton.classList.remove('bg-gray-200', 'text-gray-700');
+        activeButton.classList.add('bg-blue-500', 'text-white');
+      }
+    }
+  </script>
+</body>
+</html>
