@@ -11,6 +11,7 @@ import { PatientService } from '../services/patientService';
 import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } from '../types/Appointment';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../hooks/useNotification';
+import { TimeSlot } from '../hooks/useTimeSlotDrag';
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -305,7 +306,12 @@ export const Calendar: React.FC = () => {
       const updatedAppointments = await AppointmentService.listAppointmentsByRange(start.toISOString().split('T')[0], days);
       setAppointments(updatedAppointments);
 
-      handleCancelNewAppointment(); // Close and reset form
+      // Close and reset form immediately
+      setShowNewAppointmentForm(false);
+      setSelectedPatientForBooking(null);
+      setSelectedTimeSlot(null);
+      setBookingStep('time');
+      setSearchQuery('');
     } catch (err: any) {
       showNotification('error', 'Error', err.message);
     } finally {
@@ -325,6 +331,17 @@ export const Calendar: React.FC = () => {
     `${p.first_name} ${p.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // New handler for time slot selection from drag
+  const handleTimeSlotSelected = (slot: TimeSlot) => {
+    setSelectedTimeSlot({
+      date: slot.date,
+      time: slot.startTime,
+      endTime: slot.endTime
+    });
+    setShowNewAppointmentForm(true);
+    setBookingStep('patient');
+  };
 
   return (
     <DashboardLayout>
@@ -448,29 +465,21 @@ export const Calendar: React.FC = () => {
                         {weekDays[index]}
                       </div>
                       <div className={`text-sm ${
-                        date.toDateString() === new Date().toDateString()
-                          ? 'text-blue-600 font-medium'
+                        new Date().toDateString() === date.toDateString()
+                          ? 'text-blue-600 font-semibold'
                           : 'text-gray-500'
                       }`}>
                         {date.getDate()}
                       </div>
                     </div>
 
-                    {/* Day column with appointments */}
-                    <div className="flex-1 relative">
-                      {/* Time grid background */}
-                      {timeSlots.map((time) => (
-                        <div
-                          key={time}
-                          className="h-[60px] border-b border-gray-100"
-                        />
-                      ))}
-
-                      {/* Appointments */}
+                    {/* Day content with drag functionality */}
+                    <div className="flex-1 relative border-r border-gray-200 last:border-r-0">
                       <DayColumn
                         date={date}
                         appointments={getAppointmentsForDate(date)}
                         onAppointmentClick={handleAppointmentClick}
+                        onTimeSlotSelected={handleTimeSlotSelected}
                       />
                     </div>
                   </div>
@@ -484,6 +493,7 @@ export const Calendar: React.FC = () => {
               date={currentDate}
               appointments={getAppointmentsForDate(currentDate)}
               onAppointmentClick={handleAppointmentClick}
+              onTimeSlotSelected={handleTimeSlotSelected}
             />
           )}
         </div>
@@ -501,6 +511,7 @@ export const Calendar: React.FC = () => {
           />
         )}
 
+        {/* Multi-step appointment booking modal */}
         {showNewAppointmentForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -514,7 +525,7 @@ export const Calendar: React.FC = () => {
                   </div>
                   <p className="text-gray-600 mb-6">Select the date and time for the appointment</p>
 
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {/* Date Input */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -523,37 +534,167 @@ export const Calendar: React.FC = () => {
                       <input
                         type="date"
                         value={selectedTimeSlot?.date || ''}
-                        onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: e.target.value, time: prev?.time || '' }))}
+                        onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: e.target.value, time: prev?.time || '', endTime: prev?.endTime || '' }))}
                         min={new Date().toISOString().split('T')[0]}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
 
-                    {/* Time Range Inputs */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Start Time *
-                        </label>
-                        <input
-                          type="time"
-                          value={selectedTimeSlot?.time || ''}
-                          onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: prev?.date || '', time: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          End Time *
-                        </label>
-                        <input
-                          type="time"
-                          value={selectedTimeSlot?.endTime || ''}
-                          onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: prev?.date || '', time: prev?.time || '', endTime: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
+                    {/* Duration Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Appointment Duration *
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { minutes: 15, label: '15 min' },
+                          { minutes: 30, label: '30 min' },
+                          { minutes: 45, label: '45 min' },
+                          { minutes: 60, label: '1 hour' },
+                          { minutes: 90, label: '1.5 hours' },
+                          { minutes: 120, label: '2 hours' }
+                        ].map((duration) => (
+                          <button
+                            key={duration.minutes}
+                            type="button"
+                            onClick={() => {
+                              const currentTime = selectedTimeSlot?.time;
+                              if (currentTime) {
+                                const [hours, minutes] = currentTime.split(':').map(Number);
+                                const endMinutes = (hours * 60) + minutes + duration.minutes;
+                                const endHours = Math.floor(endMinutes / 60);
+                                const endMins = endMinutes % 60;
+                                const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+                                setSelectedTimeSlot(prev => ({
+                                  date: prev?.date || '',
+                                  time: prev?.time || '',
+                                  endTime
+                                }));
+                              }
+                            }}
+                            className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
+                              selectedTimeSlot?.time && selectedTimeSlot?.endTime && 
+                              (() => {
+                                const [startH, startM] = selectedTimeSlot.time.split(':').map(Number);
+                                const [endH, endM] = selectedTimeSlot.endTime.split(':').map(Number);
+                                const actualDuration = (endH * 60 + endM) - (startH * 60 + startM);
+                                return actualDuration === duration.minutes;
+                              })()
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {duration.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
+
+                    {/* Time Slot Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Available Time Slots *
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-64 overflow-y-auto">
+                        {Array.from({ length: 20 }, (_, i) => {
+                          const hour = 8 + Math.floor(i / 2);
+                          const minute = (i % 2) * 30;
+                          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+                          const displayTime = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${minute.toString().padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
+
+                          return (
+                            <button
+                              key={timeString}
+                              type="button"
+                              onClick={() => {
+                                setSelectedTimeSlot(prev => {
+                                  const newSlot = { ...prev, date: prev?.date || '', time: timeString };
+
+                                  // Auto-calculate end time if we have a previous duration selection
+                                  if (prev?.endTime && prev?.time) {
+                                    const [prevStartH, prevStartM] = prev.time.split(':').map(Number);
+                                    const [prevEndH, prevEndM] = prev.endTime.split(':').map(Number);
+                                    const duration = (prevEndH * 60 + prevEndM) - (prevStartH * 60 + prevStartM);
+
+                                    const endMinutes = (hour * 60) + minute + duration;
+                                    const endHours = Math.floor(endMinutes / 60);
+                                    const endMins = endMinutes % 60;
+                                    newSlot.endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+                                  } else {
+                                    // Default to 30 minutes if no previous duration
+                                    const endMinutes = (hour * 60) + minute + 30;
+                                    const endHours = Math.floor(endMinutes / 60);
+                                    const endMins = endMinutes % 60;
+                                    newSlot.endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+                                  }
+
+                                  return newSlot;
+                                });
+                              }}
+                              className={`px-3 py-2 text-sm border rounded-lg transition-colors ${
+                                selectedTimeSlot?.time === timeString
+                                  ? 'bg-blue-500 text-white border-blue-500'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {displayTime}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Custom Time Input (Alternative) */}
+                    <div className="pt-4 border-t">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Or Set Custom Time
+                      </label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Start Time</label>
+                          <input
+                            type="time"
+                            value={selectedTimeSlot?.time || ''}
+                            onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: prev?.date || '', time: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">End Time</label>
+                          <input
+                            type="time"
+                            value={selectedTimeSlot?.endTime || ''}
+                            onChange={(e) => setSelectedTimeSlot(prev => ({ ...prev, date: prev?.date || '', time: prev?.time || '', endTime: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selected Time Summary */}
+                    {selectedTimeSlot?.date && selectedTimeSlot?.time && selectedTimeSlot?.endTime && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-blue-900 mb-1">Selected Appointment Time</h4>
+                        <p className="text-sm text-blue-700">
+                          {new Date(selectedTimeSlot.date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          {(() => {
+                            const [startH, startM] = selectedTimeSlot.time.split(':').map(Number);
+                            const [endH, endM] = selectedTimeSlot.endTime.split(':').map(Number);
+                            const startTime = `${startH > 12 ? startH - 12 : startH === 0 ? 12 : startH}:${startM.toString().padStart(2, '0')} ${startH >= 12 ? 'PM' : 'AM'}`;
+                            const endTime = `${endH > 12 ? endH - 12 : endH === 0 ? 12 : endH}:${endM.toString().padStart(2, '0')} ${endH >= 12 ? 'PM' : 'AM'}`;
+                            const duration = (endH * 60 + endM) - (startH * 60 + startM);
+                            return `${startTime} - ${endTime} (${duration} minutes)`;
+                          })()}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Continue Button */}
                     <div className="flex justify-end pt-4">

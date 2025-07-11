@@ -1,3 +1,6 @@
+import React, { useRef } from 'react';
+import { useTimeSlotDrag, TimeSlot } from '../../hooks/useTimeSlotDrag';
+
 interface AppointmentData {
   id: string;
   patientName: string;
@@ -12,10 +15,23 @@ interface DayColumnProps {
   date: Date;
   appointments?: AppointmentData[];
   onAppointmentClick?: (appointmentId: string) => void;
+  onTimeSlotSelected?: (slot: TimeSlot) => void;
 }
 
-export const DayColumn: React.FC<DayColumnProps> = ({ date, appointments = [], onAppointmentClick }) => {
+export const DayColumn: React.FC<DayColumnProps> = ({ date, appointments = [], onAppointmentClick, onTimeSlotSelected }) => {
   const isToday = new Date().toDateString() === date.toDateString();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dateString = date.toISOString().split('T')[0];
+
+  const {
+    isDragging,
+    timeSlots,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    getSelectionStyle,
+    conflictMessage
+  } = useTimeSlotDrag(onTimeSlotSelected || (() => {}), appointments);
 
   const getTimePosition = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -73,32 +89,72 @@ export const DayColumn: React.FC<DayColumnProps> = ({ date, appointments = [], o
   };
 
   return (
-    <div className={`absolute inset-0 ${isToday ? 'bg-blue-50/30' : ''}`}>
-      {appointments.map((appointment) => {
-        const statusColors = getStatusColor(appointment.status);
-        return (
-          <div
-            key={appointment.id}
-            className={`absolute w-[calc(100%-8px)] left-1 px-2 py-1.5 ${statusColors.bg} 
-              ${statusColors.text} text-xs rounded border ${statusColors.border} cursor-pointer 
-              transition-colors shadow-sm hover:shadow-md z-10 flex items-center justify-between`}
-            style={{
-              top: `${getTimePosition(appointment.time)}%`,
-              height: `${getAppointmentHeight(appointment.duration)}%`,
-            }}
-            onClick={() => onAppointmentClick && onAppointmentClick(appointment.id)}
-          >
-            <div className="flex-1 truncate text-left">
-              <span className="font-medium">{appointment.title}</span>
-              <span className="mx-1 opacity-75">•</span>
-              <span className="opacity-90">{appointment.patientName}</span>
-            </div>
-            <div className="opacity-60 ml-1 flex-shrink-0">
-              {formatTimeDisplay(appointment.time)}
-            </div>
+    <div
+      className={`absolute inset-0 ${isToday ? 'bg-blue-50/30' : ''}`}
+      ref={containerRef}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      {/* Conflict Message */}
+      {conflictMessage && (
+        <div className="absolute top-2 left-1 right-1 z-30 bg-red-500 text-white px-2 py-1 rounded text-xs shadow-lg">
+          <div className="flex items-center space-x-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <span className="font-medium">Slot taken</span>
           </div>
-        );
-      })}
+        </div>
+      )}
+
+      {/* 15-minute time grid for dragging */}
+      <div className="absolute inset-0">
+        {timeSlots.map((time, index) => (
+          <div
+            key={`${time}-${index}`}
+            className="h-[15px] border-b border-gray-50 hover:bg-blue-100/50 cursor-pointer relative"
+            style={getSelectionStyle(dateString, index)}
+            onMouseDown={(e) => handleMouseDown(e, dateString, containerRef)}
+            onMouseMove={(e) => handleMouseMove(e, dateString, containerRef)}
+          />
+        ))}
+      </div>
+
+      {/* Appointments */}
+      <div className="absolute inset-0 pointer-events-none">
+        {appointments.map((appointment) => {
+          const statusColors = getStatusColor(appointment.status);
+          return (
+            <div
+              key={appointment.id}
+              className={`absolute w-[calc(100%-8px)] left-1 px-2 py-1.5 ${statusColors.bg} 
+                ${statusColors.text} text-xs rounded border ${statusColors.border} cursor-pointer 
+                transition-colors shadow-sm hover:shadow-md z-10 flex items-center justify-between pointer-events-auto`}
+              style={{
+                top: `${getTimePosition(appointment.time)}%`,
+                height: `${getAppointmentHeight(appointment.duration)}%`,
+              }}
+              onClick={() => onAppointmentClick && onAppointmentClick(appointment.id)}
+            >
+              <div className="flex-1 truncate text-left">
+                <span className="font-medium">{appointment.title}</span>
+                <span className="mx-1 opacity-75">•</span>
+                <span className="opacity-90">{appointment.patientName}</span>
+              </div>
+              <div className="opacity-60 ml-1 flex-shrink-0">
+                {formatTimeDisplay(appointment.time)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Drag selection overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 pointer-events-none z-20">
+          <div className="absolute inset-x-1 bg-blue-500/20 border-2 border-blue-500 border-dashed rounded" />
+        </div>
+      )}
     </div>
   );
 };

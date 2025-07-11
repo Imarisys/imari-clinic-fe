@@ -297,13 +297,13 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 30,
+              "maximum": 31,
               "minimum": 1,
-              "description": "Number of days to fetch (1-30)",
+              "description": "Number of days to fetch (1-31)",
               "default": 7,
               "title": "Days"
             },
-            "description": "Number of days to fetch (1-30)"
+            "description": "Number of days to fetch (1-31)"
           }
         ],
         "responses": {
@@ -375,12 +375,12 @@
           }
         }
       },
-      "patch": {
+      "put": {
         "tags": [
           "appointments"
         ],
         "summary": "Update Appointment",
-        "operationId": "update_appointment_api_v1_appointments__appointment_id__patch",
+        "operationId": "update_appointment_api_v1_appointments__appointment_id__put",
         "parameters": [
           {
             "name": "appointment_id",
@@ -789,36 +789,85 @@
             "type": "string",
             "title": "Last Name"
           },
-          "date_of_birth": {
-            "type": "string",
-            "format": "date",
-            "title": "Date Of Birth"
-          },
-          "gender": {
-            "$ref": "#/components/schemas/Gender"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          },
           "phone": {
             "type": "string",
             "title": "Phone"
           },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "street": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Street"
           },
           "city": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "City"
           },
           "state": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "State"
           },
           "zip_code": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Zip Code"
           }
         },
@@ -826,14 +875,7 @@
         "required": [
           "first_name",
           "last_name",
-          "date_of_birth",
-          "gender",
-          "email",
-          "phone",
-          "street",
-          "city",
-          "state",
-          "zip_code"
+          "phone"
         ],
         "title": "PatientCreate"
       },
@@ -847,36 +889,85 @@
             "type": "string",
             "title": "Last Name"
           },
-          "date_of_birth": {
-            "type": "string",
-            "format": "date",
-            "title": "Date Of Birth"
-          },
-          "gender": {
-            "$ref": "#/components/schemas/Gender"
-          },
-          "email": {
-            "type": "string",
-            "title": "Email"
-          },
           "phone": {
             "type": "string",
             "title": "Phone"
           },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
           "street": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Street"
           },
           "city": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "City"
           },
           "state": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "State"
           },
           "zip_code": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Zip Code"
           },
           "id": {
@@ -888,14 +979,7 @@
         "required": [
           "first_name",
           "last_name",
-          "date_of_birth",
-          "gender",
-          "email",
           "phone",
-          "street",
-          "city",
-          "state",
-          "zip_code",
           "id"
         ],
         "title": "PatientRead"

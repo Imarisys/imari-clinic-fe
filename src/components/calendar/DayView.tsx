@@ -1,3 +1,6 @@
+import React, { useRef } from 'react';
+import { useTimeSlotDrag, TimeSlot } from '../../hooks/useTimeSlotDrag';
+
 interface AppointmentData {
   id: string;
   patientName: string;
@@ -12,13 +15,22 @@ interface DayViewProps {
   date: Date;
   appointments: AppointmentData[];
   onAppointmentClick?: (appointmentId: string) => void;
+  onTimeSlotSelected?: (slot: TimeSlot) => void;
 }
 
-export const DayView = ({ appointments, onAppointmentClick }: DayViewProps) => {
-  const timeSlots = Array.from({ length: 10 }, (_, i) => {
-    const hour = i + 8;
-    return `${hour.toString().padStart(2, '0')}:00`;
-  });
+export const DayView = ({ date, appointments, onAppointmentClick, onTimeSlotSelected }: DayViewProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dateString = date.toISOString().split('T')[0];
+
+  const {
+    isDragging,
+    timeSlots,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    getSelectionStyle,
+    conflictMessage
+  } = useTimeSlotDrag(onTimeSlotSelected || (() => {}), appointments);
 
   const getTimePosition = (time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -77,10 +89,22 @@ export const DayView = ({ appointments, onAppointmentClick }: DayViewProps) => {
 
   return (
     <div className="w-full h-[600px] overflow-hidden">
+      {/* Conflict Message */}
+      {conflictMessage && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <span className="text-sm font-medium">{conflictMessage}</span>
+          </div>
+        </div>
+      )}
+
       <div className="relative w-full h-full border rounded-lg bg-white flex">
         {/* Time slots */}
         <div className="w-20 flex-shrink-0 border-r">
-          {timeSlots.map((time) => (
+          {timeSlots.filter((_, index) => index % 4 === 0).map((time) => (
             <div
               key={time}
               className="h-[60px] border-b px-2 py-1 text-xs text-gray-500 text-right flex items-start"
@@ -91,19 +115,34 @@ export const DayView = ({ appointments, onAppointmentClick }: DayViewProps) => {
         </div>
 
         {/* Appointments area */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* Time grid lines */}
+        <div
+          className="flex-1 relative overflow-hidden select-none"
+          ref={containerRef}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* 15-minute grid lines and drag zones */}
           <div className="absolute inset-0">
-            {timeSlots.map((time) => (
+            {timeSlots.map((time, index) => (
               <div
-                key={time}
-                className="h-[60px] border-b border-gray-100"
-              />
+                key={`${time}-${index}`}
+                className="h-[15px] border-b border-gray-50 hover:bg-blue-50/30 cursor-pointer relative"
+                style={getSelectionStyle(dateString, index)}
+                onMouseDown={(e) => handleMouseDown(e, dateString, containerRef)}
+                onMouseMove={(e) => handleMouseMove(e, dateString, containerRef)}
+              >
+                {/* Show time labels for quarter hours */}
+                {index % 4 !== 0 && (
+                  <div className="absolute left-1 top-0 text-xs text-gray-400 pointer-events-none">
+                    {time}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
           {/* Appointments */}
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 pointer-events-none">
             {appointments.map((appointment) => {
               const statusColors = getStatusColor(appointment.status);
               return (
@@ -112,7 +151,7 @@ export const DayView = ({ appointments, onAppointmentClick }: DayViewProps) => {
                   className={`absolute left-1 right-1 ${statusColors.bg} ${statusColors.text}
                     rounded-lg border ${statusColors.border} p-2 cursor-pointer
                     transition-colors shadow-sm hover:shadow-md overflow-hidden
-                    flex items-center justify-between`}
+                    flex items-center justify-between pointer-events-auto z-10`}
                   style={{
                     top: `${getTimePosition(appointment.time)}%`,
                     height: `${getAppointmentHeight(appointment.duration)}%`,
@@ -133,6 +172,18 @@ export const DayView = ({ appointments, onAppointmentClick }: DayViewProps) => {
               );
             })}
           </div>
+
+          {/* Drag selection overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              <div className="absolute inset-x-1 bg-blue-500/20 border-2 border-blue-500 border-dashed rounded"
+                   style={{
+                     top: '0px',
+                     height: '100%'
+                   }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

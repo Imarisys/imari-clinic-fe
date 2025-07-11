@@ -62,9 +62,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     if (!formData.date_of_birth) {
       newErrors.date_of_birth = 'Date of birth is required';
     }
-    if (!formData.email.trim()) {
+    if (!formData.email?.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
     if (!formData.phone.trim()) {
