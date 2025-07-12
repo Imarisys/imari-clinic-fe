@@ -510,6 +510,207 @@
         }
       }
     },
+    "/api/v1/appointment-types": {
+      "get": {
+        "tags": [
+          "appointment-types"
+        ],
+        "summary": "Get Appointment Types",
+        "operationId": "get_appointment_types_api_v1_appointment_types_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AppointmentTypeRead"
+                  },
+                  "type": "array",
+                  "title": "Response Get Appointment Types Api V1 Appointment Types Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "appointment-types"
+        ],
+        "summary": "Create Appointment Type",
+        "operationId": "create_appointment_type_api_v1_appointment_types_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentTypeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentTypeRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointment-types/{appointment_type_id}": {
+      "get": {
+        "tags": [
+          "appointment-types"
+        ],
+        "summary": "Get Appointment Type",
+        "operationId": "get_appointment_type_api_v1_appointment_types__appointment_type_id__get",
+        "parameters": [
+          {
+            "name": "appointment_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentTypeRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "appointment-types"
+        ],
+        "summary": "Delete Appointment Type",
+        "operationId": "delete_appointment_type_api_v1_appointment_types__appointment_type_id__delete",
+        "parameters": [
+          {
+            "name": "appointment_type_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Type Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointment-types/{appointment_type_name}/available-slots/{date}": {
+      "get": {
+        "tags": [
+          "appointment-types"
+        ],
+        "summary": "Get Available Slots",
+        "operationId": "get_available_slots_api_v1_appointment_types__appointment_type_name__available_slots__date__get",
+        "parameters": [
+          {
+            "name": "appointment_type_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Type Name"
+            }
+          },
+          {
+            "name": "date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Get Available Slots Api V1 Appointment Types  Appointment Type Name  Available Slots  Date  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -535,6 +736,10 @@
             "type": "string",
             "title": "Patient Id"
           },
+          "appointment_type_name": {
+            "type": "string",
+            "title": "Appointment Type Name"
+          },
           "date": {
             "type": "string",
             "format": "date-time",
@@ -550,37 +755,18 @@
             "format": "time",
             "title": "End Time"
           },
-          "type": {
-            "$ref": "#/components/schemas/AppointmentType"
-          },
           "status": {
             "$ref": "#/components/schemas/AppointmentStatus",
             "default": "Booked"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
           }
         },
         "type": "object",
         "required": [
           "patient_id",
+          "appointment_type_name",
           "date",
           "start_time",
-          "end_time",
-          "type",
-          "title"
+          "end_time"
         ],
         "title": "AppointmentCreate"
       },
@@ -590,6 +776,10 @@
             "type": "string",
             "title": "Patient Id"
           },
+          "appointment_type_name": {
+            "type": "string",
+            "title": "Appointment Type Name"
+          },
           "date": {
             "type": "string",
             "format": "date-time",
@@ -605,27 +795,9 @@
             "format": "time",
             "title": "End Time"
           },
-          "type": {
-            "$ref": "#/components/schemas/AppointmentType"
-          },
           "status": {
             "$ref": "#/components/schemas/AppointmentStatus",
             "default": "Booked"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
           },
           "id": {
             "type": "string",
@@ -643,11 +815,10 @@
         "type": "object",
         "required": [
           "patient_id",
+          "appointment_type_name",
           "date",
           "start_time",
           "end_time",
-          "type",
-          "title",
           "id",
           "patient_first_name",
           "patient_last_name"
@@ -664,15 +835,43 @@
         ],
         "title": "AppointmentStatus"
       },
-      "AppointmentType": {
-        "type": "string",
-        "enum": [
-          "Consultation",
-          "Follow Up",
-          "Emergency",
-          "Routine Check"
+      "AppointmentTypeCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "duration_minutes"
         ],
-        "title": "AppointmentType"
+        "title": "AppointmentTypeCreate"
+      },
+      "AppointmentTypeRead": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "duration_minutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration Minutes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "duration_minutes"
+        ],
+        "title": "AppointmentTypeRead"
       },
       "AppointmentUpdate": {
         "properties": {
@@ -712,16 +911,6 @@
             ],
             "title": "End Time"
           },
-          "type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AppointmentType"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "status": {
             "anyOf": [
               {
@@ -731,28 +920,6 @@
                 "type": "null"
               }
             ]
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
           }
         },
         "type": "object",

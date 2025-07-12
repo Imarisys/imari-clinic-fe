@@ -59,16 +59,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     if (!formData.last_name.trim()) {
       newErrors.last_name = 'Last name is required';
     }
-    if (!formData.date_of_birth) {
-      newErrors.date_of_birth = 'Date of birth is required';
-    }
-    if (!formData.email?.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone is required';
+    }
+    // Only validate email format if it's provided
+    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
     }
 
     setErrors(newErrors);
@@ -98,7 +94,15 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     }
 
     try {
-      await onSubmit(formData);
+      // Filter out empty string values before submitting
+      const filteredData = Object.entries(formData).reduce((acc, [key, value]) => {
+        if (value !== '') {
+          acc[key as keyof PatientCreate] = value;
+        }
+        return acc;
+      }, {} as PatientCreate);
+
+      await onSubmit(filteredData);
     } catch (error) {
       console.error('Error submitting patient form:', error);
     }
@@ -141,13 +145,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               value={formData.date_of_birth}
               onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
               error={errors.date_of_birth}
-              required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gender <span className="text-red-500">*</span>
+              Gender
             </label>
             <select
               value={formData.gender}
@@ -169,7 +172,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               error={errors.email}
-              required
             />
           </div>
 
