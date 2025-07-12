@@ -10,7 +10,7 @@ import { AppointmentService } from '../services/appointmentService';
 import { PatientService } from '../services/patientService';
 import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } from '../types/Appointment';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
-import { useNotification } from '../hooks/useNotification';
+import { useNotification } from '../context/NotificationContext';
 import { TimeSlot } from '../hooks/useTimeSlotDrag';
 
 type CalendarView = 'month' | 'week' | 'day';
@@ -41,7 +41,7 @@ export const Calendar: React.FC = () => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { notification, showNotification, hideNotification } = useNotification();
+  const { showNotification } = useNotification();
 
   // Helper to get the start date and number of days for each view
   const getRange = () => {
@@ -299,7 +299,13 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       await AppointmentService.createAppointment(appointmentData);
-      showNotification('success', 'Success', 'Appointment created successfully');
+
+      // Enhanced success notification with more details
+      showNotification(
+        'success',
+        'Appointment Confirmed',
+        `Appointment for ${selectedPatientForBooking?.first_name} ${selectedPatientForBooking?.last_name} has been booked successfully.`
+      );
 
       // Refresh appointments
       const { start, days } = getRange();

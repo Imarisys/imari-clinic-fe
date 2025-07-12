@@ -118,10 +118,11 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick }: Mon
                   return (
                     <div
                       key={apt.id}
-                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate`}
+                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity`}
                       onClick={() => onAppointmentClick && onAppointmentClick(apt.id)}
                     >
-                      {apt.time} {apt.title}
+                      <div className="font-medium">{apt.time}</div>
+                      <div className="truncate">{apt.patientName}</div>
                     </div>
                   );
                 })}
