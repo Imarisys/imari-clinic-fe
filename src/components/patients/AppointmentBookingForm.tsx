@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Patient } from '../../types/Patient';
-import { AppointmentCreate, AppointmentType, AppointmentStatus } from '../../types/Appointment';
+import { AppointmentCreate, AppointmentStatus } from '../../types/Appointment';
+import { AppointmentTypeService, AppointmentType } from '../../services/appointmentTypeService';
+import { useNotification } from '../../hooks/useNotification';
 
 interface AppointmentBookingFormProps {
   patient: Patient;
@@ -23,12 +25,16 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   preselectedTime,
   preselectedEndTime,
 }) => {
+  const { showNotification } = useNotification();
+  const [isClosing, setIsClosing] = useState(false);
+
   const [formData, setFormData] = useState<AppointmentCreate>({
     patient_id: patient.id,
     date: '',
     start_time: '',
     end_time: '',
     type: 'Consultation',
+    appointment_type_name: '',
     status: 'Booked',
     title: '',
     notes: '',
@@ -59,7 +65,35 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const appointmentTypes: AppointmentType[] = ['Consultation', 'Follow Up', 'Emergency', 'Routine Check'];
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [selectedAppointmentType, setSelectedAppointmentType] = useState<AppointmentType | null>(null);
+
+  // Fetch appointment types from the API
+  useEffect(() => {
+    const fetchAppointmentTypes = async () => {
+      try {
+        const types = await AppointmentTypeService.getAll();
+        setAppointmentTypes(types);
+
+        // Set default appointment type if we have types and the form doesn't have one yet
+        if (types.length > 0 && !formData.appointment_type_name) {
+          // Get the name from the first appointment type
+          const typeName = types[0].name;
+
+          setFormData(prev => ({
+            ...prev,
+            // Only set the appointment_type_name field, which expects a string
+            appointment_type_name: typeName
+          }));
+          setSelectedAppointmentType(types[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching appointment types:', error);
+      }
+    };
+
+    fetchAppointmentTypes();
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -118,9 +152,33 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       };
 
       await onSubmit(appointmentData);
+
+      // Show success notification
+      showNotification(
+        'success',
+        'Appointment Confirmed',
+        `Appointment with ${patient.first_name} ${patient.last_name} has been booked successfully.`
+      );
+
+      // Trigger smooth closing animation
+      handleSmoothClose();
     } catch (error) {
       console.error('Error submitting appointment:', error);
+      showNotification(
+        'error',
+        'Booking Failed',
+        'There was a problem booking the appointment. Please try again.'
+      );
     }
+  };
+
+  // Handle smooth closing of the modal
+  const handleSmoothClose = () => {
+    setIsClosing(true);
+    // Wait for the animation to complete before actually closing
+    setTimeout(() => {
+      onCancel();
+    }, 500);
   };
 
   const handleChange = (field: keyof AppointmentCreate, value: string) => {
@@ -138,6 +196,49 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
     }
   };
 
+  const handleAppointmentTypeChange = (typeName: string) => {
+    const selectedType = appointmentTypes.find(type => type.name === typeName);
+    setSelectedAppointmentType(selectedType || null);
+
+    // Update the form data with the selected type name for both fields
+    handleChange('type', typeName);
+    handleChange('appointment_type_name', typeName);
+
+    // Auto-calculate end time if start time is set
+    if (selectedType && formData.start_time) {
+      const [hours, minutes] = formData.start_time.split(':').map(Number);
+      const durationMinutes = selectedType.duration_minutes;
+
+      const endDateTime = new Date();
+      endDateTime.setHours(hours, minutes + durationMinutes, 0);
+
+      const endHours = endDateTime.getHours().toString().padStart(2, '0');
+      const endMinutes = endDateTime.getMinutes().toString().padStart(2, '0');
+      const calculatedEndTime = `${endHours}:${endMinutes}`;
+
+      handleChange('end_time', calculatedEndTime);
+    }
+  };
+
+  // Auto-calculate end time when start time changes if appointment type is selected
+  const handleStartTimeChange = (startTime: string) => {
+    handleChange('start_time', startTime);
+
+    if (selectedAppointmentType && startTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const durationMinutes = selectedAppointmentType.duration_minutes;
+
+      const endDateTime = new Date();
+      endDateTime.setHours(hours, minutes + durationMinutes, 0);
+
+      const endHours = endDateTime.getHours().toString().padStart(2, '0');
+      const endMinutes = endDateTime.getMinutes().toString().padStart(2, '0');
+      const calculatedEndTime = `${endHours}:${endMinutes}`;
+
+      handleChange('end_time', calculatedEndTime);
+    }
+  };
+
   const getTomorrowDate = (): string => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -146,7 +247,11 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div
+        className={`bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto transform transition-all duration-500 ease-in-out ${
+          isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}
+      >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -154,7 +259,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
               Book New Appointment
             </h2>
             <button
-              onClick={onCancel}
+              onClick={handleSmoothClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,15 +301,19 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value as AppointmentType)}
+                onChange={(e) => handleAppointmentTypeChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={isLoading}
+                disabled={isLoading || appointmentTypes.length === 0}
               >
-                {appointmentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
+                {appointmentTypes.length === 0 ? (
+                  <option>Loading appointment types...</option>
+                ) : (
+                  appointmentTypes.map((type) => (
+                    <option key={type.name} value={type.name}>
+                      {type.name} ({type.duration_minutes} min)
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -232,7 +341,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
                 <Input
                   type="time"
                   value={formData.start_time}
-                  onChange={(e) => handleChange('start_time', e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   error={errors.start_time}
                   disabled={isLoading}
                 />

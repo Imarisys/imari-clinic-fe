@@ -12,9 +12,10 @@ interface MonthViewProps {
   currentDate: Date;
   appointments: Record<string, AppointmentData[]>;
   onAppointmentClick?: (appointmentId: string) => void;
+  onDayClick?: (date: Date) => void;
 }
 
-export const MonthView = ({ currentDate, appointments, onAppointmentClick }: MonthViewProps) => {
+export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDayClick }: MonthViewProps) => {
   const getMonthDays = (date: Date): Date[] => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -98,9 +99,10 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick }: Mon
           return (
             <div
               key={index}
-              className={`bg-white min-h-[120px] p-2 border-t relative ${
+              className={`bg-white min-h-[120px] p-2 border-t relative cursor-pointer hover:bg-gray-50 transition-colors ${
                 isCurrentMonth(date) ? 'bg-white' : 'bg-gray-50'
               }`}
+              onClick={() => onDayClick && onDayClick(date)}
             >
               <div className={`text-sm ${
                 isToday(date)
@@ -118,10 +120,14 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick }: Mon
                   return (
                     <div
                       key={apt.id}
-                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate`}
-                      onClick={() => onAppointmentClick && onAppointmentClick(apt.id)}
+                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent day click when clicking appointment
+                        onAppointmentClick && onAppointmentClick(apt.id);
+                      }}
                     >
-                      {apt.time} {apt.title}
+                      <div className="font-medium">{apt.time}</div>
+                      <div className="truncate">{apt.patientName}</div>
                     </div>
                   );
                 })}

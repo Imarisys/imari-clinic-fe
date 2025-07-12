@@ -23,7 +23,8 @@ export interface AppointmentCreate {
     date: string; // ISO datetime string
     start_time: string; // Time format with microseconds
     end_time: string; // Time format with microseconds
-    type: AppointmentType;
+    appointment_type_name: string;
+    type?: AppointmentType; // Keeping for backward compatibility
     status?: AppointmentStatus; // Optional, defaults to 'Booked'
     title: string;
     notes?: string | null;

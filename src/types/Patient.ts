@@ -17,14 +17,14 @@ export interface Patient {
 export interface PatientCreate {
     first_name: string;
     last_name: string;
-    date_of_birth: string;
-    gender: 'male' | 'female' | 'other';
-    email: string;
     phone: string;
-    street: string;
-    city: string;
-    state: string;
-    zip_code: string;
+    date_of_birth?: string;
+    gender?: 'male' | 'female' | 'other';
+    email?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
 }
 
 // For updating patients (all fields optional)

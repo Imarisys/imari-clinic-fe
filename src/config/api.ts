@@ -17,6 +17,15 @@ export const API_CONFIG = {
       delete: (id: string) => `/api/v1/appointments/${id}`,
       byPatient: (patientId: string) => `/api/v1/appointments/by_patient/${patientId}`,
     },
+    appointmentTypes: {
+      list: '/api/v1/appointment-types',
+      get: (id: string) => `/api/v1/appointment-types/${id}`,
+      create: '/api/v1/appointment-types',
+      update: (id: string) => `/api/v1/appointment-types/${id}`,
+      delete: (id: string) => `/api/v1/appointment-types/${id}`,
+      availableSlots: (typeName: string, date: string) =>
+        `/api/v1/appointment-types/${typeName}/available-slots/${date}`,
+    },
   },
 } as const;
 
