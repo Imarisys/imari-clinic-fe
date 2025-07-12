@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { DayColumn } from '../components/calendar/DayColumn';
 import { MonthView } from '../components/calendar/MonthView';
@@ -26,6 +27,7 @@ interface AppointmentData {
 }
 
 export const Calendar: React.FC = () => {
+  const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('week');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -130,7 +132,7 @@ export const Calendar: React.FC = () => {
     }
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
   const timeSlots = Array.from({ length: 10 }, (_, i) => {
     const hour = i + 8;
     return `${hour % 12 || 12}:00 ${hour < 12 ? 'AM' : 'PM'}`;
@@ -153,13 +155,12 @@ export const Calendar: React.FC = () => {
       setAppointmentLoading(true);
       const [appointment, patient] = await Promise.all([
         AppointmentService.getAppointment(appointmentId),
-        // We need to get the patient from the appointment's patient_id
         PatientService.getPatient(appointments.find(apt => apt.id === appointmentId)?.patient_id || '')
       ]);
       setSelectedAppointment(appointment);
       setSelectedPatient(patient);
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -171,7 +172,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       await AppointmentService.updateAppointment(selectedAppointment.id, appointmentData);
-      showNotification('success', 'Success', 'Appointment updated successfully');
+      showNotification('success', t('success'), t('appointment_updated_successfully'));
 
       // Refresh appointments
       const { start, days } = getRange();
@@ -181,7 +182,7 @@ export const Calendar: React.FC = () => {
       setSelectedAppointment(null);
       setSelectedPatient(null);
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -193,7 +194,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       await AppointmentService.updateAppointment(selectedAppointment.id, { status });
-      showNotification('success', 'Success', 'Appointment status updated successfully');
+      showNotification('success', t('success'), t('appointment_status_updated_successfully'));
 
       // Refresh appointments
       const { start, days } = getRange();
@@ -203,7 +204,7 @@ export const Calendar: React.FC = () => {
       setSelectedAppointment(null);
       setSelectedPatient(null);
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -215,7 +216,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       await AppointmentService.updateAppointment(selectedAppointment.id, { status: 'Cancelled' });
-      showNotification('success', 'Success', 'Appointment cancelled successfully');
+      showNotification('success', t('success'), t('appointment_cancelled_successfully'));
 
       // Refresh appointments
       const { start, days } = getRange();
@@ -225,7 +226,7 @@ export const Calendar: React.FC = () => {
       setSelectedAppointment(null);
       setSelectedPatient(null);
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -237,7 +238,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       await AppointmentService.deleteAppointment(selectedAppointment.id);
-      showNotification('success', 'Success', 'Appointment deleted successfully');
+      showNotification('success', t('success'), t('appointment_deleted_successfully'));
 
       // Refresh appointments
       const { start, days } = getRange();
@@ -247,7 +248,7 @@ export const Calendar: React.FC = () => {
       setSelectedAppointment(null);
       setSelectedPatient(null);
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -274,7 +275,7 @@ export const Calendar: React.FC = () => {
       const allPatients = await PatientService.listPatients();
       setPatients(allPatients);
     } catch (err: any) {
-      showNotification('error', 'Error', 'Failed to load patients: ' + err.message);
+      showNotification('error', t('error'), t('failed_to_load_patients') + ': ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -283,13 +284,12 @@ export const Calendar: React.FC = () => {
   const handleCreatePatientForBooking = async (patientData: PatientCreate | PatientUpdate) => {
     try {
       setAppointmentLoading(true);
-      // Cast to PatientCreate since we're only creating new patients in this context
       const newPatient = await PatientService.createPatient(patientData as PatientCreate);
-      showNotification('success', 'Success', 'Patient created successfully.');
+      showNotification('success', t('success'), t('patient_created_successfully'));
       setSelectedPatientForBooking(newPatient);
       setBookingStep('confirm');
     } catch (err: any) {
-      showNotification('error', 'Error', `Failed to create patient: ${err.message}`);
+      showNotification('error', t('error'), `${t('failed_to_create_patient_booking')}: ${err.message}`);
     } finally {
       setAppointmentLoading(false);
     }
@@ -300,11 +300,10 @@ export const Calendar: React.FC = () => {
       setAppointmentLoading(true);
       await AppointmentService.createAppointment(appointmentData);
 
-      // Enhanced success notification with more details
       showNotification(
         'success',
-        'Appointment Confirmed',
-        `Appointment for ${selectedPatientForBooking?.first_name} ${selectedPatientForBooking?.last_name} has been booked successfully.`
+        t('appointment_confirmed'),
+        t('appointment_booked_with', { name: `${selectedPatientForBooking?.first_name} ${selectedPatientForBooking?.last_name}` })
       );
 
       // Refresh appointments
@@ -319,7 +318,7 @@ export const Calendar: React.FC = () => {
       setBookingStep('time');
       setSearchQuery('');
     } catch (err: any) {
-      showNotification('error', 'Error', err.message);
+      showNotification('error', t('error'), err.message);
     } finally {
       setAppointmentLoading(false);
     }
@@ -358,13 +357,13 @@ export const Calendar: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {loading && <div className="text-center text-blue-600">Loading appointments...</div>}
+        {loading && <div className="text-center text-blue-600">{t('loading_appointments')}</div>}
         {error && <div className="text-center text-red-600">{error}</div>}
 
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-800">Appointment Calendar</h2>
-            <p className="text-gray-500">Manage and schedule patient appointments.</p>
+            <h2 className="text-2xl font-semibold text-gray-800">{t('appointment_calendar')}</h2>
+            <p className="text-gray-500">{t('manage_schedule_appointments')}</p>
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -372,7 +371,7 @@ export const Calendar: React.FC = () => {
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md flex items-center space-x-2 transition-colors duration-150"
             >
               <span className="material-icons text-base">add</span>
-              <span>New Appointment</span>
+              <span>{t('new_appointment')}</span>
             </button>
             <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors duration-150">
               <span className="material-icons">menu</span>
@@ -389,7 +388,7 @@ export const Calendar: React.FC = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            Month
+            {t('month')}
           </button>
           <button
             onClick={() => setView('week')}
@@ -399,7 +398,7 @@ export const Calendar: React.FC = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            Week
+            {t('week')}
           </button>
           <button
             onClick={() => setView('day')}
@@ -409,7 +408,7 @@ export const Calendar: React.FC = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            Day
+            {t('day')}
           </button>
         </div>
 
@@ -531,18 +530,18 @@ export const Calendar: React.FC = () => {
               {bookingStep === 'time' && (
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900">Select Date & Time</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('select_date_time')}</h2>
                     <button onClick={handleCancelNewAppointment} className="text-gray-400 hover:text-gray-600">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
-                  <p className="text-gray-600 mb-6">Select the date and time for the appointment</p>
+                  <p className="text-gray-600 mb-6">{t('select_date_time_description')}</p>
 
                   <div className="space-y-6">
                     {/* Date Input */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Date *
+                        {t('date')} *
                       </label>
                       <input
                         type="date"
@@ -556,7 +555,7 @@ export const Calendar: React.FC = () => {
                     {/* Duration Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Appointment Duration *
+                        {t('appointment_duration')} *
                       </label>
                       <div className="grid grid-cols-4 gap-2">
                         {[
@@ -606,7 +605,7 @@ export const Calendar: React.FC = () => {
                     {/* Time Slot Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Available Time Slots *
+                        {t('available_time_slots')} *
                       </label>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-64 overflow-y-auto">
                         {Array.from({ length: 20 }, (_, i) => {
@@ -660,11 +659,11 @@ export const Calendar: React.FC = () => {
                     {/* Custom Time Input (Alternative) */}
                     <div className="pt-4 border-t">
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Or Set Custom Time
+                        {t('or_set_custom_time')}
                       </label>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs text-gray-500 mb-1">Start Time</label>
+                          <label className="block text-xs text-gray-500 mb-1">{t('start_time')}</label>
                           <input
                             type="time"
                             value={selectedTimeSlot?.time || ''}
@@ -673,7 +672,7 @@ export const Calendar: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-500 mb-1">End Time</label>
+                          <label className="block text-xs text-gray-500 mb-1">{t('end_time')}</label>
                           <input
                             type="time"
                             value={selectedTimeSlot?.endTime || ''}
@@ -687,7 +686,7 @@ export const Calendar: React.FC = () => {
                     {/* Selected Time Summary */}
                     {selectedTimeSlot?.date && selectedTimeSlot?.time && selectedTimeSlot?.endTime && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="text-sm font-medium text-blue-900 mb-1">Selected Appointment Time</h4>
+                        <h4 className="text-sm font-medium text-blue-900 mb-1">{t('selected_appointment_time')}</h4>
                         <p className="text-sm text-blue-700">
                           {new Date(selectedTimeSlot.date).toLocaleDateString('en-US', {
                             weekday: 'long',
@@ -720,7 +719,7 @@ export const Calendar: React.FC = () => {
                         disabled={!selectedTimeSlot?.date || !selectedTimeSlot?.time || !selectedTimeSlot?.endTime}
                         className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors duration-150"
                       >
-                        Continue to Patient Selection
+                        {t('continue_to_patient_selection')}
                       </button>
                     </div>
                   </div>
@@ -731,20 +730,20 @@ export const Calendar: React.FC = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Select Patient</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">{t('select_patient')}</h2>
                       {selectedTimeSlot && (
                         <p className="text-sm text-gray-600">
-                          For {new Date(selectedTimeSlot.date).toLocaleDateString('en-US', {
+                          {t('for')} {new Date(selectedTimeSlot.date).toLocaleDateString('en-US', {
                             weekday: 'long',
                             month: 'long',
                             day: 'numeric'
-                          })} at {selectedTimeSlot.time}
+                          })} {t('at')} {selectedTimeSlot.time}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <button onClick={() => setBookingStep('time')} className="text-sm text-blue-600 hover:underline">
-                        &larr; Back to Time
+                        &larr; {t('back_to_time')}
                       </button>
                       <button onClick={handleCancelNewAppointment} className="text-gray-400 hover:text-gray-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -753,7 +752,7 @@ export const Calendar: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by name or email..."
+                    placeholder={t('search_by_name_email')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={handlePatientSearchClick}
@@ -776,7 +775,7 @@ export const Calendar: React.FC = () => {
                   </div>
                   <div className="mt-4 pt-4 border-t">
                     <button onClick={() => setBookingStep('create')} className="w-full text-center text-blue-600 hover:underline font-medium py-2">
-                      + Or Create a New Patient
+                      + {t('or_create_new_patient')}
                     </button>
                   </div>
                 </div>
@@ -785,9 +784,9 @@ export const Calendar: React.FC = () => {
               {bookingStep === 'create' && (
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-gray-900">Create New Patient</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">{t('create_new_patient')}</h2>
                     <button onClick={() => setBookingStep('patient')} className="text-sm text-blue-600 hover:underline">
-                      &larr; Back to Patient Search
+                      &larr; {t('back_to_patient_search')}
                     </button>
                   </div>
                   <PatientForm
@@ -802,18 +801,18 @@ export const Calendar: React.FC = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Confirm Appointment</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">{t('confirm_appointment')}</h2>
                       <p className="text-sm text-gray-600">
                         {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name} - {' '}
                         {new Date(selectedTimeSlot.date).toLocaleDateString('en-US', {
                           weekday: 'long',
                           month: 'long',
                           day: 'numeric'
-                        })} at {selectedTimeSlot.time}
+                        })} {t('at')} {selectedTimeSlot.time}
                       </p>
                     </div>
                     <button onClick={() => setBookingStep('patient')} className="text-sm text-blue-600 hover:underline">
-                      &larr; Back to Patient
+                      &larr; {t('back_to_patient')}
                     </button>
                   </div>
                   <AppointmentBookingForm

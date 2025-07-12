@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../context/TranslationContext';
 import { Patient } from '../../types/Patient';
 import { Appointment, AppointmentCreate, AppointmentUpdate, AppointmentStatus } from '../../types/Appointment';
 import { Button } from '../common/Button';
@@ -25,6 +26,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
   onPatientUpdated,
   isLoading: propsIsLoading,
 }) => {
+  const { t } = useTranslation();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showBookingForm, setShowBookingForm] = useState(false);
@@ -44,7 +46,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
       setAppointments(appointmentsData);
     } catch (error: any) {
       console.error('Error loading patient appointments:', error);
-      showError('Failed to Load Appointments', error?.message || 'Unable to load patient appointments');
+      showError(t('failed_to_load_appointments'), error?.message || t('unable_to_load_appointments'));
     } finally {
       setIsLoading(false);
     }
@@ -53,20 +55,13 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
   const handleBookAppointment = async (appointmentData: AppointmentCreate) => {
     setIsBookingLoading(true);
     try {
-      // Call the appointment service to create a new appointment
       const newAppointment = await AppointmentService.createAppointment(appointmentData);
-
-      // Update the local state to include the new appointment
       setAppointments(prev => [...prev, newAppointment]);
-
-      // Show success notification
-      showSuccess('Appointment Booked', 'The appointment has been successfully booked.');
-
-      // Close the booking form
+      showSuccess(t('appointment_booked'), t('appointment_booked_success'));
       setShowBookingForm(false);
     } catch (error: any) {
       console.error('Error booking appointment:', error);
-      showError('Booking Failed', error?.message || 'Unable to book the appointment');
+      showError(t('booking_failed'), error?.message || t('unable_to_book'));
     } finally {
       setIsBookingLoading(false);
     }
@@ -88,19 +83,17 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
     try {
       const updatedAppointment = await AppointmentService.updateAppointment(selectedAppointment.id, appointmentData);
 
-      // Update the appointments list with the edited appointment
       setAppointments(prev => prev.map(apt =>
         apt.id === selectedAppointment.id ? updatedAppointment : apt
       ));
 
-      // Update the selected appointment
       setSelectedAppointment(updatedAppointment);
 
-      showSuccess('Appointment Updated', 'The appointment has been successfully updated.');
+      showSuccess(t('appointment_updated'), t('appointment_updated_success'));
     } catch (error: any) {
       console.error('Error updating appointment:', error);
-      showError('Update Failed', error?.message || 'Unable to update the appointment');
-      throw error; // Re-throw to handle in the component
+      showError(t('update_failed'), error?.message || t('unable_to_update_appointment'));
+      throw error;
     }
   };
 
@@ -108,25 +101,22 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
     if (!selectedAppointment) return;
 
     try {
-      // Update appointment status to 'Cancelled'
       const cancelledAppointment = await AppointmentService.updateAppointment(selectedAppointment.id, {
         status: 'Cancelled'
       });
 
-      // Update the appointments list
       setAppointments(prev => prev.map(apt =>
         apt.id === selectedAppointment.id ? cancelledAppointment : apt
       ));
 
-      // Close the appointment detail modal
       setShowAppointmentDetail(false);
       setSelectedAppointment(null);
 
-      showSuccess('Appointment Cancelled', 'The appointment has been successfully cancelled.');
+      showSuccess(t('appointment_cancelled'), t('appointment_cancelled_success'));
     } catch (error: any) {
       console.error('Error cancelling appointment:', error);
-      showError('Cancellation Failed', error?.message || 'Unable to cancel the appointment');
-      throw error; // Re-throw to handle in the component
+      showError(t('cancellation_failed'), error?.message || t('unable_to_cancel'));
+      throw error;
     }
   };
 
@@ -138,18 +128,16 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
         status: newStatus
       });
 
-      // Update the appointments list
       setAppointments(prev => prev.map(apt =>
         apt.id === selectedAppointment.id ? updatedAppointment : apt
       ));
 
-      // Update the selected appointment
       setSelectedAppointment(updatedAppointment);
 
-      showSuccess('Status Updated', `Appointment status has been updated to ${newStatus}.`);
+      showSuccess(t('status_updated'), t('status_updated_to', { status: newStatus }));
     } catch (error: any) {
       console.error('Error updating appointment status:', error);
-      showError('Update Failed', error?.message || 'Unable to update appointment status');
+      showError(t('update_failed'), error?.message || t('unable_to_update_status'));
       throw error;
     }
   };
@@ -160,17 +148,15 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
     try {
       await AppointmentService.deleteAppointment(selectedAppointment.id);
 
-      // Remove the appointment from the list
       setAppointments(prev => prev.filter(apt => apt.id !== selectedAppointment.id));
 
-      // Close the appointment detail modal
       setShowAppointmentDetail(false);
       setSelectedAppointment(null);
 
-      showSuccess('Appointment Deleted', 'The appointment has been permanently deleted.');
+      showSuccess(t('appointment_deleted'), t('appointment_deleted_success'));
     } catch (error: any) {
       console.error('Error deleting appointment:', error);
-      showError('Deletion Failed', error?.message || 'Unable to delete the appointment');
+      showError(t('deletion_failed'), error?.message || t('unable_to_delete_appointment'));
       throw error;
     }
   };
@@ -257,10 +243,10 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="secondary" onClick={onBack}>
-            ← Back to Patients
+            {t('back_to_patients')}
           </Button>
           <h1 className="text-2xl font-bold text-gray-900">
-            Patient Details
+            {t('patient_details')}
           </h1>
         </div>
         <div className="flex items-center space-x-3">
@@ -272,10 +258,10 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Book Appointment
+            {t('book_appointment')}
           </Button>
           <Button variant="secondary" onClick={() => onEdit(patient)}>
-            Edit Patient
+            {t('edit_patient')}
           </Button>
         </div>
       </div>
@@ -288,10 +274,10 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
           </h2>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">
-              Age: {getAge(patient.date_of_birth)} years
+              {t('age')}: {getAge(patient.date_of_birth)} {t('years')}
             </span>
             <span className="text-sm text-gray-500 capitalize">
-              {patient.gender}
+              {t(patient.gender as 'male' | 'female' | 'other')}
             </span>
           </div>
         </div>
@@ -299,42 +285,42 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Contact Information */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Contact Information</h3>
-            <div className="space-y-2">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">{t('contact_information')}</h3>
+            <div className="space-y-3">
               <div>
-                <span className="text-sm font-medium text-gray-500">Email:</span>
-                <p className="text-sm text-gray-900">{patient.email}</p>
+                <label className="text-sm font-medium text-gray-500">{t('email')}</label>
+                <p className="text-gray-900">{patient.email}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">Phone:</span>
-                <p className="text-sm text-gray-900">{patient.phone}</p>
+                <label className="text-sm font-medium text-gray-500">{t('phone')}</label>
+                <p className="text-gray-900">{patient.phone}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">Date of Birth:</span>
-                <p className="text-sm text-gray-900">{formatDate(patient.date_of_birth)}</p>
+                <label className="text-sm font-medium text-gray-500">{t('date_of_birth')}</label>
+                <p className="text-gray-900">{formatDate(patient.date_of_birth)}</p>
               </div>
             </div>
           </div>
 
           {/* Address Information */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-3">Address</h3>
-            <div className="space-y-2">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">{t('address_information')}</h3>
+            <div className="space-y-3">
               <div>
-                <span className="text-sm font-medium text-gray-500">Street:</span>
-                <p className="text-sm text-gray-900">{patient.street}</p>
+                <label className="text-sm font-medium text-gray-500">{t('street_address')}</label>
+                <p className="text-gray-900">{patient.street}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">City:</span>
-                <p className="text-sm text-gray-900">{patient.city}</p>
+                <label className="text-sm font-medium text-gray-500">{t('city')}</label>
+                <p className="text-gray-900">{patient.city}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">State:</span>
-                <p className="text-sm text-gray-900">{patient.state}</p>
+                <label className="text-sm font-medium text-gray-500">{t('state')}</label>
+                <p className="text-gray-900">{patient.state}</p>
               </div>
               <div>
-                <span className="text-sm font-medium text-gray-500">Zip Code:</span>
-                <p className="text-sm text-gray-900">{patient.zip_code}</p>
+                <label className="text-sm font-medium text-gray-500">{t('zip_code')}</label>
+                <p className="text-gray-900">{patient.zip_code}</p>
               </div>
             </div>
           </div>
@@ -342,12 +328,10 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
       </div>
 
       {/* Appointments Section */}
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Appointments */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Upcoming Appointments ({upcomingAppointments.length})
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('upcoming_appointments')}</h3>
           {isLoading ? (
             <div className="animate-pulse space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -355,7 +339,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
               ))}
             </div>
           ) : upcomingAppointments.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No upcoming appointments</p>
+            <p className="text-gray-500 text-center py-8">{t('no_upcoming_appointments')}</p>
           ) : (
             <div className="space-y-4">
               {upcomingAppointments.map((appointment) => (
@@ -392,9 +376,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
 
         {/* Previous Appointments */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Previous Appointments ({previousAppointments.length})
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{t('previous_appointments')}</h3>
           {isLoading ? (
             <div className="animate-pulse space-y-4">
               {[...Array(3)].map((_, i) => (
@@ -402,7 +384,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
               ))}
             </div>
           ) : previousAppointments.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No previous appointments</p>
+            <p className="text-gray-500 text-center py-8">{t('no_previous_appointments')}</p>
           ) : (
             <div className="space-y-4">
               {previousAppointments

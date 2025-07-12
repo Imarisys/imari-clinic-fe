@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../context/TranslationContext';
 import { Patient, PatientCreate, PatientUpdate } from '../../types/Patient';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -18,6 +19,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   isEditing = false,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<PatientCreate>({
     first_name: '',
     last_name: '',
@@ -54,17 +56,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.first_name.trim()) {
-      newErrors.first_name = 'First name is required';
+      newErrors.first_name = t('first_name_required');
     }
     if (!formData.last_name.trim()) {
-      newErrors.last_name = 'Last name is required';
+      newErrors.last_name = t('last_name_required');
     }
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone is required';
+      newErrors.phone = t('phone_required');
     }
     // Only validate email format if it's provided
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = t('email_invalid');
     }
 
     setErrors(newErrors);
@@ -111,14 +113,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-xl font-semibold mb-4">
-        {isEditing ? 'Edit Patient' : 'Add New Patient'}
+        {isEditing ? t('edit_patient') : t('add_new_patient')}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Input
-              label="First Name"
+              label={t('first_name')}
               value={formData.first_name}
               onChange={(e) => handleInputChange('first_name', e.target.value)}
               error={errors.first_name}
@@ -128,7 +130,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
           <div>
             <Input
-              label="Last Name"
+              label={t('last_name')}
               value={formData.last_name}
               onChange={(e) => handleInputChange('last_name', e.target.value)}
               error={errors.last_name}
@@ -140,7 +142,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Input
-              label="Date of Birth"
+              label={t('date_of_birth')}
               type="date"
               value={formData.date_of_birth}
               onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
@@ -150,16 +152,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gender
+              {t('gender')}
             </label>
             <select
               value={formData.gender}
               onChange={(e) => handleInputChange('gender', e.target.value as 'male' | 'female' | 'other')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+              <option value="male">{t('male')}</option>
+              <option value="female">{t('female')}</option>
+              <option value="other">{t('other')}</option>
             </select>
           </div>
         </div>
@@ -167,7 +169,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Input
-              label="Email"
+              label={t('email')}
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
@@ -177,7 +179,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
           <div>
             <Input
-              label="Phone"
+              label={t('phone')}
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               error={errors.phone}
@@ -188,7 +190,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
         <div>
           <Input
-            label="Street Address"
+            label={t('street_address')}
             value={formData.street}
             onChange={(e) => handleInputChange('street', e.target.value)}
           />
@@ -197,7 +199,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Input
-              label="City"
+              label={t('city')}
               value={formData.city}
               onChange={(e) => handleInputChange('city', e.target.value)}
             />
@@ -205,7 +207,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
           <div>
             <Input
-              label="State"
+              label={t('state')}
               value={formData.state}
               onChange={(e) => handleInputChange('state', e.target.value)}
             />
@@ -213,7 +215,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
           <div>
             <Input
-              label="Zip Code"
+              label={t('zip_code')}
               value={formData.zip_code}
               onChange={(e) => handleInputChange('zip_code', e.target.value)}
             />
@@ -226,7 +228,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             variant="primary"
             disabled={isLoading}
           >
-            {isLoading ? 'Saving...' : (isEditing ? 'Update Patient' : 'Create Patient')}
+            {isLoading ? t('saving') : (isEditing ? t('update_patient') : t('create_patient'))}
           </Button>
 
           <Button
@@ -235,7 +237,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Cancel
+            {t('cancel')}
           </Button>
         </div>
       </form>

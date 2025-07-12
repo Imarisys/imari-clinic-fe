@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
 import { PatientForm } from '../components/patients/PatientForm';
@@ -14,6 +15,7 @@ type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 
 // Patient management component with full CRUD functionality
 export const Patients: React.FC = () => {
+  const { t } = useTranslation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
@@ -114,12 +116,12 @@ export const Patients: React.FC = () => {
       setPatients(patientsData);
       setAllPatients(patientsData); // Keep a copy of all patients
       if (patientsData.length === 0) {
-        showInfo('No patients found', 'Start by adding your first patient to the system.');
+        showInfo(t('no_patients_found'), t('start_by_adding_patient'));
       }
     } catch (err: any) {
       console.error('Error loading patients:', err);
-      const errorMessage = err?.message || 'Failed to load patients. Please check your connection and try again.';
-      showError('Failed to Load Patients', errorMessage);
+      const errorMessage = err?.message || t('connection_error');
+      showError(t('failed_to_load_patients'), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -135,13 +137,13 @@ export const Patients: React.FC = () => {
       setViewMode('list');
       setSelectedPatient(null);
       showSuccess(
-        'Patient Created Successfully',
-        `${newPatient.first_name} ${newPatient.last_name} has been added to the system.`
+        t('patient_created_successfully'),
+        `${newPatient.first_name} ${newPatient.last_name} ${t('patient_added_to_system')}`
       );
     } catch (err: any) {
       console.error('Error creating patient:', err);
-      const errorMessage = err?.message || 'Unable to create patient. Please check your input and try again.';
-      showError('Failed to Create Patient', errorMessage);
+      const errorMessage = err?.message || t('unable_to_create_patient');
+      showError(t('failed_to_create_patient'), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -169,13 +171,13 @@ export const Patients: React.FC = () => {
 
       setViewMode('detail'); // Go back to detail view instead of list
       showSuccess(
-        'Patient Updated Successfully',
-        `${updatedPatient.first_name} ${updatedPatient.last_name}'s information has been updated.`
+        t('patient_updated_successfully'),
+        `${updatedPatient.first_name} ${updatedPatient.last_name} ${t('patient_info_updated')}`
       );
     } catch (err: any) {
       console.error('Error updating patient:', err);
-      const errorMessage = err?.message || 'Unable to update patient. Please try again.';
-      showError('Failed to Update Patient', errorMessage);
+      const errorMessage = err?.message || t('unable_to_update_patient');
+      showError(t('failed_to_update_patient'), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -198,7 +200,7 @@ export const Patients: React.FC = () => {
     const patientToDelete = patients.find(p => p.id === patientId);
     const patientName = patientToDelete ? `${patientToDelete.first_name} ${patientToDelete.last_name}` : 'this patient';
 
-    if (!window.confirm(`Are you sure you want to delete ${patientName}? This action cannot be undone.`)) {
+    if (!window.confirm(t('confirm_delete_patient', { name: patientName }))) {
       return;
     }
 
@@ -208,13 +210,13 @@ export const Patients: React.FC = () => {
       await PatientService.deletePatient(patientId);
       setPatients(prev => prev.filter(p => p.id !== patientId));
       showSuccess(
-        'Patient Deleted Successfully',
-        `${patientName} has been removed from the system.`
+        t('patient_deleted_successfully'),
+        `${patientName} ${t('patient_removed_from_system')}`
       );
     } catch (err: any) {
       console.error('Error deleting patient:', err);
-      const errorMessage = err?.message || 'Unable to delete patient. Please try again.';
-      showError('Failed to Delete Patient', errorMessage);
+      const errorMessage = err?.message || t('unable_to_delete_patient');
+      showError(t('failed_to_delete_patient'), errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -277,9 +279,9 @@ export const Patients: React.FC = () => {
           />
         ) : (
           <div className="text-center py-8">
-            <p className="text-gray-500">Patient not found</p>
+            <p className="text-gray-500">{t('patient_not_found')}</p>
             <Button variant="secondary" onClick={handleCancel}>
-              Back to List
+              {t('back_to_list')}
             </Button>
           </div>
         );
@@ -297,13 +299,13 @@ export const Patients: React.FC = () => {
             {/* Header with add button */}
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                {filteredPatients.length} of {allPatients.length} patients
+                {t('patients_count', { total: allPatients.length.toString() })}
               </div>
               <Button
                 variant="primary"
                 onClick={() => setViewMode('create')}
               >
-                Add New Patient
+                {t('add_new_patient')}
               </Button>
             </div>
 
@@ -326,9 +328,9 @@ export const Patients: React.FC = () => {
         {/* Page header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">
-            {viewMode === 'create' ? 'Add New Patient' :
-             viewMode === 'edit' ? 'Edit Patient' :
-             viewMode === 'detail' ? 'Patient Details' : 'Patients'}
+            {viewMode === 'create' ? t('add_new_patient') :
+             viewMode === 'edit' ? t('edit_patient') :
+             viewMode === 'detail' ? t('patient_details') : t('patients')}
           </h1>
 
           {viewMode !== 'list' && (
@@ -336,7 +338,7 @@ export const Patients: React.FC = () => {
               variant="secondary"
               onClick={handleCancel}
             >
-              Back to List
+              {t('back_to_list')}
             </Button>
           )}
         </div>
