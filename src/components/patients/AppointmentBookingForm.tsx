@@ -4,6 +4,7 @@ import { Input } from '../common/Input';
 import { Patient } from '../../types/Patient';
 import { AppointmentCreate, AppointmentStatus } from '../../types/Appointment';
 import { AppointmentTypeService, AppointmentType } from '../../services/appointmentTypeService';
+import { useNotification } from '../../hooks/useNotification';
 
 interface AppointmentBookingFormProps {
   patient: Patient;
@@ -24,6 +25,9 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   preselectedTime,
   preselectedEndTime,
 }) => {
+  const { showNotification } = useNotification();
+  const [isClosing, setIsClosing] = useState(false);
+
   const [formData, setFormData] = useState<AppointmentCreate>({
     patient_id: patient.id,
     date: '',
@@ -148,9 +152,33 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       };
 
       await onSubmit(appointmentData);
+
+      // Show success notification
+      showNotification(
+        'success',
+        'Appointment Confirmed',
+        `Appointment with ${patient.first_name} ${patient.last_name} has been booked successfully.`
+      );
+
+      // Trigger smooth closing animation
+      handleSmoothClose();
     } catch (error) {
       console.error('Error submitting appointment:', error);
+      showNotification(
+        'error',
+        'Booking Failed',
+        'There was a problem booking the appointment. Please try again.'
+      );
     }
+  };
+
+  // Handle smooth closing of the modal
+  const handleSmoothClose = () => {
+    setIsClosing(true);
+    // Wait for the animation to complete before actually closing
+    setTimeout(() => {
+      onCancel();
+    }, 500);
   };
 
   const handleChange = (field: keyof AppointmentCreate, value: string) => {
@@ -219,7 +247,11 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div
+        className={`bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto transform transition-all duration-500 ease-in-out ${
+          isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}
+      >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -227,7 +259,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
               Book New Appointment
             </h2>
             <button
-              onClick={onCancel}
+              onClick={handleSmoothClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
