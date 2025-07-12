@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import enTranslations from '../i18n/locales/en.json';
 import frTranslations from '../i18n/locales/fr.json';
+import arTranslations from '../i18n/locales/ar.json';
 
 type Translations = typeof enTranslations;
-type Language = 'en' | 'fr';
+type Language = 'en' | 'fr' | 'ar';
 
 interface TranslationContextType {
   language: Language;
@@ -14,6 +15,7 @@ interface TranslationContextType {
 const translations: Record<Language, Translations> = {
   en: enTranslations,
   fr: frTranslations,
+  ar: arTranslations,
 };
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
