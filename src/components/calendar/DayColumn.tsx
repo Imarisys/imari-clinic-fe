@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useTimeSlotDrag, TimeSlot } from '../../hooks/useTimeSlotDrag';
+import { CurrentTimeLine } from './CurrentTimeLine';
 
 interface AppointmentData {
   id: string;
@@ -154,6 +155,11 @@ export const DayColumn: React.FC<DayColumnProps> = ({ date, appointments = [], o
         <div className="absolute inset-0 pointer-events-none z-20">
           <div className="absolute inset-x-1 bg-blue-500/20 border-2 border-blue-500 border-dashed rounded" />
         </div>
+      )}
+
+      {/* Current Time Line - only show for today */}
+      {isToday && (
+        <CurrentTimeLine startHour={8} endHour={18} />
       )}
     </div>
   );

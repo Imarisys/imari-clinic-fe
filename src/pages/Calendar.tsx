@@ -349,6 +349,12 @@ export const Calendar: React.FC = () => {
     setBookingStep('patient');
   };
 
+  // Handler for day click in month view - switch to day view
+  const handleDayClick = (date: Date) => {
+    setCurrentDate(date);
+    setView('day');
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -441,6 +447,7 @@ export const Calendar: React.FC = () => {
               currentDate={currentDate}
               appointments={groupedAppointments}
               onAppointmentClick={handleAppointmentClick}
+              onDayClick={handleDayClick} // Pass the new handler to MonthView
             />
           )}
 

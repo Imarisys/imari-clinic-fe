@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useTimeSlotDrag, TimeSlot } from '../../hooks/useTimeSlotDrag';
+import { CurrentTimeLine } from './CurrentTimeLine';
 
 interface AppointmentData {
   id: string;
@@ -140,6 +141,11 @@ export const DayView = ({ date, appointments, onAppointmentClick, onTimeSlotSele
               </div>
             ))}
           </div>
+
+          {/* Current Time Line - only show for today */}
+          {date.toDateString() === new Date().toDateString() && (
+            <CurrentTimeLine startHour={8} endHour={18} />
+          )}
 
           {/* Appointments */}
           <div className="absolute inset-0 pointer-events-none">
