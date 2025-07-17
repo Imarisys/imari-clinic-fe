@@ -14,99 +14,94 @@ import { useNotification } from '../hooks/useNotification';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail';
 
-// Extended Patient interface for demo purposes
-interface PatientWithExtras extends Patient {
-  emergencyContact?: string;
-  medicalHistory?: string;
-  insurance?: string;
-  lastVisit?: string;
-  status?: 'active' | 'inactive' | 'critical';
-}
-
-// Patient management component with full CRUD functionality
 export const Patients: React.FC = () => {
   const { t } = useTranslation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [selectedPatient, setSelectedPatient] = useState<PatientWithExtras | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock patient data matching the Patient interface
-  const mockPatients: PatientWithExtras[] = [
-    {
-      id: '1',
-      first_name: 'John',
-      last_name: 'Doe',
-      email: 'john.doe@email.com',
-      phone: '+1 (555) 123-4567',
-      date_of_birth: '1985-03-15',
-      gender: 'male',
-      street: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zip_code: '10001',
-      emergencyContact: 'Jane Doe - +1 (555) 987-6543',
-      medicalHistory: 'Hypertension, Diabetes Type 2',
-      insurance: 'Blue Cross Blue Shield',
-      lastVisit: '2024-01-15',
-      status: 'active'
-    },
-    {
-      id: '2',
-      first_name: 'Sarah',
-      last_name: 'Wilson',
-      email: 'sarah.wilson@email.com',
-      phone: '+1 (555) 234-5678',
-      date_of_birth: '1992-07-22',
-      gender: 'female',
-      street: '456 Oak Ave',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip_code: '90210',
-      emergencyContact: 'Mike Wilson - +1 (555) 876-5432',
-      medicalHistory: 'Asthma, Allergies',
-      insurance: 'Aetna',
-      lastVisit: '2024-01-20',
-      status: 'active'
-    },
-    {
-      id: '3',
-      first_name: 'Mike',
-      last_name: 'Johnson',
-      email: 'mike.johnson@email.com',
-      phone: '+1 (555) 345-6789',
-      date_of_birth: '1978-11-08',
-      gender: 'male',
-      street: '789 Pine St',
-      city: 'Chicago',
-      state: 'IL',
-      zip_code: '60601',
-      emergencyContact: 'Lisa Johnson - +1 (555) 765-4321',
-      medicalHistory: 'Heart Disease, High Cholesterol',
-      insurance: 'Cigna',
-      lastVisit: '2024-01-10',
-      status: 'active'
-    },
-    {
-      id: '4',
-      first_name: 'Emily',
-      last_name: 'Davis',
-      email: 'emily.davis@email.com',
-      phone: '+1 (555) 456-7890',
-      date_of_birth: '1990-05-12',
-      gender: 'female',
-      street: '321 Elm Dr',
-      city: 'Miami',
-      state: 'FL',
-      zip_code: '33101',
-      emergencyContact: 'Robert Davis - +1 (555) 654-3210',
-      medicalHistory: 'Migraine, Anxiety',
-      insurance: 'United Healthcare',
-      lastVisit: '2024-01-25',
-      status: 'active'
+  // Load patients from API
+  const loadPatients = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const patientData = await PatientService.listPatients();
+      setPatients(patientData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load patients');
+      console.error('Error loading patients:', err);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  // Load patients on component mount
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  // Handle patient creation
+  const handleCreatePatient = async (patientData: PatientCreate) => {
+    setIsLoading(true);
+    try {
+      const newPatient = await PatientService.createPatient(patientData);
+      setPatients(prev => [...prev, newPatient]);
+      setViewMode('detail');
+      setSelectedPatient(newPatient);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create patient');
+      console.error('Error creating patient:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Wrapper function for create form to handle union type
+  const handleCreateFormSubmit = async (patientData: PatientCreate | PatientUpdate) => {
+    await handleCreatePatient(patientData as PatientCreate);
+  };
+
+  // Handle patient update
+  const handleUpdatePatient = async (patientId: string, patientData: PatientUpdate) => {
+    setIsLoading(true);
+    try {
+      const updatedPatient = await PatientService.updatePatient(patientId, patientData);
+      setPatients(prev => prev.map(p => p.id === patientId ? updatedPatient : p));
+      setSelectedPatient(updatedPatient);
+      setViewMode('detail');
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update patient');
+      console.error('Error updating patient:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle patient deletion
+  const handleDeletePatient = async (patientId: string) => {
+    if (!window.confirm('Are you sure you want to delete this patient?')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await PatientService.deletePatient(patientId);
+      setPatients(prev => prev.filter(p => p.id !== patientId));
+      setSelectedPatient(null);
+      setViewMode('grid');
+      // You can show a success notification here
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete patient');
+      console.error('Error deleting patient:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const calculateAge = (dateOfBirth: string): number => {
     const birthDate = new Date(dateOfBirth);
@@ -128,9 +123,9 @@ export const Patients: React.FC = () => {
     }
   };
 
-  const filteredPatients = mockPatients.filter(patient =>
+  const filteredPatients = patients.filter(patient =>
     `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
     patient.phone.includes(searchQuery)
   );
 
@@ -140,6 +135,17 @@ export const Patients: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-primary-600 mb-2">Patients</h1>
           <p className="text-neutral-600">Manage your patient records and information</p>
+          {error && (
+            <div className="mt-2 p-3 bg-error-50 border border-error-200 rounded-lg">
+              <p className="text-error-700 text-sm">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="text-error-600 text-xs hover:text-error-800 mt-1"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
 
         {/* View Toggle */}
@@ -177,8 +183,13 @@ export const Patients: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <Button variant="secondary" icon="filter_list">
-            Filters
+          <Button
+            variant="secondary"
+            icon="refresh"
+            onClick={loadPatients}
+            disabled={isLoading}
+          >
+            Refresh
           </Button>
           <Button variant="secondary" icon="download">
             Export
@@ -196,30 +207,32 @@ export const Patients: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-neutral-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-success-600">{mockPatients.length}</p>
+          <p className="text-2xl font-bold text-success-600">{patients.length}</p>
           <p className="text-sm text-neutral-600">Total Patients</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {mockPatients.filter(p => p.lastVisit && new Date(p.lastVisit) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
+            {patients.filter(p => p.date_of_birth && calculateAge(p.date_of_birth) < 65).length}
           </p>
-          <p className="text-sm text-neutral-600">Recent Visits</p>
+          <p className="text-sm text-neutral-600">Under 65</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {mockPatients.filter(p => p.status === 'active').length}
+            {patients.filter(p => p.email).length}
           </p>
-          <p className="text-sm text-neutral-600">Active</p>
+          <p className="text-sm text-neutral-600">With Email</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-warning-600">3</p>
-          <p className="text-sm text-neutral-600">Need Follow-up</p>
+          <p className="text-2xl font-bold text-warning-600">
+            {patients.filter(p => !p.date_of_birth).length}
+          </p>
+          <p className="text-sm text-neutral-600">Missing DOB</p>
         </div>
       </div>
     </div>
   );
 
-  const renderPatientCard = (patient: PatientWithExtras, index: number) => (
+  const renderPatientCard = (patient: Patient, index: number) => (
     <div
       key={patient.id}
       className="card card-hover slide-up-element cursor-pointer"
@@ -237,7 +250,7 @@ export const Patients: React.FC = () => {
               {patient.first_name[0]}{patient.last_name[0]}
             </span>
           </div>
-          <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${getStatusColor(patient.status)}`}></div>
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white bg-success-500"></div>
         </div>
 
         {/* Patient Info */}
@@ -246,44 +259,31 @@ export const Patients: React.FC = () => {
             <h3 className="text-lg font-semibold text-neutral-800 truncate">
               {patient.first_name} {patient.last_name}
             </h3>
-            <span className="text-sm text-neutral-500">
-              Age {calculateAge(patient.date_of_birth)}
-            </span>
+            {patient.date_of_birth && (
+              <span className="text-sm text-neutral-500">
+                Age {calculateAge(patient.date_of_birth)}
+              </span>
+            )}
           </div>
 
           <div className="space-y-1 text-sm text-neutral-600">
-            <div className="flex items-center space-x-2">
-              <span className="material-icons-round text-lg">email</span>
-              <span className="truncate">{patient.email}</span>
-            </div>
+            {patient.email && (
+              <div className="flex items-center space-x-2">
+                <span className="material-icons-round text-lg">email</span>
+                <span className="truncate">{patient.email}</span>
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <span className="material-icons-round text-lg">phone</span>
               <span>{patient.phone}</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="material-icons-round text-lg">calendar_today</span>
-              <span>Last visit: {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}</span>
-            </div>
+            {patient.city && patient.state && (
+              <div className="flex items-center space-x-2">
+                <span className="material-icons-round text-lg">location_on</span>
+                <span>{patient.city}, {patient.state}</span>
+              </div>
+            )}
           </div>
-
-          {/* Medical Info Tags */}
-          {patient.medicalHistory && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {patient.medicalHistory.split(', ').slice(0, 2).map((condition: string, idx: number) => (
-                <span
-                  key={idx}
-                  className="px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded-full border border-primary-200"
-                >
-                  {condition}
-                </span>
-              ))}
-              {patient.medicalHistory.split(', ').length > 2 && (
-                <span className="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs rounded-full">
-                  +{patient.medicalHistory.split(', ').length - 2} more
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Action Menu */}
@@ -295,6 +295,20 @@ export const Patients: React.FC = () => {
       </div>
     </div>
   );
+
+  // Loading state
+  if (isLoading && patients.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="loading-spinner w-12 h-12 mx-auto mb-4"></div>
+            <p className="text-neutral-600">Loading patients...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -350,11 +364,11 @@ export const Patients: React.FC = () => {
                   {calculateAge(patient.date_of_birth)}
                 </td>
                 <td className="py-4 px-6 text-neutral-800">
-                  {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString() : 'N/A'}
+                  N/A
                 </td>
                 <td className="py-4 px-6">
-                  <span className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(patient.status)}`}>
-                    {patient.status ? patient.status.charAt(0).toUpperCase() + patient.status.slice(1) : 'Active'}
+                  <span className={`px-3 py-1 rounded-full text-white text-xs font-medium bg-success-500`}>
+                    Active
                   </span>
                 </td>
                 <td className="py-4 px-6">
@@ -374,6 +388,37 @@ export const Patients: React.FC = () => {
       </div>
     </div>
   );
+
+  // Handle create/edit form views
+  if (viewMode === 'create') {
+    return (
+      <DashboardLayout>
+        <div className="fade-in-element">
+          <PatientForm
+            onSubmit={handleCreateFormSubmit}
+            onCancel={() => setViewMode('grid')}
+            isLoading={isLoading}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (viewMode === 'edit' && selectedPatient) {
+    return (
+      <DashboardLayout>
+        <div className="fade-in-element">
+          <PatientForm
+            patient={selectedPatient}
+            onSubmit={(data) => handleUpdatePatient(selectedPatient.id, data as PatientUpdate)}
+            onCancel={() => setViewMode('detail')}
+            isEditing={true}
+            isLoading={isLoading}
+          />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (viewMode === 'detail' && selectedPatient) {
     return (
@@ -399,51 +444,118 @@ export const Patients: React.FC = () => {
                 <h1 className="text-3xl font-bold text-primary-600 mb-2">
                   {selectedPatient.first_name} {selectedPatient.last_name}
                 </h1>
-                <p className="text-neutral-600 mb-4">{selectedPatient.email}</p>
+                <p className="text-neutral-600 mb-4">{selectedPatient.email || 'No email provided'}</p>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-neutral-500">Age</p>
-                    <p className="font-semibold">{calculateAge(selectedPatient.date_of_birth)}</p>
+                    <p className="font-semibold">
+                      {selectedPatient.date_of_birth ? calculateAge(selectedPatient.date_of_birth) : 'Not provided'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-neutral-500">Gender</p>
-                    <p className="font-semibold">{selectedPatient.gender}</p>
+                    <p className="font-semibold capitalize">{selectedPatient.gender || 'Not specified'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-neutral-500">Phone</p>
                     <p className="font-semibold">{selectedPatient.phone}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-neutral-500">Status</p>
-                    <span className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(selectedPatient.status)}`}>
-                      {selectedPatient.status || 'Active'}
-                    </span>
+                    <p className="text-sm text-neutral-500">Patient ID</p>
+                    <p className="font-semibold text-xs">{selectedPatient.id}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex space-x-3">
-                <Button variant="secondary" icon="edit">
+                <Button
+                  variant="secondary"
+                  icon="edit"
+                  onClick={() => setViewMode('edit')}
+                >
                   Edit
                 </Button>
-                <Button variant="primary" icon="event">
+                <Button
+                  variant="primary"
+                  icon="event"
+                  onClick={() => {
+                    // TODO: Navigate to appointment booking for this patient
+                    console.log('Schedule appointment for', selectedPatient);
+                  }}
+                >
                   Schedule
+                </Button>
+                <Button
+                  variant="danger"
+                  icon="delete"
+                  onClick={() => handleDeletePatient(selectedPatient.id)}
+                  disabled={isLoading}
+                >
+                  Delete
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Additional patient details */}
+          {/* Patient Details */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-4">Medical History</h3>
-              <p className="text-neutral-600">{selectedPatient.medicalHistory || 'No medical history recorded'}</p>
+              <h3 className="text-xl font-bold text-neutral-800 mb-4">Contact Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-neutral-500">Email</p>
+                  <p className="text-neutral-800">{selectedPatient.email || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-neutral-500">Phone</p>
+                  <p className="text-neutral-800">{selectedPatient.phone}</p>
+                </div>
+                {selectedPatient.date_of_birth && (
+                  <div>
+                    <p className="text-sm text-neutral-500">Date of Birth</p>
+                    <p className="text-neutral-800">{new Date(selectedPatient.date_of_birth).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-4">Insurance</h3>
-              <p className="text-neutral-600">{selectedPatient.insurance || 'No insurance information'}</p>
+              <h3 className="text-xl font-bold text-neutral-800 mb-4">Address</h3>
+              <div className="space-y-3">
+                {selectedPatient.street || selectedPatient.city || selectedPatient.state || selectedPatient.zip_code ? (
+                  <>
+                    {selectedPatient.street && (
+                      <div>
+                        <p className="text-sm text-neutral-500">Street</p>
+                        <p className="text-neutral-800">{selectedPatient.street}</p>
+                      </div>
+                    )}
+                    <div className="flex space-x-4">
+                      {selectedPatient.city && (
+                        <div className="flex-1">
+                          <p className="text-sm text-neutral-500">City</p>
+                          <p className="text-neutral-800">{selectedPatient.city}</p>
+                        </div>
+                      )}
+                      {selectedPatient.state && (
+                        <div className="flex-1">
+                          <p className="text-sm text-neutral-500">State</p>
+                          <p className="text-neutral-800">{selectedPatient.state}</p>
+                        </div>
+                      )}
+                      {selectedPatient.zip_code && (
+                        <div className="flex-1">
+                          <p className="text-sm text-neutral-500">ZIP Code</p>
+                          <p className="text-neutral-800">{selectedPatient.zip_code}</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-neutral-500 italic">No address information provided</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

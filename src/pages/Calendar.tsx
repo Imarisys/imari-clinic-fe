@@ -16,16 +16,6 @@ import { TimeSlot } from '../hooks/useTimeSlotDrag';
 
 type CalendarView = 'month' | 'week' | 'day';
 
-interface AppointmentData {
-  id: string;
-  patientName: string;
-  time: string;
-  duration: number;
-  type: string;
-  status: string;
-  title: string;
-}
-
 export const Calendar: React.FC = () => {
   const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -45,20 +35,123 @@ export const Calendar: React.FC = () => {
 
   const { showNotification } = useNotification();
 
-  // Mock appointments for demo
-  const mockAppointments = [
-    { id: '1', patientName: 'John Doe', time: '09:00', duration: 60, type: 'Consultation', status: 'confirmed', date: new Date().toISOString().split('T')[0] },
-    { id: '2', patientName: 'Sarah Wilson', time: '10:30', duration: 45, type: 'Follow-up', status: 'in-progress', date: new Date().toISOString().split('T')[0] },
-    { id: '3', patientName: 'Mike Johnson', time: '14:00', duration: 30, type: 'Check-up', status: 'waiting', date: new Date().toISOString().split('T')[0] },
-    { id: '4', patientName: 'Emily Davis', time: '15:30', duration: 90, type: 'Surgery', status: 'confirmed', date: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
-  ];
+  // Load appointments from API
+  const loadAppointments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Calculate date range based on current view
+      const startDate = getViewStartDate();
+      const days = getViewDays();
 
-  const getStatusColor = (status: string) => {
+      const appointmentData = await AppointmentService.listAppointmentsByRange(
+        startDate.toISOString().split('T')[0],
+        days
+      );
+      setAppointments(appointmentData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load appointments');
+      console.error('Error loading appointments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load patients for appointment booking
+  const loadPatients = async () => {
+    try {
+      const patientData = await PatientService.listPatients();
+      setPatients(patientData);
+    } catch (err) {
+      console.error('Error loading patients:', err);
+    }
+  };
+
+  // Load data on component mount and when date/view changes
+  useEffect(() => {
+    loadAppointments();
+    loadPatients();
+  }, [currentDate, view]);
+
+  // Handle appointment creation
+  const handleCreateAppointment = async (appointmentData: AppointmentCreate) => {
+    setAppointmentLoading(true);
+    try {
+      const newAppointment = await AppointmentService.createAppointment(appointmentData);
+      setAppointments(prev => [...prev, newAppointment]);
+      setShowNewAppointmentForm(false);
+      setSelectedTimeSlot(null);
+      showNotification('success', 'Success', 'Appointment created successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create appointment');
+      console.error('Error creating appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle appointment update
+  const handleUpdateAppointment = async (appointmentId: string, appointmentData: AppointmentUpdate) => {
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, appointmentData);
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
+      setSelectedAppointment(updatedAppointment);
+      showNotification('success', 'Success', 'Appointment updated successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update appointment');
+      console.error('Error updating appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle appointment deletion
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) {
+      return;
+    }
+
+    setAppointmentLoading(true);
+    try {
+      await AppointmentService.deleteAppointment(appointmentId);
+      setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+      setSelectedAppointment(null);
+      showNotification('success', 'Success', 'Appointment deleted successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete appointment');
+      console.error('Error deleting appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Helper functions for date calculations
+  const getViewStartDate = () => {
+    const date = new Date(currentDate);
+    if (view === 'week') {
+      date.setDate(date.getDate() - date.getDay()); // Start of week
+    } else if (view === 'month') {
+      date.setDate(1); // Start of month
+    }
+    return date;
+  };
+
+  const getViewDays = () => {
+    switch (view) {
+      case 'day': return 1;
+      case 'week': return 7;
+      case 'month': return 31; // Approximate
+      default: return 7;
+    }
+  };
+
+  const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
-      case 'confirmed': return 'bg-success-500';
-      case 'in-progress': return 'bg-primary-500';
-      case 'waiting': return 'bg-warning-500';
-      case 'pending': return 'bg-neutral-400';
+      case 'Completed': return 'bg-success-500';
+      case 'Booked': return 'bg-primary-500';
+      case 'Cancelled': return 'bg-error-500';
+      case 'No Show': return 'bg-warning-500';
       default: return 'bg-neutral-400';
     }
   };
@@ -82,6 +175,38 @@ export const Calendar: React.FC = () => {
       newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
     }
     setCurrentDate(newDate);
+  };
+
+  // Format appointment time from API response
+  const formatAppointmentTime = (appointment: Appointment) => {
+    if (appointment.start_time) {
+      // Convert time format (e.g., "09:00:00.000000") to "09:00"
+      return appointment.start_time.split(':').slice(0, 2).join(':');
+    }
+    return '00:00';
+  };
+
+  // Get appointment date from API response
+  const getAppointmentDate = (appointment: Appointment) => {
+    if (appointment.date) {
+      return appointment.date.split('T')[0]; // Extract date part from ISO string
+    }
+    return new Date().toISOString().split('T')[0];
+  };
+
+  // Get patient name from appointment
+  const getPatientName = (appointment: Appointment) => {
+    return `${appointment.patient_first_name} ${appointment.patient_last_name}`;
+  };
+
+  // Calculate appointment duration in minutes
+  const getAppointmentDuration = (appointment: Appointment) => {
+    if (appointment.start_time && appointment.end_time) {
+      const start = new Date(`2000-01-01T${appointment.start_time}`);
+      const end = new Date(`2000-01-01T${appointment.end_time}`);
+      return Math.round((end.getTime() - start.getTime()) / (1000 * 60)); // Duration in minutes
+    }
+    return 30; // Default duration
   };
 
   const renderCalendarHeader = () => (
@@ -203,7 +328,7 @@ export const Calendar: React.FC = () => {
               </div>
               {days.map((day, dayIndex) => {
                 const dayStr = day.toISOString().split('T')[0];
-                const dayAppointments = mockAppointments.filter(apt => apt.date === dayStr && apt.time === time);
+                const dayAppointments = appointments.filter(apt => getAppointmentDate(apt) === dayStr && formatAppointmentTime(apt) === time);
 
                 return (
                   <div
@@ -222,14 +347,14 @@ export const Calendar: React.FC = () => {
                         `}
                         style={{
                           top: `${aptIndex * 4}px`,
-                          height: `${Math.min(appointment.duration, 60)}px`
+                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedAppointment(appointment as any);
                         }}
                       >
-                        <p className="font-semibold truncate">{appointment.patientName}</p>
+                        <p className="font-semibold truncate">{getPatientName(appointment)}</p>
                         <p className="opacity-90 truncate">{appointment.type}</p>
                       </div>
                     ))}
@@ -252,8 +377,8 @@ export const Calendar: React.FC = () => {
             {currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </h3>
           <div className="space-y-2">
-            {mockAppointments
-              .filter(apt => apt.date === currentDate.toISOString().split('T')[0])
+            {appointments
+              .filter(apt => getAppointmentDate(apt) === currentDate.toISOString().split('T')[0])
               .map((appointment, index) => (
                 <div
                   key={appointment.id}
@@ -264,12 +389,12 @@ export const Calendar: React.FC = () => {
                   <div className="flex items-center space-x-4">
                     <div className="flex-shrink-0">
                       <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
-                        <span className="text-primary-600 font-semibold text-sm">{appointment.time}</span>
+                        <span className="text-primary-600 font-semibold text-sm">{formatAppointmentTime(appointment)}</span>
                       </div>
                     </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-neutral-800">{appointment.patientName}</p>
-                      <p className="text-neutral-600 text-sm">{appointment.type} • {appointment.duration} min</p>
+                      <p className="font-semibold text-neutral-800">{appointment.patient_first_name} {appointment.patient_last_name}</p>
+                      <p className="text-neutral-600 text-sm">{appointment.type}</p>
                     </div>
                     <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(appointment.status)}`}>
                       {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
@@ -288,15 +413,15 @@ export const Calendar: React.FC = () => {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-neutral-600">Total Appointments</span>
-              <span className="font-semibold text-primary-600">8</span>
+              <span className="font-semibold text-primary-600">{appointments.filter(apt => getAppointmentDate(apt) === new Date().toISOString().split('T')[0]).length}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-600">Completed</span>
-              <span className="font-semibold text-success-600">5</span>
+              <span className="font-semibold text-success-600">{appointments.filter(apt => apt.status === 'Completed').length}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-600">Remaining</span>
-              <span className="font-semibold text-warning-600">3</span>
+              <span className="font-semibold text-warning-600">{appointments.filter(apt => apt.status !== 'Completed').length}</span>
             </div>
           </div>
         </div>
