@@ -3,7 +3,7 @@ import { useTranslation } from '../../context/TranslationContext';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Patient } from '../../types/Patient';
-import { AppointmentCreate, AppointmentStatus } from '../../types/Appointment';
+import { AppointmentCreate } from '../../types/Appointment';
 import { AppointmentTypeService, AppointmentType } from '../../services/appointmentTypeService';
 import { useNotification } from '../../hooks/useNotification';
 
@@ -95,7 +95,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
     };
 
     fetchAppointmentTypes();
-  }, []);
+  }, [formData.appointment_type_name]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { DayColumn } from '../components/calendar/DayColumn';
@@ -46,7 +46,7 @@ export const Calendar: React.FC = () => {
   const { showNotification } = useNotification();
 
   // Helper to get the start date and number of days for each view
-  const getRange = () => {
+  const getRange = useCallback(() => {
     let start = new Date(currentDate);
     let days = 1;
     if (view === 'week') {
@@ -57,7 +57,7 @@ export const Calendar: React.FC = () => {
       days = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
     }
     return { start, days };
-  };
+  }, [currentDate, view]);
 
   useEffect(() => {
     const { start, days } = getRange();
@@ -67,7 +67,7 @@ export const Calendar: React.FC = () => {
       .then(setAppointments)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [currentDate, view]);
+  }, [getRange]);
 
   // Helper to group appointments by date (YYYY-MM-DD)
   const groupAppointmentsByDate = (appointments: Appointment[]) => {
@@ -262,11 +262,6 @@ export const Calendar: React.FC = () => {
   const handleNewAppointmentClick = () => {
     setBookingStep('time');
     setShowNewAppointmentForm(true);
-  };
-
-  const handleTimeSlotSelect = (date: string, time: string) => {
-    setSelectedTimeSlot({ date, time });
-    setBookingStep('patient');
   };
 
   const handlePatientSearchClick = async () => {

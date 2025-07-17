@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../../context/TranslationContext';
 import { Patient } from '../../types/Patient';
 import { Appointment, AppointmentCreate, AppointmentUpdate, AppointmentStatus } from '../../types/Appointment';
@@ -35,11 +35,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
   const [showAppointmentDetail, setShowAppointmentDetail] = useState(false);
   const { notification, hideNotification, showError, showSuccess } = useNotification();
 
-  useEffect(() => {
-    loadPatientAppointments();
-  }, [patient.id]);
-
-  const loadPatientAppointments = async () => {
+  const loadPatientAppointments = useCallback(async () => {
     setIsLoading(true);
     try {
       const appointmentsData = await AppointmentService.getPatientAppointments(patient.id);
@@ -50,7 +46,11 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [patient.id, showError, t]);
+
+  useEffect(() => {
+    loadPatientAppointments();
+  }, [loadPatientAppointments]);
 
   const handleBookAppointment = async (appointmentData: AppointmentCreate) => {
     setIsBookingLoading(true);
