@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../context/TranslationContext';
+import { useNotification } from '../../context/NotificationContext';
 import { Patient, PatientCreate, PatientUpdate } from '../../types/Patient';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -20,6 +21,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState<PatientCreate>({
     first_name: '',
     last_name: '',
@@ -101,8 +103,27 @@ export const PatientForm: React.FC<PatientFormProps> = ({
       };
 
       await onSubmit(cleanData);
+
+      // Show success notification only if onSubmit doesn't throw an error
+      showNotification(
+        'success',
+        isEditing ? 'Patient Updated!' : 'Patient Created!',
+        isEditing
+          ? `${formData.first_name} ${formData.last_name}'s information has been successfully updated.`
+          : `${formData.first_name} ${formData.last_name} has been successfully added to your patient records.`
+      );
+
     } catch (error) {
       console.error('Form submission error:', error);
+
+      // Show error notification
+      showNotification(
+        'error',
+        isEditing ? 'Update Failed' : 'Creation Failed',
+        error instanceof Error
+          ? error.message
+          : `Failed to ${isEditing ? 'update' : 'create'} patient. Please try again.`
+      );
     }
   };
 

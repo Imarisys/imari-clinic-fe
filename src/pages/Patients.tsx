@@ -55,6 +55,8 @@ export const Patients: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create patient');
       console.error('Error creating patient:', err);
+      // Re-throw the error so PatientForm can catch it and show appropriate notification
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -77,6 +79,8 @@ export const Patients: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update patient');
       console.error('Error updating patient:', err);
+      // Re-throw the error so PatientForm can catch it and show appropriate notification
+      throw err;
     } finally {
       setIsLoading(false);
     }
