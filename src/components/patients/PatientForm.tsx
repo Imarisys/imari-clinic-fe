@@ -65,6 +65,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
+    } else {
+      // Remove any non-digit characters for validation
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      if (phoneDigits.length !== 8) {
+        newErrors.phone = 'Phone number must be exactly 8 digits';
+      }
     }
 
     if (formData.email && !formData.email.includes('@')) {
@@ -149,7 +155,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             onChange={(e) => handleInputChange('phone', e.target.value)}
             error={errors.phone}
             required
-            placeholder="+1 (555) 123-4567"
+            placeholder="XX XXX XXX"
           />
 
           <Input
@@ -175,7 +181,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             Gender (Optional)
           </label>
           <div className="flex space-x-4">
-            {(['male', 'female', 'other'] as const).map((gender) => (
+            {(['male', 'female'] as const).map((gender) => (
               <label key={gender} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="radio"

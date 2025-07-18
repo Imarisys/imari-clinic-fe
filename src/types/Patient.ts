@@ -4,7 +4,7 @@ export interface Patient {
     first_name: string;
     last_name: string;
     date_of_birth: string; // ISO date string
-    gender: 'male' | 'female' | 'other';
+    gender: 'male' | 'female';
     email: string;
     phone: string;
     street: string;
@@ -19,7 +19,7 @@ export interface PatientCreate {
     last_name: string;
     phone: string;
     date_of_birth?: string;
-    gender?: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female';
     email?: string;
     street?: string;
     city?: string;
@@ -32,7 +32,7 @@ export interface PatientUpdate {
     first_name?: string;
     last_name?: string;
     date_of_birth?: string;
-    gender?: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female';
     email?: string;
     phone?: string;
     street?: string;
