@@ -114,15 +114,6 @@ export const Patients: React.FC = () => {
     return age;
   };
 
-  const getStatusColor = (status: string = 'active') => {
-    switch (status) {
-      case 'active': return 'bg-success-500';
-      case 'inactive': return 'bg-warning-500';
-      case 'critical': return 'bg-error-500';
-      default: return 'bg-neutral-400';
-    }
-  };
-
   const filteredPatients = patients.filter(patient =>
     `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -244,13 +235,12 @@ export const Patients: React.FC = () => {
     >
       <div className="flex items-start space-x-4">
         {/* Avatar */}
-        <div className="relative flex-shrink-0">
+        <div className="flex-shrink-0">
           <div className="w-16 h-16 bg-primary-500 rounded-2xl flex items-center justify-center shadow-medium text-white">
             <span className="text-xl font-semibold">
               {patient.first_name[0]}{patient.last_name[0]}
             </span>
           </div>
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white bg-success-500"></div>
         </div>
 
         {/* Patient Info */}
@@ -325,8 +315,6 @@ export const Patients: React.FC = () => {
               <th className="text-left py-4 px-6 font-semibold text-neutral-700">Patient</th>
               <th className="text-left py-4 px-6 font-semibold text-neutral-700">Contact</th>
               <th className="text-left py-4 px-6 font-semibold text-neutral-700">Age</th>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Last Visit</th>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Status</th>
               <th className="text-left py-4 px-6 font-semibold text-neutral-700">Actions</th>
             </tr>
           </thead>
@@ -362,14 +350,6 @@ export const Patients: React.FC = () => {
                 </td>
                 <td className="py-4 px-6 text-neutral-800">
                   {calculateAge(patient.date_of_birth)}
-                </td>
-                <td className="py-4 px-6 text-neutral-800">
-                  N/A
-                </td>
-                <td className="py-4 px-6">
-                  <span className={`px-3 py-1 rounded-full text-white text-xs font-medium bg-success-500`}>
-                    Active
-                  </span>
                 </td>
                 <td className="py-4 px-6">
                   <div className="flex space-x-2">
@@ -446,7 +426,7 @@ export const Patients: React.FC = () => {
                 </h1>
                 <p className="text-neutral-600 mb-4">{selectedPatient.email || 'No email provided'}</p>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-neutral-500">Age</p>
                     <p className="font-semibold">
@@ -460,10 +440,6 @@ export const Patients: React.FC = () => {
                   <div>
                     <p className="text-sm text-neutral-500">Phone</p>
                     <p className="font-semibold">{selectedPatient.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500">Patient ID</p>
-                    <p className="font-semibold text-xs">{selectedPatient.id}</p>
                   </div>
                 </div>
               </div>
