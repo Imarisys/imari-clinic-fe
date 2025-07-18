@@ -60,8 +60,8 @@ export const Calendar: React.FC = () => {
   // Load patients for appointment booking
   const loadPatients = async () => {
     try {
-      const patientData = await PatientService.listPatients();
-      setPatients(patientData);
+      const response = await PatientService.listPatients();
+      setPatients(response.data);
     } catch (err) {
       console.error('Error loading patients:', err);
     }

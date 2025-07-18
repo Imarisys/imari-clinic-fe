@@ -11,6 +11,7 @@
           "patients"
         ],
         "summary": "Create Patient",
+        "description": "Create a new patient",
         "operationId": "create_patient_api_v1_patients__post",
         "requestBody": {
           "required": true,
@@ -50,6 +51,7 @@
           "patients"
         ],
         "summary": "List Patients",
+        "description": "List patients with pagination metadata including total, limit, and offset",
         "operationId": "list_patients_api_v1_patients__get",
         "parameters": [
           {
@@ -58,9 +60,12 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "minimum": 0,
+              "description": "Number of records to skip",
               "default": 0,
               "title": "Offset"
-            }
+            },
+            "description": "Number of records to skip"
           },
           {
             "name": "limit",
@@ -68,10 +73,13 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "lte": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of records to return",
               "default": 100,
               "title": "Limit"
-            }
+            },
+            "description": "Maximum number of records to return"
           }
         ],
         "responses": {
@@ -80,11 +88,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PatientRead"
-                  },
-                  "title": "Response List Patients Api V1 Patients  Get"
+                  "$ref": "#/components/schemas/PatientListResponse"
                 }
               }
             }
@@ -108,6 +112,7 @@
           "patients"
         ],
         "summary": "Get Patient",
+        "description": "Get a specific patient by ID",
         "operationId": "get_patient_api_v1_patients__patient_id__get",
         "parameters": [
           {
@@ -143,12 +148,13 @@
           }
         }
       },
-      "patch": {
+      "put": {
         "tags": [
           "patients"
         ],
         "summary": "Update Patient",
-        "operationId": "update_patient_api_v1_patients__patient_id__patch",
+        "description": "Update an existing patient",
+        "operationId": "update_patient_api_v1_patients__patient_id__put",
         "parameters": [
           {
             "name": "patient_id",
@@ -198,6 +204,7 @@
           "patients"
         ],
         "summary": "Delete Patient",
+        "description": "Delete a patient",
         "operationId": "delete_patient_api_v1_patients__patient_id__delete",
         "parameters": [
           {
@@ -1045,6 +1052,38 @@
           "phone"
         ],
         "title": "PatientCreate"
+      },
+      "PatientListResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PatientRead"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PatientListResponse",
+        "description": "Paginated response model for patient list"
       },
       "PatientRead": {
         "properties": {

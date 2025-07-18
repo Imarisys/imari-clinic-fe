@@ -43,3 +43,11 @@ export interface PatientUpdate {
 
 // For API responses (matches PatientRead from OpenAPI)
 export interface PatientRead extends Patient {}
+
+// Paginated response for patient list
+export interface PatientListResponse {
+    data: Patient[];
+    total: number;
+    limit: number;
+    offset: number;
+}

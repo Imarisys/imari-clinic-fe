@@ -48,13 +48,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <div className="fade-in-element">
             {children}
           </div>
-
-          {/* Floating action button */}
-          <button className="fixed bottom-8 right-8 w-16 h-16 bg-primary-500 text-white rounded-full shadow-primary hover:bg-primary-600 hover:scale-110 transition-all duration-300 z-50 group">
-            <span className="material-icons-round text-white text-2xl group-hover:rotate-45 transition-transform duration-300">
-              add
-            </span>
-          </button>
         </main>
       </div>
     </div>

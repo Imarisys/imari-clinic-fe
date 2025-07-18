@@ -1,5 +1,5 @@
 import { API_CONFIG, buildApiUrl } from '../config/api';
-import { Patient, PatientCreate, PatientUpdate, PatientRead } from '../types/Patient';
+import { Patient, PatientCreate, PatientUpdate, PatientRead, PatientListResponse } from '../types/Patient';
 
 // Helper function to extract error message from response
 const extractErrorMessage = async (response: Response): Promise<string> => {
@@ -42,7 +42,7 @@ const extractErrorMessage = async (response: Response): Promise<string> => {
 // API service for patient operations
 export class PatientService {
   // List patients with pagination
-  static async listPatients(offset = 0, limit = 100): Promise<Patient[]> {
+  static async listPatients(offset = 0, limit = 20): Promise<PatientListResponse> {
     try {
       const url = buildApiUrl(`${API_CONFIG.endpoints.patients.list}?offset=${offset}&limit=${limit}`);
       const response = await fetch(url, {

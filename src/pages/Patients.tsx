@@ -9,6 +9,7 @@ import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
+import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { PatientService } from '../services/patientService';
 import { useNotification } from '../context/NotificationContext';
@@ -25,15 +26,24 @@ export const Patients: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPatients, setTotalPatients] = useState(0);
+  const [itemsPerPage] = useState(10); // Reduced from 20 to 5 to show pagination sooner
+
   const { showNotification } = useNotification();
 
   // Load patients from API
-  const loadPatients = async () => {
+  const loadPatients = async (page: number = 1) => {
     setIsLoading(true);
     setError(null);
     try {
-      const patientData = await PatientService.listPatients();
-      setPatients(patientData);
+      const offset = (page - 1) * itemsPerPage;
+      const response = await PatientService.listPatients(offset, itemsPerPage);
+      setPatients(response.data);
+      setTotalPatients(response.total);
+      setCurrentPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load patients');
       console.error('Error loading patients:', err);
@@ -44,8 +54,13 @@ export const Patients: React.FC = () => {
 
   // Load patients on component mount
   useEffect(() => {
-    loadPatients();
+    loadPatients(1);
   }, []);
+
+  // Handle page change for pagination
+  const handlePageChange = (page: number) => {
+    loadPatients(page);
+  };
 
   // Handle patient creation
   const handleCreatePatient = async (patientData: PatientCreate) => {
@@ -214,7 +229,7 @@ export const Patients: React.FC = () => {
           <Button
             variant="secondary"
             icon="refresh"
-            onClick={loadPatients}
+            onClick={() => loadPatients(currentPage)}
             disabled={isLoading}
           >
             Refresh
@@ -611,6 +626,16 @@ export const Patients: React.FC = () => {
             </Button>
           </div>
         )}
+
+        {/* Pagination */}
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalPatients}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+          />
+        </div>
       </div>
     </DashboardLayout>
   );
