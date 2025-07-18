@@ -12,7 +12,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="flex relative z-10">
         <Sidebar />
 
-        <main className="flex-1 p-8 min-h-screen">
+        <main className="flex-1 p-8 min-h-screen ml-64 lg:ml-80">
           {/* Header with clean design */}
           <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
             <div className="flex items-center justify-between">
