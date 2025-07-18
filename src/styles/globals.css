@@ -50,8 +50,29 @@
     @apply bg-white rounded-2xl p-6 shadow-medium hover:shadow-large transition-all duration-300 border border-neutral-100;
   }
 
-  .card-hover {
-    @apply hover:scale-[1.01] hover:-translate-y-1 transition-all duration-300 ease-out;
+  /* Left-side scrollbar for sidebar */
+  .sidebar-scroll-left {
+    direction: rtl;
+  }
+
+  .sidebar-scroll-left > * {
+    direction: ltr;
+  }
+
+  .sidebar-scroll-left::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scroll-left::-webkit-scrollbar-track {
+    @apply bg-primary-700/30 rounded-full;
+  }
+
+  .sidebar-scroll-left::-webkit-scrollbar-thumb {
+    @apply bg-primary-400/60 rounded-full;
+  }
+
+  .sidebar-scroll-left::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary-400;
   }
 
   /* Button styles - clean design with main color */

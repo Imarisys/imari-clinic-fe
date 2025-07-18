@@ -41,7 +41,7 @@ export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <aside className="fixed left-4 top-4 w-64 lg:w-80 bg-primary-800 h-[calc(100vh-2rem)] flex flex-col overflow-y-auto shadow-large z-50 rounded-3xl">
+    <aside className="fixed left-4 top-4 w-64 lg:w-80 bg-primary-800 h-[calc(100vh-2rem)] flex flex-col overflow-y-auto shadow-large z-50 rounded-3xl sidebar-scroll-left">
       <div className="relative z-10 p-8 flex-1">
         {/* Logo Section */}
         <div className="flex items-center space-x-4 mb-12 group">
