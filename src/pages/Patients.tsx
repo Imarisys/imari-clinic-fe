@@ -30,7 +30,7 @@ export const Patients: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [itemsPerPage] = useState(10); // Reduced from 20 to 5 to show pagination sooner
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Changed to state variable
 
   const { showNotification } = useNotification();
 
@@ -57,9 +57,20 @@ export const Patients: React.FC = () => {
     loadPatients(1);
   }, []);
 
+  // Reload patients when itemsPerPage changes
+  useEffect(() => {
+    loadPatients(1);
+  }, [itemsPerPage]);
+
   // Handle page change for pagination
   const handlePageChange = (page: number) => {
     loadPatients(page);
+  };
+
+  // Handle page size change
+  const handlePageSizeChange = (newPageSize: number) => {
+    setItemsPerPage(newPageSize);
+    setCurrentPage(1); // Reset to first page when changing page size
   };
 
   // Handle patient creation
@@ -634,6 +645,7 @@ export const Patients: React.FC = () => {
             totalItems={totalPatients}
             itemsPerPage={itemsPerPage}
             onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
           />
         </div>
       </div>
