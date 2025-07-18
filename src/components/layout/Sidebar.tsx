@@ -41,8 +41,8 @@ export const Sidebar: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <aside className="fixed left-4 top-4 w-64 lg:w-80 bg-primary-800 h-[calc(100vh-2rem)] flex flex-col justify-between overflow-y-auto shadow-large z-50 rounded-3xl">
-      <div className="relative z-10 p-8">
+    <aside className="fixed left-4 top-4 w-64 lg:w-80 bg-primary-800 h-[calc(100vh-2rem)] flex flex-col overflow-y-auto shadow-large z-50 rounded-3xl">
+      <div className="relative z-10 p-8 flex-1">
         {/* Logo Section */}
         <div className="flex items-center space-x-4 mb-12 group">
           <div className="relative">
@@ -107,9 +107,11 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* User Profile */}
-        <div className="mt-8 bg-primary-700/50 rounded-3xl p-4 border border-primary-600 group hover:scale-105 transition-transform duration-300">
+      {/* Bottom Section - User Profile centered with margin */}
+      <div className="relative z-10 p-4 mx-4 mb-4">
+        <div className="bg-primary-700/50 rounded-3xl p-4 border border-primary-600 group hover:scale-105 transition-transform duration-300">
           <div className="flex items-center space-x-3">
             <div className="relative">
               <div className="w-10 h-10 bg-primary-400 rounded-full flex items-center justify-center">
@@ -126,10 +128,6 @@ export const Sidebar: React.FC = () => {
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Section - Empty for proper spacing */}
-      <div className="relative z-10 p-8 mt-auto">
       </div>
     </aside>
   );
