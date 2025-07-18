@@ -8,9 +8,10 @@ import { PatientSearch, PatientSearchFilters } from '../components/patients/Pati
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
+import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { PatientService } from '../services/patientService';
-import { useNotification } from '../hooks/useNotification';
+import { useNotification } from '../context/NotificationContext';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail';
 
@@ -22,6 +23,9 @@ export const Patients: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const { showNotification } = useNotification();
 
   // Load patients from API
   const loadPatients = async () => {
@@ -88,22 +92,51 @@ export const Patients: React.FC = () => {
 
   // Handle patient deletion
   const handleDeletePatient = async (patientId: string) => {
-    if (!window.confirm('Are you sure you want to delete this patient?')) {
-      return;
-    }
-
     setIsLoading(true);
     try {
+      // Get patient info before deletion for notification
+      const deletedPatient = patients.find(p => p.id === patientId);
+
       await PatientService.deletePatient(patientId);
       setPatients(prev => prev.filter(p => p.id !== patientId));
       setSelectedPatient(null);
       setViewMode('grid');
-      // You can show a success notification here
+
+      // Show success notification
+      if (deletedPatient) {
+        showNotification(
+          'success',
+          'Patient Deleted!',
+          `${deletedPatient.first_name} ${deletedPatient.last_name} has been successfully removed from your patient records.`
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete patient');
       console.error('Error deleting patient:', err);
+
+      // Show error notification
+      showNotification(
+        'error',
+        'Deletion Failed',
+        err instanceof Error ? err.message : 'Failed to delete patient. Please try again.'
+      );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirmation = (patient: Patient) => {
+    setPatientToDelete(patient);
+    setShowDeleteConfirmation(true);
+  };
+
+  // Handle confirmed deletion
+  const handleConfirmDelete = async () => {
+    if (patientToDelete) {
+      await handleDeletePatient(patientToDelete.id);
+      setShowDeleteConfirmation(false);
+      setPatientToDelete(null);
     }
   };
 
@@ -469,7 +502,9 @@ export const Patients: React.FC = () => {
                 <Button
                   variant="danger"
                   icon="delete"
-                  onClick={() => handleDeletePatient(selectedPatient.id)}
+                  onClick={() => {
+                    handleDeleteConfirmation(selectedPatient);
+                  }}
                   disabled={isLoading}
                 >
                   Delete
@@ -539,6 +574,19 @@ export const Patients: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showDeleteConfirmation}
+          onClose={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Patient"
+          message={`Are you sure you want to delete ${patientToDelete?.first_name} ${patientToDelete?.last_name}? This action cannot be undone and will permanently remove all patient data.`}
+          confirmButtonText="Delete Patient"
+          cancelButtonText="Cancel"
+          isLoading={isLoading}
+          variant="danger"
+        />
       </DashboardLayout>
     );
   }
