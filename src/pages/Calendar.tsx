@@ -382,14 +382,15 @@ export const Calendar: React.FC = () => {
     return (
       <div className="card overflow-hidden">
         {/* Day header - similar to week header but for a single day */}
-        <div className="grid grid-cols-[60px_1fr] border-b border-neutral-200">
+        <div className="grid grid-cols-[80px_1fr] border-b border-neutral-200">
           <div className="p-2"></div>
           <div
-            className={`p-4 text-center ${
+            className={`p-4 text-center slide-up-element ${
               currentDate.toDateString() === new Date().toDateString()
                 ? 'bg-primary-50 border-primary-200'
                 : 'bg-neutral-50'
             }`}
+            style={{ animationDelay: '0.1s' }}
           >
             <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
             <p className={`text-lg font-semibold ${
@@ -403,7 +404,7 @@ export const Calendar: React.FC = () => {
         </div>
 
         {/* Time slots grid - similar to week view but only one day column */}
-        <div className="max-h-[700px] overflow-y-auto">
+        <div className="max-h-96 overflow-y-auto">
           {timeSlots.map((time, timeIndex) => {
             const dayAppointments = appointments.filter(apt =>
               getAppointmentDate(apt) === dayStr &&
@@ -411,8 +412,12 @@ export const Calendar: React.FC = () => {
             );
 
             return (
-              <div key={time} className="grid grid-cols-[60px_1fr] border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300">
-                <div className="py-4 px-2 text-right text-sm text-neutral-500 bg-neutral-50">
+              <div
+                key={time}
+                className="grid grid-cols-[80px_1fr] border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300 slide-up-element"
+                style={{ animationDelay: `${timeIndex * 0.05}s` }}
+              >
+                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50">
                   {time}
                 </div>
                 <div
