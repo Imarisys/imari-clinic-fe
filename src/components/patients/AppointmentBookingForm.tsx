@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../context/TranslationContext';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Patient } from '../../types/Patient';
-import { AppointmentCreate, AppointmentStatus } from '../../types/Appointment';
+import { AppointmentCreate } from '../../types/Appointment';
 import { AppointmentTypeService, AppointmentType } from '../../services/appointmentTypeService';
 import { useNotification } from '../../hooks/useNotification';
 
@@ -25,6 +26,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   preselectedTime,
   preselectedEndTime,
 }) => {
+  const { t } = useTranslation();
   const { showNotification } = useNotification();
   const [isClosing, setIsClosing] = useState(false);
 
@@ -58,10 +60,10 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
         date: preselectedDate,
         start_time: preselectedTime,
         end_time: endTime,
-        title: `Consultation with ${patient.first_name} ${patient.last_name}`,
+        title: t('consultation_with', { name: `${patient.first_name} ${patient.last_name}` }),
       }));
     }
-  }, [preselectedDate, preselectedTime, preselectedEndTime, patient.first_name, patient.last_name]);
+  }, [preselectedDate, preselectedTime, preselectedEndTime, patient.first_name, patient.last_name, t]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -93,33 +95,33 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
     };
 
     fetchAppointmentTypes();
-  }, []);
+  }, [formData.appointment_type_name]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('title_required');
     }
 
     if (!formData.date) {
-      newErrors.date = 'Date is required';
+      newErrors.date = t('date_required_error');
     } else {
       const selectedDate = new Date(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       if (selectedDate < today) {
-        newErrors.date = 'Date cannot be in the past';
+        newErrors.date = t('date_past_error');
       }
     }
 
     if (!formData.start_time) {
-      newErrors.start_time = 'Start time is required';
+      newErrors.start_time = t('start_time_required_error');
     }
 
     if (!formData.end_time) {
-      newErrors.end_time = 'End time is required';
+      newErrors.end_time = t('end_time_required_error');
     }
 
     if (formData.start_time && formData.end_time) {
@@ -127,7 +129,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       const endTime = new Date(`2000-01-01T${formData.end_time}`);
 
       if (endTime <= startTime) {
-        newErrors.end_time = 'End time must be after start time';
+        newErrors.end_time = t('end_time_after_start');
       }
     }
 
@@ -156,8 +158,8 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       // Show success notification
       showNotification(
         'success',
-        'Appointment Confirmed',
-        `Appointment with ${patient.first_name} ${patient.last_name} has been booked successfully.`
+        t('appointment_confirmed'),
+        t('appointment_booked_with', { name: `${patient.first_name} ${patient.last_name}` })
       );
 
       // Trigger smooth closing animation
@@ -166,8 +168,8 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       console.error('Error submitting appointment:', error);
       showNotification(
         'error',
-        'Booking Failed',
-        'There was a problem booking the appointment. Please try again.'
+        t('booking_failed'),
+        t('booking_error')
       );
     }
   };
@@ -256,7 +258,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Book New Appointment
+              {t('book_new_appointment')}
             </h2>
             <button
               onClick={handleSmoothClose}
@@ -270,7 +272,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-gray-900 mb-2">Patient</h3>
+            <h3 className="font-medium text-gray-900 mb-2">{t('patient')}</h3>
             <p className="text-sm text-gray-600">
               {patient.first_name} {patient.last_name}
             </p>
@@ -282,13 +284,13 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Appointment Title *
+                {t('appointment_title_required')}
               </label>
               <Input
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleChange('title', e.target.value)}
-                placeholder="e.g., Regular Checkup, Follow-up Visit"
+                placeholder={t('appointment_title_placeholder')}
                 error={errors.title}
                 disabled={isLoading}
               />
@@ -297,7 +299,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             {/* Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Appointment Type
+                {t('appointment_type')}
               </label>
               <select
                 value={formData.type}
@@ -306,11 +308,11 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
                 disabled={isLoading || appointmentTypes.length === 0}
               >
                 {appointmentTypes.length === 0 ? (
-                  <option>Loading appointment types...</option>
+                  <option>{t('loading_appointment_types')}</option>
                 ) : (
                   appointmentTypes.map((type) => (
                     <option key={type.name} value={type.name}>
-                      {type.name} ({type.duration_minutes} min)
+                      {type.name} ({type.duration_minutes} {t('min')})
                     </option>
                   ))
                 )}
@@ -320,7 +322,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             {/* Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date *
+                {t('date_required')}
               </label>
               <Input
                 type="date"
@@ -336,7 +338,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time *
+                  {t('start_time_required')}
                 </label>
                 <Input
                   type="time"
@@ -348,7 +350,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Time *
+                  {t('end_time_required')}
                 </label>
                 <Input
                   type="time"
@@ -363,14 +365,14 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes (Optional)
+                {t('notes_optional')}
               </label>
               <textarea
                 value={formData.notes || ''}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                placeholder="Additional notes or instructions..."
+                placeholder={t('notes_placeholder')}
                 disabled={isLoading}
               />
             </div>
@@ -383,14 +385,14 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
                 onClick={onCancel}
                 disabled={isLoading}
               >
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 variant="primary"
                 disabled={isLoading}
               >
-                {isLoading ? 'Booking...' : 'Book Appointment'}
+                {isLoading ? t('booking') : t('book_appointment')}
               </Button>
             </div>
           </form>

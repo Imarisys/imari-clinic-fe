@@ -4,7 +4,7 @@ export interface Patient {
     first_name: string;
     last_name: string;
     date_of_birth: string; // ISO date string
-    gender: 'male' | 'female' | 'other';
+    gender: 'male' | 'female';
     email: string;
     phone: string;
     street: string;
@@ -19,7 +19,7 @@ export interface PatientCreate {
     last_name: string;
     phone: string;
     date_of_birth?: string;
-    gender?: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female';
     email?: string;
     street?: string;
     city?: string;
@@ -32,7 +32,7 @@ export interface PatientUpdate {
     first_name?: string;
     last_name?: string;
     date_of_birth?: string;
-    gender?: 'male' | 'female' | 'other';
+    gender?: 'male' | 'female';
     email?: string;
     phone?: string;
     street?: string;
@@ -43,3 +43,11 @@ export interface PatientUpdate {
 
 // For API responses (matches PatientRead from OpenAPI)
 export interface PatientRead extends Patient {}
+
+// Paginated response for patient list
+export interface PatientListResponse {
+    data: Patient[];
+    total: number;
+    limit: number;
+    offset: number;
+}

@@ -145,21 +145,6 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
     }
   };
 
-  const handleCancel = async () => {
-    if (!window.confirm('Are you sure you want to cancel this appointment? This action cannot be undone.')) {
-      return;
-    }
-
-    setIsCancelLoading(true);
-    try {
-      await onCancel();
-    } catch (error) {
-      console.error('Error cancelling appointment:', error);
-    } finally {
-      setIsCancelLoading(false);
-    }
-  };
-
   const handleStatusUpdate = async (newStatus: AppointmentStatus) => {
     setIsCancelLoading(true);
     try {
@@ -203,7 +188,6 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
   const isUpcoming = new Date(appointment.date) > new Date();
   const canEdit = isUpcoming && appointment.status !== 'Cancelled';
-  const canCancel = isUpcoming && appointment.status === 'Booked';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
