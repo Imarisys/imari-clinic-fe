@@ -13,6 +13,7 @@ import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } 
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
 import { TimeSlot } from '../hooks/useTimeSlotDrag';
+import '../styles/calendar-day.css'; // Import the calendar day CSS
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -369,65 +370,86 @@ export const Calendar: React.FC = () => {
     );
   };
 
-  const renderDayView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
-        <div className="card">
-          <h3 className="text-xl font-bold text-neutral-800 mb-6">
-            {currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </h3>
-          <div className="space-y-2">
-            {appointments
-              .filter(apt => getAppointmentDate(apt) === currentDate.toISOString().split('T')[0])
-              .map((appointment, index) => (
-                <div
-                  key={appointment.id}
-                  className={`bg-neutral-50 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 slide-up-element cursor-pointer border border-neutral-100`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                  onClick={() => setSelectedAppointment(appointment as any)}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
-                        <span className="text-primary-600 font-semibold text-sm">{formatAppointmentTime(appointment)}</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-neutral-800">{appointment.patient_first_name} {appointment.patient_last_name}</p>
-                      <p className="text-neutral-600 text-sm">{appointment.type}</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                      {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </div>
+  const renderDayView = () => {
+    // Create time slots from 8 AM to 7 PM
+    const timeSlots = Array.from({ length: 12 }, (_, i) => {
+      const hour = i + 8; // 8 AM to 7 PM
+      return `${hour.toString().padStart(2, '0')}:00`;
+    });
 
-      {/* Quick stats sidebar */}
-      <div className="space-y-6">
-        <div className="card bg-primary-50 border-primary-200">
-          <h4 className="font-semibold text-neutral-800 mb-4">Today's Overview</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Total Appointments</span>
-              <span className="font-semibold text-primary-600">{appointments.filter(apt => getAppointmentDate(apt) === new Date().toISOString().split('T')[0]).length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Completed</span>
-              <span className="font-semibold text-success-600">{appointments.filter(apt => apt.status === 'Completed').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Remaining</span>
-              <span className="font-semibold text-warning-600">{appointments.filter(apt => apt.status !== 'Completed').length}</span>
-            </div>
+    const dayStr = currentDate.toISOString().split('T')[0];
+
+    return (
+      <div className="card overflow-hidden">
+        {/* Day header - similar to week header but for a single day */}
+        <div className="grid grid-cols-[60px_1fr] border-b border-neutral-200">
+          <div className="p-2"></div>
+          <div
+            className={`p-4 text-center ${
+              currentDate.toDateString() === new Date().toDateString()
+                ? 'bg-primary-50 border-primary-200'
+                : 'bg-neutral-50'
+            }`}
+          >
+            <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+            <p className={`text-lg font-semibold ${
+              currentDate.toDateString() === new Date().toDateString()
+                ? 'text-primary-600'
+                : 'text-neutral-800'
+            }`}>
+              {currentDate.getDate()}
+            </p>
           </div>
         </div>
+
+        {/* Time slots grid - similar to week view but only one day column */}
+        <div className="max-h-[700px] overflow-y-auto">
+          {timeSlots.map((time, timeIndex) => {
+            const dayAppointments = appointments.filter(apt =>
+              getAppointmentDate(apt) === dayStr &&
+              formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
+            );
+
+            return (
+              <div key={time} className="grid grid-cols-[60px_1fr] border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300">
+                <div className="py-4 px-2 text-right text-sm text-neutral-500 bg-neutral-50">
+                  {time}
+                </div>
+                <div
+                  className="p-2 min-h-[60px] relative group cursor-pointer"
+                  onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
+                >
+                  {dayAppointments.map((appointment, aptIndex) => (
+                    <div
+                      key={appointment.id}
+                      className={`
+                        absolute inset-x-1 ${getStatusColor(appointment.status)}
+                        rounded-lg p-2 text-white text-xs shadow-medium
+                        hover:scale-105 hover:shadow-large transition-all duration-300
+                        cursor-pointer z-10
+                      `}
+                      style={{
+                        top: `${aptIndex * 4}px`,
+                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAppointment(appointment as any);
+                      }}
+                    >
+                      <p className="font-semibold truncate">{getPatientName(appointment)}</p>
+                      <p className="opacity-90 truncate">{appointment.type}</p>
+                    </div>
+                  ))}
+                  <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <DashboardLayout>
