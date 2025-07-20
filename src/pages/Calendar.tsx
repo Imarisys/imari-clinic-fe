@@ -180,21 +180,35 @@ export const Calendar: React.FC = () => {
   };
 
   // Handle patient creation
-  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate) => {
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
     try {
-      // Ensure we have all required fields for patient creation
-      const createData: PatientCreate = {
+      // Create clean data object with only non-empty fields
+      const createData: any = {
         first_name: patientData.first_name || '',
         last_name: patientData.last_name || '',
-        email: patientData.email || '',
         phone: patientData.phone || '',
-        date_of_birth: patientData.date_of_birth || '',
         gender: patientData.gender || 'male',
-        street: patientData.street || '',
-        city: patientData.city || '',
-        state: patientData.state || '',
-        zip_code: patientData.zip_code || '',
       };
+
+      // Only add optional fields if they have values
+      if (patientData.email && patientData.email.trim()) {
+        createData.email = patientData.email.trim();
+      }
+      if (patientData.date_of_birth && patientData.date_of_birth.trim()) {
+        createData.date_of_birth = patientData.date_of_birth.trim();
+      }
+      if (patientData.street && patientData.street.trim()) {
+        createData.street = patientData.street.trim();
+      }
+      if (patientData.city && patientData.city.trim()) {
+        createData.city = patientData.city.trim();
+      }
+      if (patientData.state && patientData.state.trim()) {
+        createData.state = patientData.state.trim();
+      }
+      if (patientData.zip_code && patientData.zip_code.trim()) {
+        createData.zip_code = patientData.zip_code.trim();
+      }
 
       const newPatient = await PatientService.createPatient(createData);
       setPatients(prev => [...prev, newPatient]);
@@ -205,6 +219,8 @@ export const Calendar: React.FC = () => {
     } catch (err) {
       console.error('Error creating patient:', err);
       showNotification('error', 'Error', 'Failed to create patient');
+      // Re-throw the error so PatientForm can handle it appropriately
+      throw err;
     }
   };
 

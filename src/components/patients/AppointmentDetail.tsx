@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Appointment, AppointmentUpdate, AppointmentType, AppointmentStatus } from '../../types/Appointment';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -40,6 +40,36 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
     notes: appointment.notes,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Update form data when appointment changes
+  useEffect(() => {
+    setFormData({
+      date: appointment.date.split('T')[0],
+      start_time: appointment.start_time.split('.')[0],
+      end_time: appointment.end_time.split('.')[0],
+      type: appointment.type,
+      status: appointment.status,
+      title: appointment.title || '', // Ensure title is preserved
+      notes: appointment.notes || '',
+    });
+  }, [appointment]);
+
+  // Reset form data when entering edit mode to ensure fresh data from API
+  useEffect(() => {
+    if (isEditing) {
+      setFormData({
+        date: appointment.date.split('T')[0],
+        start_time: appointment.start_time.split('.')[0],
+        end_time: appointment.end_time.split('.')[0],
+        type: appointment.type,
+        status: appointment.status,
+        title: appointment.title || '', // Ensure API title is loaded
+        notes: appointment.notes || '',
+      });
+      // Clear any existing errors
+      setErrors({});
+    }
+  }, [isEditing, appointment]);
 
   const appointmentTypes: AppointmentType[] = ['Consultation', 'Follow Up', 'Emergency', 'Routine Check'];
   const appointmentStatuses: AppointmentStatus[] = ['Booked', 'Completed', 'No Show'];
@@ -91,10 +121,6 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.title?.trim()) {
-      newErrors.title = 'Title is required';
-    }
 
     if (!formData.date) {
       newErrors.date = 'Date is required';
@@ -188,7 +214,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
   };
 
   const isUpcoming = new Date(appointment.date) > new Date();
-  const canEdit = isUpcoming && appointment.status !== 'Cancelled';
+  const canEdit = appointment.status !== 'Cancelled'; // Allow editing of all appointments except cancelled ones
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -222,20 +248,6 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
           {isEditing ? (
             /* Edit Form */
             <div className="space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Appointment Title *
-                </label>
-                <Input
-                  type="text"
-                  value={formData.title || ''}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  error={errors.title}
-                  disabled={isEditLoading}
-                />
-              </div>
-
               {/* Type and Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
