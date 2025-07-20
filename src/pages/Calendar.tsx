@@ -702,7 +702,7 @@ export const Calendar: React.FC = () => {
         {/* New Appointment Form Modal */}
         {showNewAppointmentForm && (
           <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in relative">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in relative">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900">
@@ -739,120 +739,124 @@ export const Calendar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Content */}
-              <div className="p-6">
-                {bookingStep === 'patient' && (
-                  <div>
-                    {showCreatePatientForm ? (
-                      <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
-                          <button
-                            onClick={() => setShowCreatePatientForm(false)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <span className="material-icons-round">arrow_back</span>
-                          </button>
+              {/* Content - Fixed height container for consistency */}
+              <div className="h-[600px] overflow-y-auto">
+                <div className="p-6">
+                  {bookingStep === 'patient' && (
+                    <div className="min-h-full">
+                      {showCreatePatientForm ? (
+                        <div>
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <button
+                              onClick={() => setShowCreatePatientForm(false)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <span className="material-icons-round">arrow_back</span>
+                            </button>
+                          </div>
+                          <PatientForm
+                            onSubmit={handleCreatePatient}
+                            onCancel={() => setShowCreatePatientForm(false)}
+                          />
                         </div>
-                        <PatientForm
-                          onSubmit={handleCreatePatient}
-                          onCancel={() => setShowCreatePatientForm(false)}
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        {/* Search patients */}
-                        <div className="mb-6">
-                          <div className="relative">
-                            <input
-                              type="text"
-                              placeholder="Search patients by name, email, or phone..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
-                              search
-                            </span>
+                      ) : (
+                        <div className="h-full flex flex-col">
+                          {/* Search patients */}
+                          <div className="mb-6">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Search patients by name, email, or phone..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
+                                search
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Create new patient button */}
+                          <div className="mb-6">
+                            <button
+                              onClick={() => setShowCreatePatientForm(true)}
+                              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                            >
+                              <span className="material-icons-round mb-2">add</span>
+                              <div className="text-sm font-medium">Create New Patient</div>
+                            </button>
+                          </div>
+
+                          {/* Patient list - flexible height */}
+                          <div className="flex-1 min-h-0">
+                            <div className="space-y-3 h-full overflow-y-auto">
+                              {filteredPatients.map((patient) => (
+                                <div
+                                  key={patient.id}
+                                  onClick={() => handlePatientSelect(patient)}
+                                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">
+                                        {patient.first_name} {patient.last_name}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">{patient.email}</p>
+                                      {patient.phone && (
+                                        <p className="text-sm text-gray-600">{patient.phone}</p>
+                                      )}
+                                    </div>
+                                    <span className="material-icons-round text-gray-400">chevron_right</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredPatients.length === 0 && searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients found matching "{searchQuery}"
+                                </div>
+                              )}
+                              {filteredPatients.length === 0 && !searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients available. Create a new patient to get started.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-
-                        {/* Create new patient button */}
-                        <div className="mb-6">
-                          <button
-                            onClick={() => setShowCreatePatientForm(true)}
-                            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
-                          >
-                            <span className="material-icons-round mb-2">add</span>
-                            <div className="text-sm font-medium">Create New Patient</div>
-                          </button>
-                        </div>
-
-                        {/* Patient list */}
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                          {filteredPatients.map((patient) => (
-                            <div
-                              key={patient.id}
-                              onClick={() => handlePatientSelect(patient)}
-                              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <h4 className="font-medium text-gray-900">
-                                    {patient.first_name} {patient.last_name}
-                                  </h4>
-                                  <p className="text-sm text-gray-600">{patient.email}</p>
-                                  {patient.phone && (
-                                    <p className="text-sm text-gray-600">{patient.phone}</p>
-                                  )}
-                                </div>
-                                <span className="material-icons-round text-gray-400">chevron_right</span>
-                              </div>
-                            </div>
-                          ))}
-                          {filteredPatients.length === 0 && searchQuery && (
-                            <div className="text-center py-8 text-gray-500">
-                              No patients found matching "{searchQuery}"
-                            </div>
-                          )}
-                          {filteredPatients.length === 0 && !searchQuery && (
-                            <div className="text-center py-8 text-gray-500">
-                              No patients available. Create a new patient to get started.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {bookingStep === 'appointment' && selectedPatientForBooking && (
-                  <div>
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
-                        <p className="text-sm text-gray-600">
-                          for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setBookingStep('patient')}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <span className="material-icons-round">arrow_back</span>
-                      </button>
+                      )}
                     </div>
-                    <AppointmentBookingForm
-                      patient={selectedPatientForBooking}
-                      onSubmit={handleAppointmentBookingComplete}
-                      onCancel={closeNewAppointmentModal}
-                      isLoading={appointmentLoading}
-                      preselectedDate={selectedTimeSlot?.date}
-                      preselectedTime={selectedTimeSlot?.time}
-                      preselectedEndTime={selectedTimeSlot?.endTime}
-                    />
-                  </div>
-                )}
+                  )}
+
+                  {bookingStep === 'appointment' && selectedPatientForBooking && (
+                    <div className="min-h-full">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <p className="text-sm text-gray-600">
+                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBookingStep('patient')}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <span className="material-icons-round">arrow_back</span>
+                        </button>
+                      </div>
+                      <AppointmentBookingForm
+                        patient={selectedPatientForBooking}
+                        onSubmit={handleAppointmentBookingComplete}
+                        onCancel={closeNewAppointmentModal}
+                        isLoading={appointmentLoading}
+                        preselectedDate={selectedTimeSlot?.date}
+                        preselectedTime={selectedTimeSlot?.time}
+                        preselectedEndTime={selectedTimeSlot?.endTime}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
