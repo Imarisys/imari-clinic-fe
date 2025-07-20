@@ -149,6 +149,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
     setIsCancelLoading(true);
     try {
       await onUpdateStatus(newStatus);
+      onClose(); // Close the popup after successful status update
     } catch (error) {
       console.error('Error updating status:', error);
     } finally {
