@@ -157,6 +157,28 @@ export const Calendar: React.FC = () => {
     }
   };
 
+  // Get background color for appointment status
+  const getAppointmentBackgroundColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Completed': return '#dcfce7'; // Light green
+      case 'Booked': return '#dbeafe';    // Light blue
+      case 'Cancelled': return '#fee2e2';  // Light red
+      case 'No Show': return '#ffedd5';    // Light orange
+      default: return '#f3f4f6';          // Light gray
+    }
+  };
+
+  // Get text color for appointment status
+  const getAppointmentTextColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Completed': return '#166534'; // Dark green
+      case 'Booked': return '#1e40af';    // Dark blue
+      case 'Cancelled': return '#b91c1c';  // Dark red
+      case 'No Show': return '#c2410c';    // Dark orange
+      default: return '#4b5563';          // Dark gray
+    }
+  };
+
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -365,15 +387,15 @@ export const Calendar: React.FC = () => {
                     {dayAppointments.map((appointment, aptIndex) => (
                       <div
                         key={appointment.id}
-                        className={`
-                          absolute inset-x-1 ${getStatusColor(appointment.status)}
-                          rounded-lg p-2 text-xs shadow-medium
-                          hover:opacity-80 transition-opacity
-                          cursor-pointer z-10
-                        `}
+                        className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
                         style={{
                           top: `${aptIndex * 4}px`,
-                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`
+                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          backgroundColor: getAppointmentBackgroundColor(appointment.status),
+                          color: getAppointmentTextColor(appointment.status)
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -452,15 +474,15 @@ export const Calendar: React.FC = () => {
                   {dayAppointments.map((appointment, aptIndex) => (
                     <div
                       key={appointment.id}
-                      className={`
-                        absolute inset-x-1 ${getStatusColor(appointment.status)}
-                        rounded-lg p-2 text-xs shadow-medium
-                        hover:opacity-80 transition-opacity
-                        cursor-pointer z-10
-                      `}
+                      className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
                       style={{
                         top: `${aptIndex * 4}px`,
-                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`
+                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        backgroundColor: getAppointmentBackgroundColor(appointment.status),
+                        color: getAppointmentTextColor(appointment.status)
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
