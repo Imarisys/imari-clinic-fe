@@ -376,7 +376,10 @@ export const Calendar: React.FC = () => {
               </div>
               {days.map((day, dayIndex) => {
                 const dayStr = day.toISOString().split('T')[0];
-                const dayAppointments = appointments.filter(apt => getAppointmentDate(apt) === dayStr && formatAppointmentTime(apt) === time);
+                const dayAppointments = appointments.filter(apt =>
+                  getAppointmentDate(apt) === dayStr &&
+                  formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
+                );
 
                 return (
                   <div
