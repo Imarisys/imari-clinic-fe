@@ -175,17 +175,9 @@ export const Calendar: React.FC = () => {
 
   // Handle patient selection for booking
   const handlePatientSelect = (patient: Patient) => {
-    // First close the current modal
-    setShowNewAppointmentForm(false);
-
-    // Set the selected patient
+    // Set the selected patient and transition to appointment booking step
     setSelectedPatientForBooking(patient);
-
-    // Short delay before showing appointment booking step
-    setTimeout(() => {
-      setBookingStep('appointment');
-      setShowNewAppointmentForm(true);
-    }, 300); // Matching the animation duration for a smooth transition
+    setBookingStep('appointment');
   };
 
   // Reset booking flow when closing the modal
