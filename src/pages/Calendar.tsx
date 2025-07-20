@@ -149,11 +149,11 @@ export const Calendar: React.FC = () => {
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
-      case 'Completed': return 'bg-success-500';
-      case 'Booked': return 'bg-primary-500';
-      case 'Cancelled': return 'bg-error-500';
-      case 'No Show': return 'bg-warning-500';
-      default: return 'bg-neutral-400';
+      case 'Completed': return 'bg-green-100 text-green-800';
+      case 'Booked': return 'bg-blue-100 text-blue-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      case 'No Show': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -367,8 +367,8 @@ export const Calendar: React.FC = () => {
                         key={appointment.id}
                         className={`
                           absolute inset-x-1 ${getStatusColor(appointment.status)}
-                          rounded-lg p-2 text-white text-xs shadow-medium
-                          hover:scale-105 hover:shadow-large transition-all duration-300
+                          rounded-lg p-2 text-xs shadow-medium
+                          hover:opacity-80 transition-opacity
                           cursor-pointer z-10
                         `}
                         style={{
@@ -454,8 +454,8 @@ export const Calendar: React.FC = () => {
                       key={appointment.id}
                       className={`
                         absolute inset-x-1 ${getStatusColor(appointment.status)}
-                        rounded-lg p-2 text-white text-xs shadow-medium
-                        hover:scale-105 hover:shadow-large transition-all duration-300
+                        rounded-lg p-2 text-xs shadow-medium
+                        hover:opacity-80 transition-opacity
                         cursor-pointer z-10
                       `}
                       style={{
