@@ -127,6 +127,42 @@ export const Calendar: React.FC = () => {
     }
   };
 
+  // Handle appointment status update
+  const handleUpdateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus) => {
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status });
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
+      setSelectedAppointment(updatedAppointment);
+      showNotification('success', 'Success', `Appointment ${status.toLowerCase()}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update appointment status');
+      console.error('Error updating appointment status:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle appointment cancellation
+  const handleCancelAppointment = async (appointmentId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status: 'Cancelled' });
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
+      setSelectedAppointment(updatedAppointment);
+      showNotification('success', 'Success', 'Appointment cancelled');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel appointment');
+      console.error('Error cancelling appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
   // Helper functions for date calculations
   const getViewStartDate = () => {
     const date = new Date(currentDate);
@@ -231,6 +267,32 @@ export const Calendar: React.FC = () => {
     }
     return 30; // Default duration
   };
+
+  // Load patient data for the selected appointment
+  const loadPatientForAppointment = useCallback(async (appointment: Appointment) => {
+    if (!appointment || !appointment.patient_id) return;
+
+    try {
+      setAppointmentLoading(true);
+      const patientData = await PatientService.getPatient(appointment.patient_id);
+      setSelectedPatient(patientData);
+    } catch (err) {
+      console.error('Error loading patient data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load patient data');
+      showNotification('error', 'Error', 'Failed to load patient data');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  }, [showNotification]);
+
+  // Handle appointment selection
+  useEffect(() => {
+    if (selectedAppointment) {
+      loadPatientForAppointment(selectedAppointment);
+    } else {
+      setSelectedPatient(null);
+    }
+  }, [selectedAppointment, loadPatientForAppointment]);
 
   // Format appointments data for MonthView component
   const groupAppointmentsByDate = () => {
@@ -529,6 +591,39 @@ export const Calendar: React.FC = () => {
                 setView('day');
               }}
             />
+          </div>
+        )}
+
+        {/* Appointment Detail Modal */}
+        {selectedAppointment && selectedPatient && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element" onClick={() => setSelectedAppointment(null)}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+              <AppointmentDetail
+                appointment={selectedAppointment}
+                patient={selectedPatient}
+                onEdit={(appointmentData) => handleUpdateAppointment(selectedAppointment.id, appointmentData)}
+                onCancel={() => handleCancelAppointment(selectedAppointment.id)}
+                onUpdateStatus={(status) => handleUpdateAppointmentStatus(selectedAppointment.id, status)}
+                onDelete={() => handleDeleteAppointment(selectedAppointment.id)}
+                onClose={() => setSelectedAppointment(null)}
+                isLoading={appointmentLoading}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* New Appointment Form Modal */}
+        {showNewAppointmentForm && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in">
+              {/* Appointment booking form here */}
+              <button
+                onClick={() => setShowNewAppointmentForm(false)}
+                className="absolute top-4 right-4 text-neutral-500 hover:text-neutral-800"
+              >
+                <span className="material-icons-round">close</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
