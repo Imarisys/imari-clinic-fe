@@ -13,6 +13,7 @@ import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } 
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
 import { TimeSlot } from '../hooks/useTimeSlotDrag';
+import '../styles/calendar-day.css'; // Import the calendar day CSS
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -29,9 +30,10 @@ export const Calendar: React.FC = () => {
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
   const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [bookingStep, setBookingStep] = useState<'time' | 'patient' | 'create' | 'confirm'>('time');
+  const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
 
   const { showNotification } = useNotification();
 
@@ -126,6 +128,134 @@ export const Calendar: React.FC = () => {
     }
   };
 
+  // Handle appointment status update
+  const handleUpdateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus) => {
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status });
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
+      setSelectedAppointment(updatedAppointment);
+      showNotification('success', 'Success', `Appointment ${status.toLowerCase()}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update appointment status');
+      console.error('Error updating appointment status:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle appointment cancellation
+  const handleCancelAppointment = async (appointmentId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status: 'Cancelled' });
+      setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
+      setSelectedAppointment(updatedAppointment);
+      showNotification('success', 'Success', 'Appointment cancelled');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel appointment');
+      console.error('Error cancelling appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle new appointment flow
+  const handleNewAppointmentClick = () => {
+    setShowNewAppointmentForm(true);
+    setBookingStep('patient');
+    setSelectedPatientForBooking(null);
+    setSearchQuery('');
+    setShowCreatePatientForm(false);
+  };
+
+  // Handle patient selection for booking
+  const handlePatientSelect = (patient: Patient) => {
+    // Set the selected patient and transition to appointment booking step
+    setSelectedPatientForBooking(patient);
+    setBookingStep('appointment');
+  };
+
+  // Reset booking flow when closing the modal
+  const closeNewAppointmentModal = () => {
+    setShowNewAppointmentForm(false);
+
+    // Reset the booking flow after the animation completes
+    setTimeout(() => {
+      setBookingStep('patient');
+      setSelectedPatientForBooking(null);
+      setSelectedTimeSlot(null);
+      setShowCreatePatientForm(false);
+      setSearchQuery('');
+    }, 300);
+  };
+
+  // Handle patient creation
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
+    try {
+      // Create clean data object with only non-empty fields
+      const createData: any = {
+        first_name: patientData.first_name || '',
+        last_name: patientData.last_name || '',
+        phone: patientData.phone || '',
+        gender: patientData.gender || 'male',
+      };
+
+      // Only add optional fields if they have values
+      if (patientData.email && patientData.email.trim()) {
+        createData.email = patientData.email.trim();
+      }
+      if (patientData.date_of_birth && patientData.date_of_birth.trim()) {
+        createData.date_of_birth = patientData.date_of_birth.trim();
+      }
+      if (patientData.street && patientData.street.trim()) {
+        createData.street = patientData.street.trim();
+      }
+      if (patientData.city && patientData.city.trim()) {
+        createData.city = patientData.city.trim();
+      }
+      if (patientData.state && patientData.state.trim()) {
+        createData.state = patientData.state.trim();
+      }
+      if (patientData.zip_code && patientData.zip_code.trim()) {
+        createData.zip_code = patientData.zip_code.trim();
+      }
+
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
+      setSelectedPatientForBooking(newPatient);
+      setShowCreatePatientForm(false);
+      setBookingStep('appointment');
+      showNotification('success', 'Success', 'Patient created successfully');
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      showNotification('error', 'Error', 'Failed to create patient');
+      // Re-throw the error so PatientForm can handle it appropriately
+      throw err;
+    }
+  };
+
+  // Handle appointment booking completion
+  const handleAppointmentBookingComplete = async (appointmentData: AppointmentCreate) => {
+    await handleCreateAppointment(appointmentData);
+    // Reset booking state
+    setBookingStep('patient');
+    setSelectedPatientForBooking(null);
+    setSearchQuery('');
+    setShowCreatePatientForm(false);
+  };
+
+  // Filter patients based on search query
+  const filteredPatients = patients.filter(patient =>
+    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Helper functions for date calculations
   const getViewStartDate = () => {
     const date = new Date(currentDate);
@@ -148,11 +278,33 @@ export const Calendar: React.FC = () => {
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
-      case 'Completed': return 'bg-success-500';
-      case 'Booked': return 'bg-primary-500';
-      case 'Cancelled': return 'bg-error-500';
-      case 'No Show': return 'bg-warning-500';
-      default: return 'bg-neutral-400';
+      case 'Completed': return 'bg-green-100 text-green-800';
+      case 'Booked': return 'bg-blue-100 text-blue-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      case 'No Show': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Get background color for appointment status
+  const getAppointmentBackgroundColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Completed': return '#dcfce7'; // Light green
+      case 'Booked': return '#dbeafe';    // Light blue
+      case 'Cancelled': return '#fee2e2';  // Light red
+      case 'No Show': return '#ffedd5';    // Light orange
+      default: return '#f3f4f6';          // Light gray
+    }
+  };
+
+  // Get text color for appointment status
+  const getAppointmentTextColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case 'Completed': return '#166534'; // Dark green
+      case 'Booked': return '#1e40af';    // Dark blue
+      case 'Cancelled': return '#b91c1c';  // Dark red
+      case 'No Show': return '#c2410c';    // Dark orange
+      default: return '#4b5563';          // Dark gray
     }
   };
 
@@ -209,6 +361,57 @@ export const Calendar: React.FC = () => {
     return 30; // Default duration
   };
 
+  // Load patient data for the selected appointment
+  const loadPatientForAppointment = useCallback(async (appointment: Appointment) => {
+    if (!appointment || !appointment.patient_id) return;
+
+    try {
+      setAppointmentLoading(true);
+      const patientData = await PatientService.getPatient(appointment.patient_id);
+      setSelectedPatient(patientData);
+    } catch (err) {
+      console.error('Error loading patient data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load patient data');
+      showNotification('error', 'Error', 'Failed to load patient data');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  }, [showNotification]);
+
+  // Handle appointment selection
+  useEffect(() => {
+    if (selectedAppointment) {
+      loadPatientForAppointment(selectedAppointment);
+    } else {
+      setSelectedPatient(null);
+    }
+  }, [selectedAppointment, loadPatientForAppointment]);
+
+  // Format appointments data for MonthView component
+  const groupAppointmentsByDate = () => {
+    const grouped: Record<string, any[]> = {};
+
+    appointments.forEach(appointment => {
+      const dateStr = getAppointmentDate(appointment);
+
+      if (!grouped[dateStr]) {
+        grouped[dateStr] = [];
+      }
+
+      grouped[dateStr].push({
+        id: appointment.id,
+        patientName: getPatientName(appointment),
+        time: formatAppointmentTime(appointment),
+        duration: getAppointmentDuration(appointment),
+        type: appointment.type,
+        status: appointment.status,
+        title: appointment.type || 'Appointment'
+      });
+    });
+
+    return grouped;
+  };
+
   const renderCalendarHeader = () => (
     <div className="card mb-8">
       <div className="flex items-center justify-between mb-6">
@@ -261,12 +464,8 @@ export const Calendar: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button className="btn-secondary">
-            <span className="material-icons-round mr-2">search</span>
-            Search
-          </button>
           <button
-            onClick={() => setShowNewAppointmentForm(true)}
+            onClick={handleNewAppointmentClick}
             className="btn-primary"
           >
             <span className="material-icons-round mr-2">add</span>
@@ -295,7 +494,7 @@ export const Calendar: React.FC = () => {
     return (
       <div className="card overflow-hidden">
         {/* Week header */}
-        <div className="grid grid-cols-8 border-b border-neutral-200">
+        <div className="grid grid-cols-8 border-b border-gray-300">
           <div className="p-4"></div>
           {days.map((day, index) => (
             <div
@@ -322,32 +521,35 @@ export const Calendar: React.FC = () => {
         {/* Time slots grid */}
         <div className="max-h-96 overflow-y-auto">
           {timeSlots.map((time, timeIndex) => (
-            <div key={time} className="grid grid-cols-8 border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300">
-              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50">
+            <div key={time} className="grid grid-cols-8 border-b border-gray-300 hover:bg-primary-50 transition-all duration-300">
+              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
                 {time}
               </div>
               {days.map((day, dayIndex) => {
                 const dayStr = day.toISOString().split('T')[0];
-                const dayAppointments = appointments.filter(apt => getAppointmentDate(apt) === dayStr && formatAppointmentTime(apt) === time);
+                const dayAppointments = appointments.filter(apt =>
+                  getAppointmentDate(apt) === dayStr &&
+                  formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
+                );
 
                 return (
                   <div
                     key={`${dayStr}-${time}`}
-                    className="p-2 min-h-[60px] relative group cursor-pointer"
+                    className="p-2 min-h-[60px] relative group cursor-pointer border-r border-gray-200"
                     onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
                   >
                     {dayAppointments.map((appointment, aptIndex) => (
                       <div
                         key={appointment.id}
-                        className={`
-                          absolute inset-x-1 ${getStatusColor(appointment.status)}
-                          rounded-lg p-2 text-white text-xs shadow-medium
-                          hover:scale-105 hover:shadow-large transition-all duration-300
-                          cursor-pointer z-10
-                        `}
+                        className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
                         style={{
                           top: `${aptIndex * 4}px`,
-                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`
+                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          backgroundColor: getAppointmentBackgroundColor(appointment.status),
+                          color: getAppointmentTextColor(appointment.status)
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -369,65 +571,91 @@ export const Calendar: React.FC = () => {
     );
   };
 
-  const renderDayView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2">
-        <div className="card">
-          <h3 className="text-xl font-bold text-neutral-800 mb-6">
-            {currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </h3>
-          <div className="space-y-2">
-            {appointments
-              .filter(apt => getAppointmentDate(apt) === currentDate.toISOString().split('T')[0])
-              .map((appointment, index) => (
-                <div
-                  key={appointment.id}
-                  className={`bg-neutral-50 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 slide-up-element cursor-pointer border border-neutral-100`}
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                  onClick={() => setSelectedAppointment(appointment as any)}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
-                        <span className="text-primary-600 font-semibold text-sm">{formatAppointmentTime(appointment)}</span>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-neutral-800">{appointment.patient_first_name} {appointment.patient_last_name}</p>
-                      <p className="text-neutral-600 text-sm">{appointment.type}</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                      {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </div>
+  const renderDayView = () => {
+    // Create time slots from 8 AM to 7 PM
+    const timeSlots = Array.from({ length: 12 }, (_, i) => {
+      const hour = i + 8; // 8 AM to 7 PM
+      return `${hour.toString().padStart(2, '0')}:00`;
+    });
 
-      {/* Quick stats sidebar */}
-      <div className="space-y-6">
-        <div className="card bg-primary-50 border-primary-200">
-          <h4 className="font-semibold text-neutral-800 mb-4">Today's Overview</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Total Appointments</span>
-              <span className="font-semibold text-primary-600">{appointments.filter(apt => getAppointmentDate(apt) === new Date().toISOString().split('T')[0]).length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Completed</span>
-              <span className="font-semibold text-success-600">{appointments.filter(apt => apt.status === 'Completed').length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-600">Remaining</span>
-              <span className="font-semibold text-warning-600">{appointments.filter(apt => apt.status !== 'Completed').length}</span>
-            </div>
+    const dayStr = currentDate.toISOString().split('T')[0];
+
+    return (
+      <div className="card overflow-hidden">
+        {/* Day header - similar to week header but for a single day */}
+        <div className="grid grid-cols-[80px_1fr] border-b border-gray-300">
+          <div className="p-2"></div>
+          <div
+            className={`p-4 text-center slide-up-element ${
+              currentDate.toDateString() === new Date().toDateString()
+                ? 'bg-primary-50 border-primary-200'
+                : 'bg-neutral-50'
+            }`}
+            style={{ animationDelay: '0.1s' }}
+          >
+            <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+            <p className={`text-lg font-semibold ${
+              currentDate.toDateString() === new Date().toDateString()
+                ? 'text-primary-600'
+                : 'text-neutral-800'
+            }`}>
+              {currentDate.getDate()}
+            </p>
           </div>
         </div>
+
+        {/* Time slots grid - similar to week view but only one day column */}
+        <div className="max-h-96 overflow-y-auto">
+          {timeSlots.map((time, timeIndex) => {
+            const dayAppointments = appointments.filter(apt =>
+              getAppointmentDate(apt) === dayStr &&
+              formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
+            );
+
+            return (
+              <div
+                key={time}
+                className="grid grid-cols-[80px_1fr] border-b border-gray-300 hover:bg-primary-50 transition-all duration-300 slide-up-element"
+                style={{ animationDelay: `${timeIndex * 0.05}s` }}
+              >
+                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
+                  {time}
+                </div>
+                <div
+                  className="p-2 min-h-[60px] relative group cursor-pointer"
+                  onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
+                >
+                  {dayAppointments.map((appointment, aptIndex) => (
+                    <div
+                      key={appointment.id}
+                      className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
+                      style={{
+                        top: `${aptIndex * 4}px`,
+                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        backgroundColor: getAppointmentBackgroundColor(appointment.status),
+                        color: getAppointmentTextColor(appointment.status)
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAppointment(appointment as any);
+                      }}
+                    >
+                      <p className="font-semibold truncate">{getPatientName(appointment)}</p>
+                      <p className="opacity-90 truncate">{appointment.type}</p>
+                    </div>
+                  ))}
+                  <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -438,7 +666,201 @@ export const Calendar: React.FC = () => {
         {view === 'day' && renderDayView()}
         {view === 'month' && (
           <div className="card">
-            <p className="text-center text-neutral-600 py-12">Month view coming soon...</p>
+            <MonthView
+              currentDate={currentDate}
+              appointments={groupAppointmentsByDate()}
+              onAppointmentClick={(appointmentId) => {
+                const appointment = appointments.find(apt => apt.id === appointmentId);
+                if (appointment) {
+                  setSelectedAppointment(appointment);
+                }
+              }}
+              onDayClick={(date) => {
+                setCurrentDate(date);
+                setView('day');
+              }}
+            />
+          </div>
+        )}
+
+        {/* Appointment Detail Modal */}
+        {selectedAppointment && selectedPatient && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element" onClick={() => setSelectedAppointment(null)}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+              <AppointmentDetail
+                appointment={selectedAppointment}
+                patient={selectedPatient}
+                onEdit={(appointmentData) => handleUpdateAppointment(selectedAppointment.id, appointmentData)}
+                onCancel={() => handleCancelAppointment(selectedAppointment.id)}
+                onUpdateStatus={(status) => handleUpdateAppointmentStatus(selectedAppointment.id, status)}
+                onDelete={() => handleDeleteAppointment(selectedAppointment.id)}
+                onClose={() => setSelectedAppointment(null)}
+                isLoading={appointmentLoading}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* New Appointment Form Modal */}
+        {showNewAppointmentForm && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in relative">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                </h2>
+                <button
+                  onClick={closeNewAppointmentModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-icons-round">close</span>
+                </button>
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'patient' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'patient' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      1
+                    </div>
+                    <span className="text-sm font-medium">Select Patient</span>
+                  </div>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'appointment' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      2
+                    </div>
+                    <span className="text-sm font-medium">Book Appointment</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content - Fixed height container for consistency */}
+              <div className="h-[600px] overflow-y-auto">
+                <div className="p-6">
+                  {bookingStep === 'patient' && (
+                    <div className="min-h-full">
+                      {showCreatePatientForm ? (
+                        <div>
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <button
+                              onClick={() => setShowCreatePatientForm(false)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <span className="material-icons-round">arrow_back</span>
+                            </button>
+                          </div>
+                          <PatientForm
+                            onSubmit={handleCreatePatient}
+                            onCancel={() => setShowCreatePatientForm(false)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col">
+                          {/* Search patients */}
+                          <div className="mb-6">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Search patients by name, email, or phone..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
+                                search
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Create new patient button */}
+                          <div className="mb-6">
+                            <button
+                              onClick={() => setShowCreatePatientForm(true)}
+                              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                            >
+                              <span className="material-icons-round mb-2">add</span>
+                              <div className="text-sm font-medium">Create New Patient</div>
+                            </button>
+                          </div>
+
+                          {/* Patient list - flexible height */}
+                          <div className="flex-1 min-h-0">
+                            <div className="space-y-3 h-full overflow-y-auto">
+                              {filteredPatients.map((patient) => (
+                                <div
+                                  key={patient.id}
+                                  onClick={() => handlePatientSelect(patient)}
+                                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">
+                                        {patient.first_name} {patient.last_name}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">{patient.email}</p>
+                                      {patient.phone && (
+                                        <p className="text-sm text-gray-600">{patient.phone}</p>
+                                      )}
+                                    </div>
+                                    <span className="material-icons-round text-gray-400">chevron_right</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredPatients.length === 0 && searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients found matching "{searchQuery}"
+                                </div>
+                              )}
+                              {filteredPatients.length === 0 && !searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients available. Create a new patient to get started.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {bookingStep === 'appointment' && selectedPatientForBooking && (
+                    <div className="min-h-full">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <p className="text-sm text-gray-600">
+                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBookingStep('patient')}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <span className="material-icons-round">arrow_back</span>
+                        </button>
+                      </div>
+                      <AppointmentBookingForm
+                        patient={selectedPatientForBooking}
+                        onSubmit={handleAppointmentBookingComplete}
+                        onCancel={closeNewAppointmentModal}
+                        isLoading={appointmentLoading}
+                        preselectedDate={selectedTimeSlot?.date}
+                        preselectedTime={selectedTimeSlot?.time}
+                        preselectedEndTime={selectedTimeSlot?.endTime}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

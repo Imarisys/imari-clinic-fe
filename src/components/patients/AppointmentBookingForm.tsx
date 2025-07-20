@@ -180,7 +180,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
     // Wait for the animation to complete before actually closing
     setTimeout(() => {
       onCancel();
-    }, 500);
+    }, 300);
   };
 
   const handleChange = (field: keyof AppointmentCreate, value: string) => {
@@ -248,156 +248,127 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div
-        className={`bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto transform transition-all duration-500 ease-in-out ${
-          isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-        }`}
-      >
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('book_new_appointment')}
-            </h2>
-            <button
-              onClick={handleSmoothClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Patient Info */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-gray-900 mb-2">{t('patient')}</h3>
-            <p className="text-sm text-gray-600">
-              {patient.first_name} {patient.last_name}
-            </p>
-            <p className="text-sm text-gray-500">{patient.email}</p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('appointment_title_required')}
-              </label>
-              <Input
-                type="text"
-                value={formData.title}
-                onChange={(e) => handleChange('title', e.target.value)}
-                placeholder={t('appointment_title_placeholder')}
-                error={errors.title}
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('appointment_type')}
-              </label>
-              <select
-                value={formData.type}
-                onChange={(e) => handleAppointmentTypeChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={isLoading || appointmentTypes.length === 0}
-              >
-                {appointmentTypes.length === 0 ? (
-                  <option>{t('loading_appointment_types')}</option>
-                ) : (
-                  appointmentTypes.map((type) => (
-                    <option key={type.name} value={type.name}>
-                      {type.name} ({type.duration_minutes} {t('min')})
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('date_required')}
-              </label>
-              <Input
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleChange('date', e.target.value)}
-                min={getTomorrowDate()}
-                error={errors.date}
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Time Range */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('start_time_required')}
-                </label>
-                <Input
-                  type="time"
-                  value={formData.start_time}
-                  onChange={(e) => handleStartTimeChange(e.target.value)}
-                  error={errors.start_time}
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('end_time_required')}
-                </label>
-                <Input
-                  type="time"
-                  value={formData.end_time}
-                  onChange={(e) => handleChange('end_time', e.target.value)}
-                  error={errors.end_time}
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('notes_optional')}
-              </label>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => handleChange('notes', e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                placeholder={t('notes_placeholder')}
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-6">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onCancel}
-                disabled={isLoading}
-              >
-                {t('cancel')}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={isLoading}
-              >
-                {isLoading ? t('booking') : t('book_appointment')}
-              </Button>
-            </div>
-          </form>
-        </div>
+    <div className={`transition-all duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}>
+      {/* Patient Info */}
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 className="font-medium text-gray-900 mb-2">{t('patient')}</h3>
+        <p className="text-sm text-gray-600">
+          {patient.first_name} {patient.last_name}
+        </p>
+        <p className="text-sm text-gray-500">{patient.email}</p>
       </div>
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('appointment_title_required')}
+          </label>
+          <Input
+            type="text"
+            value={formData.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            placeholder={t('appointment_title_placeholder')}
+            error={errors.title}
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('appointment_type')}
+          </label>
+          <select
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            value={formData.appointment_type_name}
+            onChange={(e) => handleAppointmentTypeChange(e.target.value)}
+            disabled={isLoading}
+          >
+            {appointmentTypes.map((type, index) => (
+              <option key={index} value={type.name}>
+                {type.name} ({type.duration_minutes} min)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Date and Time */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('date_required')}
+            </label>
+            <Input
+              type="date"
+              value={formData.date}
+              onChange={(e) => handleChange('date', e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
+              error={errors.date}
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('start_time_required')}
+            </label>
+            <Input
+              type="time"
+              value={formData.start_time}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
+              error={errors.start_time}
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('end_time_required')}
+            </label>
+            <Input
+              type="time"
+              value={formData.end_time}
+              onChange={(e) => handleChange('end_time', e.target.value)}
+              error={errors.end_time}
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('notes')}
+          </label>
+          <textarea
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32 resize-none"
+            value={formData.notes || ''}
+            onChange={(e) => handleChange('notes', e.target.value)}
+            placeholder="Add appointment notes here..."
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Buttons */}
+        <div className="flex justify-end space-x-3 pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleSmoothClose}
+            disabled={isLoading}
+          >
+            {t('cancel')}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={isLoading}
+            disabled={isLoading}
+          >
+            {t('book_appointment')}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

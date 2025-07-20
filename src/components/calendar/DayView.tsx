@@ -104,11 +104,11 @@ export const DayView = ({ date, appointments, onAppointmentClick, onTimeSlotSele
 
       <div className="relative w-full h-full border rounded-lg bg-white flex">
         {/* Time slots */}
-        <div className="w-20 flex-shrink-0 border-r">
+        <div className="w-20 flex-shrink-0 border-r border-gray-300">
           {timeSlots.filter((_, index) => index % 4 === 0).map((time) => (
             <div
               key={time}
-              className="h-[60px] border-b px-2 py-1 text-xs text-gray-500 text-right flex items-start"
+              className="h-[60px] border-b border-gray-300 px-2 py-1 text-xs text-gray-500 text-right flex items-start"
             >
               {formatTimeDisplay(time)}
             </div>
@@ -127,7 +127,7 @@ export const DayView = ({ date, appointments, onAppointmentClick, onTimeSlotSele
             {timeSlots.map((time, index) => (
               <div
                 key={`${time}-${index}`}
-                className="h-[15px] border-b border-gray-50 hover:bg-blue-50/30 cursor-pointer relative"
+                className="h-[15px] border-b border-gray-200 hover:bg-blue-50/30 cursor-pointer relative"
                 style={getSelectionStyle(dateString, index)}
                 onMouseDown={(e) => handleMouseDown(e, dateString, containerRef)}
                 onMouseMove={(e) => handleMouseMove(e, dateString, containerRef)}
