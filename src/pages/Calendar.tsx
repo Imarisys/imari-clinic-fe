@@ -210,6 +210,31 @@ export const Calendar: React.FC = () => {
     return 30; // Default duration
   };
 
+  // Format appointments data for MonthView component
+  const groupAppointmentsByDate = () => {
+    const grouped: Record<string, any[]> = {};
+
+    appointments.forEach(appointment => {
+      const dateStr = getAppointmentDate(appointment);
+
+      if (!grouped[dateStr]) {
+        grouped[dateStr] = [];
+      }
+
+      grouped[dateStr].push({
+        id: appointment.id,
+        patientName: getPatientName(appointment),
+        time: formatAppointmentTime(appointment),
+        duration: getAppointmentDuration(appointment),
+        type: appointment.type,
+        status: appointment.status,
+        title: appointment.type || 'Appointment'
+      });
+    });
+
+    return grouped;
+  };
+
   const renderCalendarHeader = () => (
     <div className="card mb-8">
       <div className="flex items-center justify-between mb-6">
@@ -465,7 +490,20 @@ export const Calendar: React.FC = () => {
         {view === 'day' && renderDayView()}
         {view === 'month' && (
           <div className="card">
-            <p className="text-center text-neutral-600 py-12">Month view coming soon...</p>
+            <MonthView
+              currentDate={currentDate}
+              appointments={groupAppointmentsByDate()}
+              onAppointmentClick={(appointmentId) => {
+                const appointment = appointments.find(apt => apt.id === appointmentId);
+                if (appointment) {
+                  setSelectedAppointment(appointment);
+                }
+              }}
+              onDayClick={(date) => {
+                setCurrentDate(date);
+                setView('day');
+              }}
+            />
           </div>
         )}
       </div>
