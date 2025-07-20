@@ -30,9 +30,10 @@ export const Calendar: React.FC = () => {
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
   const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [bookingStep, setBookingStep] = useState<'time' | 'patient' | 'create' | 'confirm'>('time');
+  const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
 
   const { showNotification } = useNotification();
 
@@ -162,6 +163,76 @@ export const Calendar: React.FC = () => {
       setAppointmentLoading(false);
     }
   };
+
+  // Handle new appointment flow
+  const handleNewAppointmentClick = () => {
+    setShowNewAppointmentForm(true);
+    setBookingStep('patient');
+    setSelectedPatientForBooking(null);
+    setSearchQuery('');
+    setShowCreatePatientForm(false);
+  };
+
+  // Handle patient selection for booking
+  const handlePatientSelect = (patient: Patient) => {
+    setSelectedPatientForBooking(patient);
+    setBookingStep('appointment');
+  };
+
+  // Handle patient creation
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate) => {
+    try {
+      // Ensure we have all required fields for patient creation
+      const createData: PatientCreate = {
+        first_name: patientData.first_name || '',
+        last_name: patientData.last_name || '',
+        email: patientData.email || '',
+        phone: patientData.phone || '',
+        date_of_birth: patientData.date_of_birth || '',
+        gender: patientData.gender || 'male',
+        street: patientData.street || '',
+        city: patientData.city || '',
+        state: patientData.state || '',
+        zip_code: patientData.zip_code || '',
+      };
+
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
+      setSelectedPatientForBooking(newPatient);
+      setShowCreatePatientForm(false);
+      setBookingStep('appointment');
+      showNotification('success', 'Success', 'Patient created successfully');
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      showNotification('error', 'Error', 'Failed to create patient');
+    }
+  };
+
+  // Handle appointment booking completion
+  const handleAppointmentBookingComplete = async (appointmentData: AppointmentCreate) => {
+    await handleCreateAppointment(appointmentData);
+    // Reset booking state
+    setBookingStep('patient');
+    setSelectedPatientForBooking(null);
+    setSearchQuery('');
+    setShowCreatePatientForm(false);
+  };
+
+  // Close new appointment modal
+  const closeNewAppointmentModal = () => {
+    setShowNewAppointmentForm(false);
+    setBookingStep('patient');
+    setSelectedPatientForBooking(null);
+    setSearchQuery('');
+    setShowCreatePatientForm(false);
+  };
+
+  // Filter patients based on search query
+  const filteredPatients = patients.filter(patient =>
+    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Helper functions for date calculations
   const getViewStartDate = () => {
@@ -376,7 +447,7 @@ export const Calendar: React.FC = () => {
             Search
           </button>
           <button
-            onClick={() => setShowNewAppointmentForm(true)}
+            onClick={handleNewAppointmentClick}
             className="btn-primary"
           >
             <span className="material-icons-round mr-2">add</span>
@@ -615,14 +686,158 @@ export const Calendar: React.FC = () => {
         {/* New Appointment Form Modal */}
         {showNewAppointmentForm && (
           <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in">
-              {/* Appointment booking form here */}
-              <button
-                onClick={() => setShowNewAppointmentForm(false)}
-                className="absolute top-4 right-4 text-neutral-500 hover:text-neutral-800"
-              >
-                <span className="material-icons-round">close</span>
-              </button>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-auto animate-scale-in relative">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                </h2>
+                <button
+                  onClick={closeNewAppointmentModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-icons-round">close</span>
+                </button>
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'patient' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'patient' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      1
+                    </div>
+                    <span className="text-sm font-medium">Select Patient</span>
+                  </div>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'appointment' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      2
+                    </div>
+                    <span className="text-sm font-medium">Book Appointment</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {bookingStep === 'patient' && (
+                  <div>
+                    {showCreatePatientForm ? (
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                          <button
+                            onClick={() => setShowCreatePatientForm(false)}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <span className="material-icons-round">arrow_back</span>
+                          </button>
+                        </div>
+                        <PatientForm
+                          onSubmit={handleCreatePatient}
+                          onCancel={() => setShowCreatePatientForm(false)}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Search patients */}
+                        <div className="mb-6">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search patients by name, email, or phone..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
+                              search
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Create new patient button */}
+                        <div className="mb-6">
+                          <button
+                            onClick={() => setShowCreatePatientForm(true)}
+                            className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                          >
+                            <span className="material-icons-round mb-2">add</span>
+                            <div className="text-sm font-medium">Create New Patient</div>
+                          </button>
+                        </div>
+
+                        {/* Patient list */}
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {filteredPatients.map((patient) => (
+                            <div
+                              key={patient.id}
+                              onClick={() => handlePatientSelect(patient)}
+                              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-gray-900">
+                                    {patient.first_name} {patient.last_name}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">{patient.email}</p>
+                                  {patient.phone && (
+                                    <p className="text-sm text-gray-600">{patient.phone}</p>
+                                  )}
+                                </div>
+                                <span className="material-icons-round text-gray-400">chevron_right</span>
+                              </div>
+                            </div>
+                          ))}
+                          {filteredPatients.length === 0 && searchQuery && (
+                            <div className="text-center py-8 text-gray-500">
+                              No patients found matching "{searchQuery}"
+                            </div>
+                          )}
+                          {filteredPatients.length === 0 && !searchQuery && (
+                            <div className="text-center py-8 text-gray-500">
+                              No patients available. Create a new patient to get started.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {bookingStep === 'appointment' && selectedPatientForBooking && (
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                        <p className="text-sm text-gray-600">
+                          for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setBookingStep('patient')}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <span className="material-icons-round">arrow_back</span>
+                      </button>
+                    </div>
+                    <AppointmentBookingForm
+                      patient={selectedPatientForBooking}
+                      onSubmit={handleAppointmentBookingComplete}
+                      onCancel={closeNewAppointmentModal}
+                      isLoading={appointmentLoading}
+                      preselectedDate={selectedTimeSlot?.date}
+                      preselectedTime={selectedTimeSlot?.time}
+                      preselectedEndTime={selectedTimeSlot?.endTime}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
