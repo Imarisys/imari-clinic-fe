@@ -464,10 +464,6 @@ export const Calendar: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button className="btn-secondary">
-            <span className="material-icons-round mr-2">search</span>
-            Search
-          </button>
           <button
             onClick={handleNewAppointmentClick}
             className="btn-primary"

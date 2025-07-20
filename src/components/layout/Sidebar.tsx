@@ -120,7 +120,7 @@ export const Sidebar: React.FC = () => {
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success-500 rounded-full border-2 border-white"></div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-medium truncate">Dr. Sarah Wilson</p>
+              <p className="text-white font-medium truncate">Dr. Ahmed Wilson</p>
               <p className="text-primary-200 text-sm">Administrator</p>
             </div>
             <span className="material-icons-round text-primary-200 group-hover:text-white transition-colors duration-300">

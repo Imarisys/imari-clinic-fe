@@ -18,7 +18,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-3xl font-bold text-primary-600 mb-2">
-                  Welcome back, Dr. Wilson
+                  Welcome back, Dr. Badri
                 </h2>
                 <p className="text-neutral-600">
                   Today is {new Date().toLocaleDateString('en-US', {
