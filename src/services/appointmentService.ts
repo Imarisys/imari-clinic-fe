@@ -59,6 +59,12 @@ export class AppointmentService {
 
   static async listAppointmentsByRange(startDate: string, days: number): Promise<Appointment[]> {
     const params = new URLSearchParams({ start_date: startDate, days: days.toString() });
-    return this.request<Appointment[]>(`/api/v1/appointments/?${params.toString()}`);
+    return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?${params.toString()}`);
+  }
+
+  static async getTodayAppointments(): Promise<Appointment[]> {
+    const today = new Date().toISOString().split('T')[0];
+    // Use the API's query parameters for filtering by date
+    return this.listAppointmentsByRange(today, 1);
   }
 }

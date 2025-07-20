@@ -26,6 +26,9 @@ export const API_CONFIG = {
       availableSlots: (typeName: string, date: string) =>
         `/api/v1/appointment-types/${typeName}/available-slots/${date}`,
     },
+    weather: {
+      get: (countryCode: string, city: string) => `/api/v1/weather/${countryCode}/${city}`,
+    },
   },
 } as const;
 
