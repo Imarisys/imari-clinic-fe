@@ -296,7 +296,7 @@ export const Calendar: React.FC = () => {
     return (
       <div className="card overflow-hidden">
         {/* Week header */}
-        <div className="grid grid-cols-8 border-b border-neutral-200">
+        <div className="grid grid-cols-8 border-b border-gray-300">
           <div className="p-4"></div>
           {days.map((day, index) => (
             <div
@@ -323,8 +323,8 @@ export const Calendar: React.FC = () => {
         {/* Time slots grid */}
         <div className="max-h-96 overflow-y-auto">
           {timeSlots.map((time, timeIndex) => (
-            <div key={time} className="grid grid-cols-8 border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300">
-              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50">
+            <div key={time} className="grid grid-cols-8 border-b border-gray-300 hover:bg-primary-50 transition-all duration-300">
+              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
                 {time}
               </div>
               {days.map((day, dayIndex) => {
@@ -334,7 +334,7 @@ export const Calendar: React.FC = () => {
                 return (
                   <div
                     key={`${dayStr}-${time}`}
-                    className="p-2 min-h-[60px] relative group cursor-pointer"
+                    className="p-2 min-h-[60px] relative group cursor-pointer border-r border-gray-200"
                     onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
                   >
                     {dayAppointments.map((appointment, aptIndex) => (
@@ -382,7 +382,7 @@ export const Calendar: React.FC = () => {
     return (
       <div className="card overflow-hidden">
         {/* Day header - similar to week header but for a single day */}
-        <div className="grid grid-cols-[80px_1fr] border-b border-neutral-200">
+        <div className="grid grid-cols-[80px_1fr] border-b border-gray-300">
           <div className="p-2"></div>
           <div
             className={`p-4 text-center slide-up-element ${
@@ -414,10 +414,10 @@ export const Calendar: React.FC = () => {
             return (
               <div
                 key={time}
-                className="grid grid-cols-[80px_1fr] border-b border-neutral-100 hover:bg-primary-50 transition-all duration-300 slide-up-element"
+                className="grid grid-cols-[80px_1fr] border-b border-gray-300 hover:bg-primary-50 transition-all duration-300 slide-up-element"
                 style={{ animationDelay: `${timeIndex * 0.05}s` }}
               >
-                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50">
+                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
                   {time}
                 </div>
                 <div
