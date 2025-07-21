@@ -62,9 +62,122 @@ export class AppointmentService {
     return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?${params.toString()}`);
   }
 
-  static async getTodayAppointments(): Promise<Appointment[]> {
-    const today = new Date().toISOString().split('T')[0];
-    // Use the API's query parameters for filtering by date
-    return this.listAppointmentsByRange(today, 1);
+  static async getTodaysAppointments(): Promise<Appointment[]> {
+    // Mocked data for today's appointments
+    return [
+      {
+        id: '1',
+        patient_id: '1',
+        patient_first_name: 'John',
+        patient_last_name: 'Doe',
+        date: '2025-07-21',
+        start_time: '09:00:00',
+        end_time: '09:30:00',
+        type: 'Consultation',
+        status: 'Booked',
+        title: 'Consultation with John Doe',
+        notes: null
+      },
+      {
+        id: '2',
+        patient_id: '2',
+        patient_first_name: 'Sarah',
+        patient_last_name: 'Wilson',
+        date: '2025-07-21',
+        start_time: '10:30:00',
+        end_time: '11:00:00',
+        type: 'Follow Up',
+        status: 'Completed',
+        title: 'Follow Up with Sarah Wilson',
+        notes: null
+      },
+      {
+        id: '3',
+        patient_id: '3',
+        patient_first_name: 'Mike',
+        patient_last_name: 'Johnson',
+        date: '2025-07-21',
+        start_time: '11:15:00',
+        end_time: '11:45:00',
+        type: 'Routine Check',
+        status: 'Booked',
+        title: 'Routine Check for Mike Johnson',
+        notes: null
+      }
+    ];
+  }
+
+  static async updateAppointmentStatus(id: string, status: 'Booked' | 'Cancelled' | 'Completed' | 'No Show'): Promise<Appointment> {
+    // Mock: just return the updated appointment
+    return {
+      id,
+      patient_id: '1',
+      patient_first_name: 'John',
+      patient_last_name: 'Doe',
+      date: '2025-07-21',
+      start_time: '09:00:00',
+      end_time: '09:30:00',
+      type: 'Consultation',
+      status,
+      title: 'Consultation with John Doe',
+      notes: null
+    };
   }
 }
+
+export const getTodaysAppointments = () => {
+  const today = new Date().toISOString().slice(0, 10);
+  // Mocked data: filter appointments for today
+  return [
+    {
+      id: 1,
+      patient_id: 1,
+      patient_first_name: 'John',
+      patient_last_name: 'Doe',
+      start_time: '09:00:00',
+      end_time: '09:30:00',
+      type: 'Consultation',
+      status: 'Booked',
+      notes: '',
+      created_at: today + 'T08:00:00Z',
+      updated_at: today + 'T08:00:00Z'
+    },
+    {
+      id: 2,
+      patient_id: 2,
+      patient_first_name: 'Sarah',
+      patient_last_name: 'Wilson',
+      start_time: '10:30:00',
+      end_time: '11:00:00',
+      type: 'Follow-up',
+      status: 'Completed',
+      notes: '',
+      created_at: today + 'T09:00:00Z',
+      updated_at: today + 'T09:00:00Z'
+    },
+    {
+      id: 3,
+      patient_id: 3,
+      patient_first_name: 'Mike',
+      patient_last_name: 'Johnson',
+      start_time: '11:15:00',
+      end_time: '11:45:00',
+      type: 'Check-up',
+      status: 'Booked',
+      notes: '',
+      created_at: today + 'T10:00:00Z',
+      updated_at: today + 'T10:00:00Z'
+    }
+  ];
+};
+
+export const startAppointment = (appointmentId: number) => {
+  // Mock: update status to 'In Progress'
+  // In a real app, this would update backend data
+  return {
+    success: true,
+    appointmentId,
+    status: 'In Progress',
+    started_at: new Date().toISOString()
+  };
+};
