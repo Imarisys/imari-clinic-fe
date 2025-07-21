@@ -3,12 +3,14 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { weatherService } from '../services/weatherService';
 import { WeatherResponse } from '../types/Weather';
 import { AppointmentService } from '../services/appointmentService';
-import { Appointment } from '../types/Appointment';
+import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../components/common/Modal';
 import { PatientForm } from '../components/patients/PatientForm';
 import { PatientService } from '../services/patientService';
-import { PatientCreate, PatientUpdate } from '../types/Patient';
+import { PatientCreate, PatientUpdate, Patient } from '../types/Patient';
+import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
+import { useNotification } from '../context/NotificationContext';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -19,7 +21,19 @@ export const Dashboard: React.FC = () => {
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+
+  // New state variables for appointment scheduling
+  const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
+  const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
+  const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
+
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -50,8 +64,18 @@ export const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchPatients = async () => {
+      try {
+        const response = await PatientService.listPatients();
+        setPatients(response.data);
+      } catch (error) {
+        console.error('Failed to fetch patients:', error);
+      }
+    };
+
     fetchWeather();
     fetchTodayAppointments();
+    fetchPatients();
   }, []);
 
   const getCurrentTemperature = () => {
@@ -187,6 +211,99 @@ export const Dashboard: React.FC = () => {
     // The PatientForm component will call handleAddPatient when the form is submitted
   };
 
+  // Handle creating an appointment
+  const handleCreateAppointment = async (appointmentData: AppointmentCreate) => {
+    try {
+      setAppointmentLoading(true);
+      const newAppointment = await AppointmentService.createAppointment(appointmentData);
+      setAppointments(prev => [...prev, newAppointment]);
+      setShowNewAppointmentForm(false);
+      setSelectedPatientForBooking(null);
+      showNotification('success', 'Success', 'Appointment created successfully');
+
+      // Refresh today's appointments
+      const todayAppointments = await AppointmentService.getTodayAppointments();
+      setAppointments(todayAppointments);
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+      showNotification('error', 'Error', err instanceof Error ? err.message : 'Failed to create appointment');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle patient selection for booking
+  const handlePatientSelect = (patient: Patient) => {
+    setSelectedPatientForBooking(patient);
+    setBookingStep('appointment');
+  };
+
+  // Reset booking flow when closing the modal
+  const closeNewAppointmentModal = () => {
+    setShowNewAppointmentForm(false);
+
+    // Reset the booking flow after the animation completes
+    setTimeout(() => {
+      setBookingStep('patient');
+      setSelectedPatientForBooking(null);
+      setSelectedTimeSlot(null);
+      setShowCreatePatientForm(false);
+      setSearchQuery('');
+    }, 300);
+  };
+
+  // Handle patient creation
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
+    try {
+      // Create clean data object with only non-empty fields
+      const createData: any = {
+        first_name: patientData.first_name || '',
+        last_name: patientData.last_name || '',
+        phone: patientData.phone || '',
+        gender: patientData.gender || 'male',
+      };
+
+      // Only add optional fields if they have values
+      if (patientData.email && patientData.email.trim()) {
+        createData.email = patientData.email.trim();
+      }
+      if (patientData.date_of_birth && patientData.date_of_birth.trim()) {
+        createData.date_of_birth = patientData.date_of_birth.trim();
+      }
+      if (patientData.street && patientData.street.trim()) {
+        createData.street = patientData.street.trim();
+      }
+      if (patientData.city && patientData.city.trim()) {
+        createData.city = patientData.city.trim();
+      }
+      if (patientData.state && patientData.state.trim()) {
+        createData.state = patientData.state.trim();
+      }
+      if (patientData.zip_code && patientData.zip_code.trim()) {
+        createData.zip_code = patientData.zip_code.trim();
+      }
+
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
+      setSelectedPatientForBooking(newPatient);
+      setShowCreatePatientForm(false);
+      setBookingStep('appointment');
+      showNotification('success', 'Success', 'Patient created successfully');
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      showNotification('error', 'Error', 'Failed to create patient');
+      // Re-throw the error so PatientForm can handle it appropriately
+      throw err;
+    }
+  };
+
+  // Filter patients based on search query
+  const filteredPatients = patients.filter(patient =>
+    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (patient.phone && patient.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -284,7 +401,7 @@ export const Dashboard: React.FC = () => {
                   <span className="material-icons-round mr-3">person_add</span>
                   Add New Patient
                 </button>
-                <button className="w-full btn-secondary text-left">
+                <button className="w-full btn-secondary text-left" onClick={() => setShowNewAppointmentForm(true)}>
                   <span className="material-icons-round mr-3">event</span>
                   Schedule Appointment
                 </button>
@@ -370,6 +487,169 @@ export const Dashboard: React.FC = () => {
             isLoading={isCreatingPatient}
           />
         </Modal>
+
+        {/* New Appointment Form Modal */}
+        {showNewAppointmentForm && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element" onClick={closeNewAppointmentModal}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in relative" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                </h2>
+                <button
+                  onClick={closeNewAppointmentModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-icons-round">close</span>
+                </button>
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'patient' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'patient' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      1
+                    </div>
+                    <span className="text-sm font-medium">Select Patient</span>
+                  </div>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'appointment' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      2
+                    </div>
+                    <span className="text-sm font-medium">Book Appointment</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content - Fixed height container for consistency */}
+              <div className="h-[600px] overflow-y-auto">
+                <div className="p-6">
+                  {bookingStep === 'patient' && (
+                    <div className="min-h-full">
+                      {showCreatePatientForm ? (
+                        <div>
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <button
+                              onClick={() => setShowCreatePatientForm(false)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <span className="material-icons-round">arrow_back</span>
+                            </button>
+                          </div>
+                          <PatientForm
+                            onSubmit={handleCreatePatient}
+                            onCancel={() => setShowCreatePatientForm(false)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col">
+                          {/* Search patients */}
+                          <div className="mb-6">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Search patients by name, email, or phone..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
+                                search
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Create new patient button */}
+                          <div className="mb-6">
+                            <button
+                              onClick={() => setShowCreatePatientForm(true)}
+                              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                            >
+                              <span className="material-icons-round mb-2">add</span>
+                              <div className="text-sm font-medium">Create New Patient</div>
+                            </button>
+                          </div>
+
+                          {/* Patient list - flexible height */}
+                          <div className="flex-1 min-h-0">
+                            <div className="space-y-3 h-full overflow-y-auto">
+                              {filteredPatients.map((patient) => (
+                                <div
+                                  key={patient.id}
+                                  onClick={() => handlePatientSelect(patient)}
+                                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">
+                                        {patient.first_name} {patient.last_name}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">{patient.email}</p>
+                                      {patient.phone && (
+                                        <p className="text-sm text-gray-600">{patient.phone}</p>
+                                      )}
+                                    </div>
+                                    <span className="material-icons-round text-gray-400">chevron_right</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredPatients.length === 0 && searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients found matching "{searchQuery}"
+                                </div>
+                              )}
+                              {filteredPatients.length === 0 && !searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients available. Create a new patient to get started.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {bookingStep === 'appointment' && selectedPatientForBooking && (
+                    <div className="min-h-full">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <p className="text-sm text-gray-600">
+                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBookingStep('patient')}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <span className="material-icons-round">arrow_back</span>
+                        </button>
+                      </div>
+                      <AppointmentBookingForm
+                        patient={selectedPatientForBooking}
+                        onSubmit={handleCreateAppointment}
+                        onCancel={closeNewAppointmentModal}
+                        isLoading={appointmentLoading}
+                        preselectedDate={selectedTimeSlot?.date}
+                        preselectedTime={selectedTimeSlot?.time}
+                        preselectedEndTime={selectedTimeSlot?.endTime}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
