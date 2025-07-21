@@ -40,6 +40,3 @@ export interface AppointmentUpdate {
     title?: string | null;
     notes?: string | null;
 }
-
-// For API responses (matches AppointmentRead from OpenAPI)
-export interface AppointmentRead extends Appointment {}

@@ -1,13 +1,139 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { weatherService } from '../services/weatherService';
+import { WeatherResponse } from '../types/Weather';
+import { AppointmentService } from '../services/appointmentService';
+import { Appointment, AppointmentCreate } from '../types/Appointment';
+import { useNavigate } from 'react-router-dom';
+import { Modal } from '../components/common/Modal';
+import { PatientForm } from '../components/patients/PatientForm';
+import { PatientService } from '../services/patientService';
+import { PatientCreate, PatientUpdate, Patient } from '../types/Patient';
+import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
+import { useNotification } from '../context/NotificationContext';
 
 export const Dashboard: React.FC = () => {
+  const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+
+  // New state variables for appointment scheduling
+  const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
+  const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
+  const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
+
+  const navigate = useNavigate();
+  const { showNotification } = useNotification();
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        setWeatherLoading(true);
+        const weatherData = await weatherService.getWeather('TN', 'Sidi Bouzid');
+        setWeather(weatherData);
+        setWeatherError(null);
+      } catch (error) {
+        console.error('Failed to fetch weather data:', error);
+        setWeatherError('Failed to load weather data');
+      } finally {
+        setWeatherLoading(false);
+      }
+    };
+
+    const fetchTodayAppointments = async () => {
+      try {
+        setAppointmentsLoading(true);
+        const todayAppointments = await AppointmentService.getTodayAppointments();
+        setAppointments(todayAppointments);
+        setAppointmentsError(null);
+      } catch (error) {
+        console.error('Failed to fetch appointments:', error);
+        setAppointmentsError('Failed to load appointments');
+      } finally {
+        setAppointmentsLoading(false);
+      }
+    };
+
+    const fetchPatients = async () => {
+      try {
+        const response = await PatientService.listPatients();
+        setPatients(response.data);
+      } catch (error) {
+        console.error('Failed to fetch patients:', error);
+      }
+    };
+
+    fetchWeather();
+    fetchTodayAppointments();
+    fetchPatients();
+  }, []);
+
+  const getCurrentTemperature = () => {
+    if (!weather?.forecast?.hourly?.temperature_2m) return null;
+    return Math.round(weather.forecast.hourly.temperature_2m[0]);
+  };
+
+  const getCurrentWeatherDescription = () => {
+    if (!weather?.forecast?.hourly?.weathercode) return 'Partly Cloudy';
+    const weathercode = weather.forecast.hourly.weathercode[0];
+
+    // Weather code mapping based on WMO codes
+    if (weathercode === 0) return 'Clear Sky';
+    if (weathercode >= 1 && weathercode <= 3) return 'Partly Cloudy';
+    if (weathercode >= 45 && weathercode <= 48) return 'Foggy';
+    if (weathercode >= 51 && weathercode <= 67) return 'Rainy';
+    if (weathercode >= 71 && weathercode <= 77) return 'Snowy';
+    if (weathercode >= 80 && weathercode <= 82) return 'Rain Showers';
+    if (weathercode >= 95 && weathercode <= 99) return 'Thunderstorm';
+
+    return 'Partly Cloudy';
+  };
+
+  const getWeatherIcon = (temperature: number | null) => {
+    if (!temperature) return '🌤️';
+    if (temperature >= 30) return '☀️';
+    if (temperature >= 20) return '🌤️';
+    if (temperature >= 10) return '⛅';
+    return '🌧️';
+  };
+
+  // Map API appointment status to UI status
+  const mapAppointmentStatus = (apiStatus: string): string => {
+    switch (apiStatus) {
+      case 'Booked': return 'confirmed';
+      case 'Completed': return 'completed';
+      case 'Cancelled': return 'cancelled';
+      case 'No Show': return 'no-show';
+      default: return 'pending';
+    }
+  };
+
+  // Format time from API time format to display format
+  const formatTime = (timeString: string): string => {
+    try {
+      const timePart = timeString.split('.')[0]; // Remove microseconds if present
+      const [hours, minutes] = timePart.split(':');
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      return timeString;
+    }
+  };
+
+  // Update first stats card to show actual appointment count
   const stats = [
     {
       title: "Today's Appointments",
-      value: "12",
-      change: "+15%",
-      trend: "up",
+      value: appointmentsLoading ? "..." : appointmentsError ? "Error" : appointments.length.toString(),
       icon: "event",
       bgColor: "bg-primary-50",
       iconColor: "bg-primary-500"
@@ -15,29 +141,25 @@ export const Dashboard: React.FC = () => {
     {
       title: "Total Patients",
       value: "248",
-      change: "+8%",
-      trend: "up",
       icon: "people",
       bgColor: "bg-success-50",
       iconColor: "bg-success-500"
     },
     {
-      title: "Pending Reviews",
-      value: "6",
-      change: "-12%",
-      trend: "down",
-      icon: "schedule",
-      bgColor: "bg-warning-50",
-      iconColor: "bg-warning-500"
+      title: "Weather",
+      value: weatherLoading ? "..." : weatherError ? "Error" : `${getCurrentTemperature()}°C`,
+      subtitle: weatherLoading ? "Loading..." : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
+      icon: "wb_sunny",
+      bgColor: "bg-sky-50",
+      iconColor: "bg-sky-500",
+      customIcon: weatherLoading ? "⏳" : weatherError ? "❌" : getWeatherIcon(getCurrentTemperature())
     },
     {
       title: "Revenue Today",
       value: "$2,340",
-      change: "+22%",
-      trend: "up",
       icon: "attach_money",
-      bgColor: "bg-primary-50",
-      iconColor: "bg-primary-600"
+      bgColor: "bg-amber-50",
+      iconColor: "bg-amber-600"
     }
   ];
 
@@ -59,6 +181,123 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Handle adding a new patient
+  const handleAddPatient = async (patientData: PatientCreate | PatientUpdate) => {
+    try {
+      setIsCreatingPatient(true);
+      // Since we're only creating new patients in this modal, cast to PatientCreate
+      // The form will always provide the required fields for creation
+      const createData = patientData as PatientCreate;
+      await PatientService.createPatient(createData);
+      setIsCreatingPatient(false);
+      setIsAddPatientModalOpen(false);
+      // Optionally, refetch patients or update state to include the new patient
+    } catch (error) {
+      setIsCreatingPatient(false);
+      console.error('Failed to create patient:', error);
+      // Handle error (e.g., show notification)
+    }
+  };
+
+  // Handle the create patient button click inside the modal
+  const handleCreatePatientClick = () => {
+    // This function intentionally left empty as the form handles the submission
+    // The PatientForm component will call handleAddPatient when the form is submitted
+  };
+
+  // Handle creating an appointment
+  const handleCreateAppointment = async (appointmentData: AppointmentCreate) => {
+    try {
+      setAppointmentLoading(true);
+      const newAppointment = await AppointmentService.createAppointment(appointmentData);
+      setAppointments(prev => [...prev, newAppointment]);
+      setShowNewAppointmentForm(false);
+      setSelectedPatientForBooking(null);
+      showNotification('success', 'Success', 'Appointment created successfully');
+
+      // Refresh today's appointments
+      const todayAppointments = await AppointmentService.getTodayAppointments();
+      setAppointments(todayAppointments);
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+      showNotification('error', 'Error', err instanceof Error ? err.message : 'Failed to create appointment');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle patient selection for booking
+  const handlePatientSelect = (patient: Patient) => {
+    setSelectedPatientForBooking(patient);
+    setBookingStep('appointment');
+  };
+
+  // Reset booking flow when closing the modal
+  const closeNewAppointmentModal = () => {
+    setShowNewAppointmentForm(false);
+
+    // Reset the booking flow after the animation completes
+    setTimeout(() => {
+      setBookingStep('patient');
+      setSelectedPatientForBooking(null);
+      setSelectedTimeSlot(null);
+      setShowCreatePatientForm(false);
+      setSearchQuery('');
+    }, 300);
+  };
+
+  // Handle patient creation
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
+    try {
+      // Create clean data object with only non-empty fields
+      const createData: any = {
+        first_name: patientData.first_name || '',
+        last_name: patientData.last_name || '',
+        phone: patientData.phone || '',
+        gender: patientData.gender || 'male',
+      };
+
+      // Only add optional fields if they have values
+      if (patientData.email && patientData.email.trim()) {
+        createData.email = patientData.email.trim();
+      }
+      if (patientData.date_of_birth && patientData.date_of_birth.trim()) {
+        createData.date_of_birth = patientData.date_of_birth.trim();
+      }
+      if (patientData.street && patientData.street.trim()) {
+        createData.street = patientData.street.trim();
+      }
+      if (patientData.city && patientData.city.trim()) {
+        createData.city = patientData.city.trim();
+      }
+      if (patientData.state && patientData.state.trim()) {
+        createData.state = patientData.state.trim();
+      }
+      if (patientData.zip_code && patientData.zip_code.trim()) {
+        createData.zip_code = patientData.zip_code.trim();
+      }
+
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
+      setSelectedPatientForBooking(newPatient);
+      setShowCreatePatientForm(false);
+      setBookingStep('appointment');
+      showNotification('success', 'Success', 'Patient created successfully');
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      showNotification('error', 'Error', 'Failed to create patient');
+      // Re-throw the error so PatientForm can handle it appropriately
+      throw err;
+    }
+  };
+
+  // Filter patients based on search query
+  const filteredPatients = patients.filter(patient =>
+    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (patient.phone && patient.phone.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -71,18 +310,11 @@ export const Dashboard: React.FC = () => {
                 <div className={`p-3 rounded-2xl ${stat.iconColor} shadow-medium`}>
                   <span className="material-icons-round text-white text-2xl">{stat.icon}</span>
                 </div>
-                <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
-                  stat.trend === 'up' ? 'bg-success-100 text-success-700' : 'bg-error-100 text-error-700'
-                }`}>
-                  <span className="material-icons-round text-xs">
-                    {stat.trend === 'up' ? 'trending_up' : 'trending_down'}
-                  </span>
-                  <span>{stat.change}</span>
-                </div>
               </div>
               <div>
                 <p className="text-neutral-600 text-sm mb-1">{stat.title}</p>
                 <p className="text-3xl font-bold text-neutral-800">{stat.value}</p>
+                {stat.subtitle && <p className="text-neutral-500 text-sm">{stat.subtitle}</p>}
               </div>
             </div>
           ))}
@@ -94,32 +326,54 @@ export const Dashboard: React.FC = () => {
             <div className="card">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-neutral-800">Today's Schedule</h3>
-                <button className="btn-secondary text-sm">
+                <button
+                  className="btn-secondary text-sm"
+                  onClick={() => navigate('/calendar')}
+                >
                   <span className="material-icons-round mr-2 text-lg">calendar_today</span>
-                  View All
+                  View Calendar
                 </button>
               </div>
 
               <div className="space-y-4">
-                {recentAppointments.map((appointment, index) => (
-                  <div key={index} className={`bg-neutral-50 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 slide-up-element border border-neutral-100`}
-                       style={{ animationDelay: `${index * 0.1}s` }}>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
-                          <span className="text-primary-600 font-semibold text-sm">{appointment.time}</span>
+                {appointmentsLoading ? (
+                  <div className="text-center py-8">
+                    <span className="material-icons-round text-4xl text-primary-300 animate-pulse">schedule</span>
+                    <p className="mt-2 text-neutral-500">Loading appointments...</p>
+                  </div>
+                ) : appointmentsError ? (
+                  <div className="text-center py-8">
+                    <span className="material-icons-round text-4xl text-error-400">error_outline</span>
+                    <p className="mt-2 text-neutral-500">{appointmentsError}</p>
+                  </div>
+                ) : appointments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="material-icons-round text-4xl text-neutral-300">event_busy</span>
+                    <p className="mt-2 text-neutral-500">No appointments scheduled for today</p>
+                  </div>
+                ) : (
+                  appointments.map((appointment, index) => (
+                    <div key={appointment.id} className={`bg-neutral-50 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 slide-up-element border border-neutral-100`}
+                         style={{ animationDelay: `${index * 0.1}s` }}>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
+                            <span className="text-primary-600 font-semibold text-sm">{formatTime(appointment.start_time)}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-neutral-800 truncate">
+                            {appointment.patient_first_name} {appointment.patient_last_name}
+                          </p>
+                          <p className="text-neutral-600 text-sm">{appointment.type}</p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(mapAppointmentStatus(appointment.status))}`}>
+                          {appointment.status}
                         </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-neutral-800 truncate">{appointment.patient}</p>
-                        <p className="text-neutral-600 text-sm">{appointment.type}</p>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                        {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -130,11 +384,11 @@ export const Dashboard: React.FC = () => {
             <div className="card">
               <h3 className="text-xl font-bold text-neutral-800 mb-6">Quick Actions</h3>
               <div className="space-y-3">
-                <button className="w-full btn-primary text-left">
+                <button className="w-full btn-primary text-left" onClick={() => setIsAddPatientModalOpen(true)}>
                   <span className="material-icons-round mr-3">person_add</span>
                   Add New Patient
                 </button>
-                <button className="w-full btn-secondary text-left">
+                <button className="w-full btn-secondary text-left" onClick={() => setShowNewAppointmentForm(true)}>
                   <span className="material-icons-round mr-3">event</span>
                   Schedule Appointment
                 </button>
@@ -176,18 +430,213 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Weather Widget */}
-            <div className="card bg-primary-500 text-white border-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-primary-100 text-sm">Today's Weather</p>
-                  <p className="text-2xl font-bold">24°C</p>
-                  <p className="text-primary-100 text-sm">Partly Cloudy</p>
+            <div className="card bg-primary-500 text-white border-0 p-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <span className="material-icons-round text-primary-100 mr-2">location_on</span>
+                  <p className="text-primary-100 text-sm font-medium">
+                    {weatherLoading ? '' : weatherError ? '' : weather?.city || 'Sidi Bouzid'}
+                  </p>
                 </div>
-                <div className="text-4xl opacity-80">⛅</div>
+
+                <div className="mb-4">
+                  <div className="text-6xl mb-2 opacity-90">
+                    {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
+                  </div>
+                  <p className="text-4xl font-bold mb-1">
+                    {weatherLoading ? 'Loading...' : weatherError ? 'Error' : `${getCurrentTemperature()}°C`}
+                  </p>
+                  <p className="text-primary-100 text-base font-medium">
+                    {weatherLoading ? 'Fetching weather data...' : weatherError ? weatherError : getCurrentWeatherDescription()}
+                  </p>
+                </div>
+
+                <div className="border-t border-primary-400 pt-3 mt-3">
+                  <p className="text-primary-100 text-xs uppercase tracking-wider font-medium">
+                    Today's Weather
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Add Patient Modal */}
+        <Modal
+          isOpen={isAddPatientModalOpen}
+          onClose={() => setIsAddPatientModalOpen(false)}
+          title="Add New Patient"
+          size="xl"
+        >
+          <PatientForm
+            onSubmit={handleAddPatient}
+            onCancel={() => setIsAddPatientModalOpen(false)}
+            isLoading={isCreatingPatient}
+          />
+        </Modal>
+
+        {/* New Appointment Form Modal */}
+        {showNewAppointmentForm && (
+          <div className="fixed inset-0 bg-neutral-900/50 flex items-center justify-center z-50 fade-in-element" onClick={closeNewAppointmentModal}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in relative" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                </h2>
+                <button
+                  onClick={closeNewAppointmentModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <span className="material-icons-round">close</span>
+                </button>
+              </div>
+
+              {/* Step indicator */}
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'patient' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'patient' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      1
+                    </div>
+                    <span className="text-sm font-medium">Select Patient</span>
+                  </div>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                  <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      bookingStep === 'appointment' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      2
+                    </div>
+                    <span className="text-sm font-medium">Book Appointment</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content - Fixed height container for consistency */}
+              <div className="h-[600px] overflow-y-auto">
+                <div className="p-6">
+                  {bookingStep === 'patient' && (
+                    <div className="min-h-full">
+                      {showCreatePatientForm ? (
+                        <div>
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <button
+                              onClick={() => setShowCreatePatientForm(false)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <span className="material-icons-round">arrow_back</span>
+                            </button>
+                          </div>
+                          <PatientForm
+                            onSubmit={handleCreatePatient}
+                            onCancel={() => setShowCreatePatientForm(false)}
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-full flex flex-col">
+                          {/* Search patients */}
+                          <div className="mb-6">
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Search patients by name, email, or phone..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 material-icons-round text-gray-400">
+                                search
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Create new patient button */}
+                          <div className="mb-6">
+                            <button
+                              onClick={() => setShowCreatePatientForm(true)}
+                              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+                            >
+                              <span className="material-icons-round mb-2">add</span>
+                              <div className="text-sm font-medium">Create New Patient</div>
+                            </button>
+                          </div>
+
+                          {/* Patient list - flexible height */}
+                          <div className="flex-1 min-h-0">
+                            <div className="space-y-3 h-full overflow-y-auto">
+                              {filteredPatients.map((patient) => (
+                                <div
+                                  key={patient.id}
+                                  onClick={() => handlePatientSelect(patient)}
+                                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">
+                                        {patient.first_name} {patient.last_name}
+                                      </h4>
+                                      <p className="text-sm text-gray-600">{patient.email}</p>
+                                      {patient.phone && (
+                                        <p className="text-sm text-gray-600">{patient.phone}</p>
+                                      )}
+                                    </div>
+                                    <span className="material-icons-round text-gray-400">chevron_right</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredPatients.length === 0 && searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients found matching "{searchQuery}"
+                                </div>
+                              )}
+                              {filteredPatients.length === 0 && !searchQuery && (
+                                <div className="text-center py-8 text-gray-500">
+                                  No patients available. Create a new patient to get started.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {bookingStep === 'appointment' && selectedPatientForBooking && (
+                    <div className="min-h-full">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <p className="text-sm text-gray-600">
+                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBookingStep('patient')}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <span className="material-icons-round">arrow_back</span>
+                        </button>
+                      </div>
+                      <AppointmentBookingForm
+                        patient={selectedPatientForBooking}
+                        onSubmit={handleCreateAppointment}
+                        onCancel={closeNewAppointmentModal}
+                        isLoading={appointmentLoading}
+                        preselectedDate={selectedTimeSlot?.date}
+                        preselectedTime={selectedTimeSlot?.time}
+                        preselectedEndTime={selectedTimeSlot?.endTime}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
