@@ -134,8 +134,6 @@ export const Dashboard: React.FC = () => {
     {
       title: "Today's Appointments",
       value: appointmentsLoading ? "..." : appointmentsError ? "Error" : appointments.length.toString(),
-      change: "+15%", // This could be calculated in a real scenario
-      trend: "up",
       icon: "event",
       bgColor: "bg-primary-50",
       iconColor: "bg-primary-500"
@@ -143,29 +141,25 @@ export const Dashboard: React.FC = () => {
     {
       title: "Total Patients",
       value: "248",
-      change: "+8%",
-      trend: "up",
       icon: "people",
       bgColor: "bg-success-50",
       iconColor: "bg-success-500"
     },
     {
-      title: "Pending Reviews",
-      value: "6",
-      change: "-12%",
-      trend: "down",
-      icon: "schedule",
-      bgColor: "bg-warning-50",
-      iconColor: "bg-warning-500"
+      title: "Weather",
+      value: weatherLoading ? "..." : weatherError ? "Error" : `${getCurrentTemperature()}°C`,
+      subtitle: weatherLoading ? "Loading..." : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
+      icon: "wb_sunny",
+      bgColor: "bg-sky-50",
+      iconColor: "bg-sky-500",
+      customIcon: weatherLoading ? "⏳" : weatherError ? "❌" : getWeatherIcon(getCurrentTemperature())
     },
     {
       title: "Revenue Today",
       value: "$2,340",
-      change: "+22%",
-      trend: "up",
       icon: "attach_money",
-      bgColor: "bg-primary-50",
-      iconColor: "bg-primary-600"
+      bgColor: "bg-amber-50",
+      iconColor: "bg-amber-600"
     }
   ];
 
@@ -316,18 +310,11 @@ export const Dashboard: React.FC = () => {
                 <div className={`p-3 rounded-2xl ${stat.iconColor} shadow-medium`}>
                   <span className="material-icons-round text-white text-2xl">{stat.icon}</span>
                 </div>
-                <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
-                  stat.trend === 'up' ? 'bg-success-100 text-success-700' : 'bg-error-100 text-error-700'
-                }`}>
-                  <span className="material-icons-round text-xs">
-                    {stat.trend === 'up' ? 'trending_up' : 'trending_down'}
-                  </span>
-                  <span>{stat.change}</span>
-                </div>
               </div>
               <div>
                 <p className="text-neutral-600 text-sm mb-1">{stat.title}</p>
                 <p className="text-3xl font-bold text-neutral-800">{stat.value}</p>
+                {stat.subtitle && <p className="text-neutral-500 text-sm">{stat.subtitle}</p>}
               </div>
             </div>
           ))}
