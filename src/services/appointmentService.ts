@@ -62,49 +62,15 @@ export class AppointmentService {
     return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?${params.toString()}`);
   }
 
+  // Fetch appointments for today (fix: use start_date param)
   static async getTodaysAppointments(): Promise<Appointment[]> {
-    // Mocked data for today's appointments
-    return [
-      {
-        id: '1',
-        patient_id: '1',
-        patient_first_name: 'John',
-        patient_last_name: 'Doe',
-        date: '2025-07-21',
-        start_time: '09:00:00',
-        end_time: '09:30:00',
-        type: 'Consultation',
-        status: 'Booked',
-        title: 'Consultation with John Doe',
-        notes: null
-      },
-      {
-        id: '2',
-        patient_id: '2',
-        patient_first_name: 'Sarah',
-        patient_last_name: 'Wilson',
-        date: '2025-07-21',
-        start_time: '10:30:00',
-        end_time: '11:00:00',
-        type: 'Follow Up',
-        status: 'Completed',
-        title: 'Follow Up with Sarah Wilson',
-        notes: null
-      },
-      {
-        id: '3',
-        patient_id: '3',
-        patient_first_name: 'Mike',
-        patient_last_name: 'Johnson',
-        date: '2025-07-21',
-        start_time: '11:15:00',
-        end_time: '11:45:00',
-        type: 'Routine Check',
-        status: 'Booked',
-        title: 'Routine Check for Mike Johnson',
-        notes: null
-      }
-    ];
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    // Use start_date as required by API spec
+    return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?start_date=${dateStr}`);
   }
 
   static async updateAppointmentStatus(id: string, status: 'Booked' | 'Cancelled' | 'Completed' | 'No Show'): Promise<Appointment> {
