@@ -17,7 +17,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-primary-600 mb-2">
+                <h2 className="text-2xl font-bold text-neutral-800 mb-1">
                   Welcome back, Dr. Badri
                 </h2>
                 <p className="text-neutral-600">
@@ -28,18 +28,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     day: 'numeric'
                   })}
                 </p>
-              </div>
-
-              {/* Quick actions */}
-              <div className="flex items-center space-x-4">
-                <button className="btn-secondary">
-                  <span className="material-icons-round mr-2">search</span>
-                  Quick Search
-                </button>
-                <button className="btn-primary">
-                  <span className="material-icons-round mr-2">add</span>
-                  New Appointment
-                </button>
               </div>
             </div>
           </div>

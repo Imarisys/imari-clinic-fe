@@ -4,6 +4,7 @@ import { weatherService } from '../services/weatherService';
 import { WeatherResponse } from '../types/Weather';
 import { AppointmentService } from '../services/appointmentService';
 import { Appointment } from '../types/Appointment';
+import { useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -12,6 +13,7 @@ export const Dashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -190,9 +192,12 @@ export const Dashboard: React.FC = () => {
             <div className="card">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-neutral-800">Today's Schedule</h3>
-                <button className="btn-secondary text-sm">
+                <button
+                  className="btn-secondary text-sm"
+                  onClick={() => navigate('/calendar')}
+                >
                   <span className="material-icons-round mr-2 text-lg">calendar_today</span>
-                  View All
+                  View Calendar
                 </button>
               </div>
 
