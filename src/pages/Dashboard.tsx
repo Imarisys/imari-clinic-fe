@@ -5,6 +5,10 @@ import { WeatherResponse } from '../types/Weather';
 import { AppointmentService } from '../services/appointmentService';
 import { Appointment } from '../types/Appointment';
 import { useNavigate } from 'react-router-dom';
+import { Modal } from '../components/common/Modal';
+import { PatientForm } from '../components/patients/PatientForm';
+import { PatientService } from '../services/patientService';
+import { PatientCreate, PatientUpdate } from '../types/Patient';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -13,6 +17,8 @@ export const Dashboard: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -157,6 +163,30 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Handle adding a new patient
+  const handleAddPatient = async (patientData: PatientCreate | PatientUpdate) => {
+    try {
+      setIsCreatingPatient(true);
+      // Since we're only creating new patients in this modal, cast to PatientCreate
+      // The form will always provide the required fields for creation
+      const createData = patientData as PatientCreate;
+      await PatientService.createPatient(createData);
+      setIsCreatingPatient(false);
+      setIsAddPatientModalOpen(false);
+      // Optionally, refetch patients or update state to include the new patient
+    } catch (error) {
+      setIsCreatingPatient(false);
+      console.error('Failed to create patient:', error);
+      // Handle error (e.g., show notification)
+    }
+  };
+
+  // Handle the create patient button click inside the modal
+  const handleCreatePatientClick = () => {
+    // This function intentionally left empty as the form handles the submission
+    // The PatientForm component will call handleAddPatient when the form is submitted
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -250,7 +280,7 @@ export const Dashboard: React.FC = () => {
             <div className="card">
               <h3 className="text-xl font-bold text-neutral-800 mb-6">Quick Actions</h3>
               <div className="space-y-3">
-                <button className="w-full btn-primary text-left">
+                <button className="w-full btn-primary text-left" onClick={() => setIsAddPatientModalOpen(true)}>
                   <span className="material-icons-round mr-3">person_add</span>
                   Add New Patient
                 </button>
@@ -326,6 +356,20 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Add Patient Modal */}
+        <Modal
+          isOpen={isAddPatientModalOpen}
+          onClose={() => setIsAddPatientModalOpen(false)}
+          title="Add New Patient"
+          size="xl"
+        >
+          <PatientForm
+            onSubmit={handleAddPatient}
+            onCancel={() => setIsAddPatientModalOpen(false)}
+            isLoading={isCreatingPatient}
+          />
+        </Modal>
       </div>
     </DashboardLayout>
   );
