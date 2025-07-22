@@ -556,10 +556,23 @@ export const Calendar: React.FC = () => {
                          aptMinute < timeMinute + 15;
                 });
 
+                // Determine border style based on time slot type
+                let borderBottomClass = '';
+                if (timeIndex % 4 === 3) {
+                  // Hour boundaries (08:45, 09:45, etc.) - darker line
+                  borderBottomClass = 'border-b border-gray-300';
+                } else if (timeIndex % 2 === 1) {
+                  // Half-hour boundaries (08:30, 09:30, etc.) - medium line
+                  borderBottomClass = 'border-b border-gray-200';
+                } else {
+                  // Quarter-hour boundaries (08:15, 09:15, etc.) - lighter line
+                  borderBottomClass = 'border-b border-gray-100';
+                }
+
                 return (
                   <div
                     key={`${dayStr}-${time}`}
-                    className={`p-1 min-h-[15px] relative group cursor-pointer border-r border-gray-200 border-b border-gray-300 ${
+                    className={`p-1 min-h-[15px] relative group cursor-pointer border-r border-gray-200 ${borderBottomClass} ${
                       isSelected ? 'bg-blue-200 border-blue-400' : ''
                     }`}
                     style={{
