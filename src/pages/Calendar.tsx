@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { DayColumn } from '../components/calendar/DayColumn';
 import { MonthView } from '../components/calendar/MonthView';
 import { DayView } from '../components/calendar/DayView';
+import { WeekView } from '../components/calendar/WeekView';
 import { AppointmentDetail } from '../components/patients/AppointmentDetail';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { PatientForm } from '../components/patients/PatientForm';
@@ -34,6 +35,11 @@ export const Calendar: React.FC = () => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{date: string, time: string} | null>(null);
+  const [dragEnd, setDragEnd] = useState<{date: string, time: string} | null>(null);
 
   const { showNotification } = useNotification();
 
@@ -486,9 +492,11 @@ export const Calendar: React.FC = () => {
       return day;
     });
 
-    const timeSlots = Array.from({ length: 12 }, (_, i) => {
-      const hour = i + 8; // 8 AM to 8 PM
-      return `${hour.toString().padStart(2, '0')}:00`;
+    // Create 15-minute time slots from 8 AM to 6 PM (40 slots total)
+    const timeSlots = Array.from({ length: 40 }, (_, i) => {
+      const hour = Math.floor(i / 4) + 8; // 8 AM start
+      const minutes = (i % 4) * 15; // 0, 15, 30, 45 minutes
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     });
 
     return (
@@ -518,33 +526,62 @@ export const Calendar: React.FC = () => {
           ))}
         </div>
 
-        {/* Time slots grid */}
-        <div className="max-h-96 overflow-y-auto">
+        {/* Time slots grid - 15 minute precision */}
+        <div
+          className="max-h-96 overflow-y-auto"
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           {timeSlots.map((time, timeIndex) => (
-            <div key={time} className="grid grid-cols-8 border-b border-gray-300 hover:bg-primary-50 transition-all duration-300">
-              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
-                {time}
+            <div key={time} className="grid grid-cols-8 hover:bg-primary-50 transition-all duration-300">
+              <div className="p-2 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
+                {/* Only show time label every hour (every 4th slot) */}
+                {timeIndex % 4 === 0 ? time : ''}
               </div>
               {days.map((day, dayIndex) => {
                 const dayStr = day.toISOString().split('T')[0];
-                const dayAppointments = appointments.filter(apt =>
-                  getAppointmentDate(apt) === dayStr &&
-                  formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
-                );
+                const isSelected = isSlotSelected(dayStr, time);
+                const dayAppointments = appointments.filter(apt => {
+                  const aptDate = getAppointmentDate(apt);
+                  const aptTime = formatAppointmentTime(apt);
+                  const aptHour = parseInt(aptTime.split(':')[0]);
+                  const aptMinute = parseInt(aptTime.split(':')[1]);
+                  const timeHour = parseInt(time.split(':')[0]);
+                  const timeMinute = parseInt(time.split(':')[1]);
+
+                  // Check if appointment starts within this 15-minute slot
+                  return aptDate === dayStr &&
+                         aptHour === timeHour &&
+                         aptMinute >= timeMinute &&
+                         aptMinute < timeMinute + 15;
+                });
 
                 return (
                   <div
                     key={`${dayStr}-${time}`}
-                    className="p-2 min-h-[60px] relative group cursor-pointer border-r border-gray-200"
-                    onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
+                    className={`p-1 min-h-[15px] relative group cursor-pointer border-r border-gray-200 border-b border-gray-300 ${
+                      isSelected ? 'bg-blue-200 border-blue-400' : ''
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : '',
+                      borderColor: isSelected ? '#3b82f6' : ''
+                    }}
+                    onClick={() => {
+                      if (!isDragging) {
+                        setSelectedTimeSlot({ date: dayStr, time });
+                        handleNewAppointmentClick();
+                      }
+                    }}
+                    onMouseDown={(e) => handleMouseDown(e, dayStr, time)}
+                    onMouseEnter={() => handleMouseEnter(dayStr, time)}
                   >
                     {dayAppointments.map((appointment, aptIndex) => (
                       <div
                         key={appointment.id}
-                        className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
+                        className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
                         style={{
-                          top: `${aptIndex * 4}px`,
-                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
+                          top: `${aptIndex * 2}px`,
+                          height: `${Math.max(Math.min(getAppointmentDuration(appointment) / 15 * 15, 60), 15)}px`,
                           display: 'flex',
                           flexDirection: 'column',
                           justifyContent: 'center',
@@ -553,14 +590,17 @@ export const Calendar: React.FC = () => {
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedAppointment(appointment as any);
+                          setSelectedAppointment(appointment);
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                       >
-                        <p className="font-semibold truncate">{getPatientName(appointment)}</p>
-                        <p className="opacity-90 truncate">{appointment.type}</p>
+                        <p className="font-semibold truncate text-xs">{getPatientName(appointment)}</p>
+                        <p className="opacity-90 truncate text-xs">{appointment.type}</p>
                       </div>
                     ))}
-                    <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                    {!isSelected && (
+                      <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                    )}
                   </div>
                 );
               })}
@@ -655,6 +695,85 @@ export const Calendar: React.FC = () => {
         </div>
       </div>
     );
+  };
+
+  // Drag and drop handlers
+  const handleMouseDown = (e: React.MouseEvent, date: string, time: string) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ date, time });
+    setDragEnd({ date, time });
+    console.log('Starting drag at:', date, time);
+  };
+
+  const handleMouseEnter = (date: string, time: string) => {
+    if (isDragging && dragStart && dragStart.date === date) {
+      setDragEnd({ date, time });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging && dragStart && dragEnd) {
+      const timeSlots = Array.from({ length: 40 }, (_, i) => {
+        const hour = Math.floor(i / 4) + 8;
+        const minutes = (i % 4) * 15;
+        return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      });
+
+      const startIndex = timeSlots.indexOf(dragStart.time);
+      const endIndex = timeSlots.indexOf(dragEnd.time);
+
+      if (startIndex !== -1 && endIndex !== -1) {
+        const minIndex = Math.min(startIndex, endIndex);
+        const maxIndex = Math.max(startIndex, endIndex);
+        const startTime = timeSlots[minIndex];
+        const endTime = timeSlots[maxIndex + 1] || timeSlots[maxIndex]; // End time is next slot or same if last
+
+        console.log('Drag completed:', {
+          date: dragStart.date,
+          startTime,
+          endTime
+        });
+
+        setSelectedTimeSlot({
+          date: dragStart.date,
+          time: startTime,
+          endTime
+        });
+
+        handleNewAppointmentClick();
+      }
+    }
+
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+  };
+
+  // Check if a slot is selected in the drag
+  const isSlotSelected = (date: string, time: string) => {
+    if (!isDragging || !dragStart || !dragEnd || dragStart.date !== date) {
+      return false;
+    }
+
+    const timeSlots = Array.from({ length: 40 }, (_, i) => {
+      const hour = Math.floor(i / 4) + 8;
+      const minutes = (i % 4) * 15;
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    });
+
+    const currentIndex = timeSlots.indexOf(time);
+    const startIndex = timeSlots.indexOf(dragStart.time);
+    const endIndex = timeSlots.indexOf(dragEnd.time);
+
+    if (currentIndex === -1 || startIndex === -1 || endIndex === -1) {
+      return false;
+    }
+
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
+
+    return currentIndex >= minIndex && currentIndex <= maxIndex;
   };
 
   return (

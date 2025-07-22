@@ -52,36 +52,59 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
     if (!containerRef.current) return;
     
     event.preventDefault();
+    event.stopPropagation();
+
     const rect = containerRef.current.getBoundingClientRect();
     const y = event.clientY - rect.top;
     const timeIndex = getIndexFromPosition(y, rect.height);
     
+    console.log('Mouse down at:', { date, timeIndex, time: getTimeFromIndex(timeIndex) });
+
     setIsDragging(true);
     setDragStart({ date, timeIndex });
     setDragEnd({ date, timeIndex });
     dragStartedRef.current = true;
+    setConflictMessage(null);
   }, []);
 
   const handleMouseMove = useCallback((event: React.MouseEvent, date: string, containerRef: React.RefObject<HTMLDivElement | null>) => {
-    if (!isDragging || !dragStart || !containerRef.current) return;
-    
+    if (!isDragging || !dragStart || !containerRef.current || !dragStartedRef.current) return;
+
     const rect = containerRef.current.getBoundingClientRect();
     const y = event.clientY - rect.top;
     const timeIndex = getIndexFromPosition(y, rect.height);
     
-    // Only allow dragging within the same date for now
+    // Only allow dragging within the same date
     if (date === dragStart.date) {
       setDragEnd({ date, timeIndex });
+      console.log('Mouse move to:', { date, timeIndex, time: getTimeFromIndex(timeIndex) });
     }
   }, [isDragging, dragStart]);
 
   // Check if a time slot conflicts with existing appointments
   const checkSlotConflict = (date: string, startTime: string, endTime: string): boolean => {
-    return appointments.some(appointment => {
-      // Parse appointment time
-      const [aptHours, aptMinutes] = appointment.time.split(':').map(Number);
-      const aptStartMinutes = aptHours * 60 + aptMinutes;
-      const aptEndMinutes = aptStartMinutes + appointment.duration;
+    const conflictingAppointments = appointments.filter(appointment => {
+      // Parse appointment time - handle both date-time and time formats
+      let aptStartMinutes: number;
+      let aptEndMinutes: number;
+      let appointmentDate: string;
+
+      if (appointment.time.includes('T')) {
+        // ISO datetime format
+        const appointmentDateTime = new Date(appointment.time);
+        aptStartMinutes = appointmentDateTime.getHours() * 60 + appointmentDateTime.getMinutes();
+        appointmentDate = appointmentDateTime.toISOString().split('T')[0];
+      } else {
+        // Time format HH:mm - assume same date
+        const [aptHours, aptMinutes] = appointment.time.split(':').map(Number);
+        aptStartMinutes = aptHours * 60 + aptMinutes;
+        appointmentDate = date; // Use the selected date
+      }
+
+      // Only check appointments on the same date
+      if (appointmentDate !== date) return false;
+
+      aptEndMinutes = aptStartMinutes + appointment.duration;
 
       // Parse selected time slot
       const [startHours, startMinutes] = startTime.split(':').map(Number);
@@ -92,9 +115,13 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
       // Check for overlap
       return slotStartMinutes < aptEndMinutes && slotEndMinutes > aptStartMinutes;
     });
+
+    return conflictingAppointments.length > 0;
   };
 
   const handleMouseUp = useCallback(() => {
+    console.log('Mouse up called, isDragging:', isDragging, 'dragStart:', dragStart, 'dragEnd:', dragEnd);
+
     if (!isDragging || !dragStart || !dragEnd || !dragStartedRef.current) {
       setIsDragging(false);
       setDragStart(null);
@@ -109,12 +136,13 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
     const startTime = getTimeFromIndex(startIndex);
     const endTime = getTimeFromIndex(endIndex + 1); // End time is the start of the next slot
     
+    console.log('Selected time slot:', { date: dragStart.date, startTime, endTime });
+
     // Check for conflicts with existing appointments
     const hasConflict = checkSlotConflict(dragStart.date, startTime, endTime);
 
     if (hasConflict) {
       setConflictMessage('This time slot conflicts with an existing appointment. Please select a different time.');
-      // Clear the message after 3 seconds
       setTimeout(() => setConflictMessage(null), 3000);
     } else {
       setConflictMessage(null);
@@ -123,6 +151,7 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
         startTime,
         endTime
       };
+      console.log('Calling onSlotSelected with:', slot);
       onSlotSelected(slot);
     }
 
@@ -142,30 +171,24 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
 
     if (timeIndex >= startIndex && timeIndex <= endIndex) {
       return {
-        backgroundColor: 'rgba(59, 130, 246, 0.3)', // Blue with opacity
-        borderTop: timeIndex === startIndex ? '2px solid #3b82f6' : undefined,
-        borderBottom: timeIndex === endIndex ? '2px solid #3b82f6' : undefined,
+        backgroundColor: 'rgba(59, 130, 246, 0.4)', // More visible blue with opacity
+        borderLeft: '3px solid #3b82f6',
+        borderRight: '3px solid #3b82f6',
+        borderTop: timeIndex === startIndex ? '3px solid #3b82f6' : '1px solid #3b82f6',
+        borderBottom: timeIndex === endIndex ? '3px solid #3b82f6' : '1px solid #3b82f6',
       };
     }
 
     return {};
   };
 
-  const reset = () => {
-    setIsDragging(false);
-    setDragStart(null);
-    setDragEnd(null);
-    dragStartedRef.current = false;
-  };
-
   return {
-    isDragging,
     timeSlots,
+    isDragging,
+    conflictMessage,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
     getSelectionStyle,
-    conflictMessage,
-    reset
   };
 };
