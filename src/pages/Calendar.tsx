@@ -3,6 +3,7 @@ import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { MonthView } from '../components/calendar/MonthView';
 import { WeeklyView } from '../components/calendar/WeeklyView';
+import { DayView } from '../components/calendar/DayView';
 import { AppointmentDetail } from '../components/patients/AppointmentDetail';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { PatientForm } from '../components/patients/PatientForm';
@@ -479,92 +480,6 @@ export const Calendar: React.FC = () => {
     </div>
   );
 
-  const renderDayView = () => {
-    // Create time slots from 8 AM to 7 PM
-    const timeSlots = Array.from({ length: 12 }, (_, i) => {
-      const hour = i + 8; // 8 AM to 7 PM
-      return `${hour.toString().padStart(2, '0')}:00`;
-    });
-
-    const dayStr = currentDate.toISOString().split('T')[0];
-
-    return (
-      <div className="card overflow-hidden">
-        {/* Day header - similar to week header but for a single day */}
-        <div className="grid grid-cols-[80px_1fr] border-b border-gray-300">
-          <div className="p-2"></div>
-          <div
-            className={`p-4 text-center slide-up-element ${
-              currentDate.toDateString() === new Date().toDateString()
-                ? 'bg-primary-50 border-primary-200'
-                : 'bg-neutral-50'
-            }`}
-            style={{ animationDelay: '0.1s' }}
-          >
-            <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-            <p className={`text-lg font-semibold ${
-              currentDate.toDateString() === new Date().toDateString()
-                ? 'text-primary-600'
-                : 'text-neutral-800'
-            }`}>
-              {currentDate.getDate()}
-            </p>
-          </div>
-        </div>
-
-        {/* Time slots grid - similar to week view but only one day column */}
-        <div className="max-h-96 overflow-y-auto">
-          {timeSlots.map((time, timeIndex) => {
-            const dayAppointments = appointments.filter(apt =>
-              getAppointmentDate(apt) === dayStr &&
-              formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
-            );
-
-            return (
-              <div
-                key={time}
-                className="grid grid-cols-[80px_1fr] border-b border-gray-300 hover:bg-primary-50 transition-all duration-300 slide-up-element"
-                style={{ animationDelay: `${timeIndex * 0.05}s` }}
-              >
-                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
-                  {time}
-                </div>
-                <div
-                  className="p-2 min-h-[60px] relative group cursor-pointer"
-                  onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
-                >
-                  {dayAppointments.map((appointment, aptIndex) => (
-                    <div
-                      key={appointment.id}
-                      className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
-                      style={{
-                        top: `${aptIndex * 4}px`,
-                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        backgroundColor: getAppointmentBackgroundColor(appointment.status),
-                        color: getAppointmentTextColor(appointment.status)
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedAppointment(appointment as any);
-                      }}
-                    >
-                      <p className="font-semibold truncate">{getPatientName(appointment)}</p>
-                      <p className="opacity-90 truncate">{appointment.type}</p>
-                    </div>
-                  ))}
-                  <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   // Drag and drop handlers
   const handleMouseDown = (e: React.MouseEvent, date: string, time: string) => {
     e.preventDefault();
@@ -665,7 +580,24 @@ export const Calendar: React.FC = () => {
             getAppointmentTextColor={getAppointmentTextColor}
           />
         )}
-        {view === 'day' && renderDayView()}
+        {view === 'day' && (
+          <DayView
+            currentDate={currentDate}
+            appointments={appointments}
+            onTimeSlotClick={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
+            onAppointmentClick={setSelectedAppointment}
+            getAppointmentDate={getAppointmentDate}
+            formatAppointmentTime={formatAppointmentTime}
+            getAppointmentDuration={getAppointmentDuration}
+            getAppointmentBackgroundColor={getAppointmentBackgroundColor}
+            getAppointmentTextColor={getAppointmentTextColor}
+            getPatientName={getPatientName}
+            handleMouseUp={handleMouseUp}
+            handleMouseDown={handleMouseDown}
+            handleMouseEnter={handleMouseEnter}
+            isSlotSelected={isSlotSelected}
+          />
+        )}
         {view === 'month' && (
           <div className="card">
             <MonthView
