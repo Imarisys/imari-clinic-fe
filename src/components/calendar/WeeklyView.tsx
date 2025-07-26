@@ -82,8 +82,12 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
       >
         {timeSlots.map((time, timeIndex) => (
           <div key={time} className="grid grid-cols-8 hover:bg-primary-50 transition-all duration-300">
-            <div className="p-2 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
-              {timeIndex % 4 === 0 ? time : ''}
+            <div className="p-2 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300 relative">
+              {timeIndex % 4 === 1 ? ( // Show in the second slot (middle of the hour)
+                <span className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  {time.split(':')[0]}:00
+                </span>
+              ) : null}
             </div>
             {days.map((day) => {
               const dayStr = day.toISOString().split('T')[0];
