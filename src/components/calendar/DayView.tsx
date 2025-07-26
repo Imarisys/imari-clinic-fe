@@ -70,9 +70,10 @@ export const DayView: React.FC<DayViewProps> = ({
 
       {/* Time slots grid - 15 minute precision with drag and drop */}
       <div
-        className="max-h-96 overflow-y-auto"
+        className="flex-1 overflow-y-auto"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        style={{ height: 'calc(100vh - 280px)' }}
       >
         {timeSlots.map((time, timeIndex) => {
           const isSelected = isSlotSelected(dayStr, time);

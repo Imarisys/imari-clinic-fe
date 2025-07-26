@@ -76,9 +76,10 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
 
       {/* Time slots grid - 15 minute precision */}
       <div
-        className="max-h-96 overflow-y-auto"
+        className="flex-1 overflow-y-auto"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        style={{ height: 'calc(100vh - 280px)' }}
       >
         {timeSlots.map((time, timeIndex) => (
           <div key={time} className="grid grid-cols-8 hover:bg-primary-50 transition-all duration-300">

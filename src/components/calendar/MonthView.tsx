@@ -84,14 +84,16 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
   const monthDays = getMonthDays(currentDate);
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-7 gap-px bg-gray-200">
+    <div className="w-full h-full flex flex-col">
+      <div className="grid grid-cols-7 gap-px bg-gray-200 flex-shrink-0">
         {weekDays.map(day => (
           <div key={day} className="bg-white p-2 text-sm font-medium text-gray-600 text-center">
             {day}
           </div>
         ))}
+      </div>
 
+      <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1" style={{ height: 'calc(100vh - 320px)' }}>
         {monthDays.map((date, index) => {
           const dateString = date.toISOString().split('T')[0];
           const dayAppointments = getAppointmentsForDate(dateString);
