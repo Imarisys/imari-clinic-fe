@@ -311,6 +311,25 @@ export const Dashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
+      {/* Welcome Header - only show on Dashboard */}
+      <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-800 mb-1">
+              Welcome back, Dr. Badri
+            </h2>
+            <p className="text-neutral-600">
+              Today is {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

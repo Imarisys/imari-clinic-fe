@@ -13,25 +13,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <Sidebar />
 
         <main className="flex-1 p-8 min-h-screen ml-64 lg:ml-80">
-          {/* Header with clean design */}
-          <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-neutral-800 mb-1">
-                  Welcome back, Dr. Badri
-                </h2>
-                <p className="text-neutral-600">
-                  Today is {new Date().toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Main content area with clean styling */}
           <div className="fade-in-element">
             {children}
