@@ -10,6 +10,7 @@ interface WeeklyViewProps {
   handleMouseEnter: (date: string, time: string) => void;
   onSelectSlot: (date: string, time: string) => void;
   onAppointmentClick: (appointment: Appointment) => void;
+  onAppointmentDrop?: (appointment: Appointment, newDate: string, newTime: string) => void;
   getAppointmentDate: (apt: Appointment) => string;
   formatAppointmentTime: (apt: Appointment) => string;
   getAppointmentDuration: (apt: Appointment) => number;
@@ -31,7 +32,40 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   getAppointmentDuration,
   getAppointmentBackgroundColor,
   getAppointmentTextColor,
+  onAppointmentDrop,
 }) => {
+  const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
+
+  // Handle appointment drag start
+  const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
+    e.stopPropagation();
+    setDraggedAppointment(appointment);
+    e.dataTransfer.setData('text/plain', appointment.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle appointment drag end
+  const handleAppointmentDragEnd = () => {
+    setDraggedAppointment(null);
+  };
+
+  // Handle drop on time slot
+  const handleTimeSlotDrop = (e: React.DragEvent, date: string, time: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedAppointment && onAppointmentDrop) {
+      onAppointmentDrop(draggedAppointment, date, time);
+    }
+    setDraggedAppointment(null);
+  };
+
+  // Handle drag over to allow drop
+  const handleTimeSlotDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
   const weekStart = new Date(currentDate);
   weekStart.setDate(currentDate.getDate() - currentDate.getDay());
 
@@ -129,6 +163,8 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                   onClick={() => onSelectSlot(dayStr, time)}
                   onMouseDown={(e) => handleMouseDown(e, dayStr, time)}
                   onMouseEnter={() => handleMouseEnter(dayStr, time)}
+                  onDragOver={handleTimeSlotDragOver}
+                  onDrop={(e) => handleTimeSlotDrop(e, dayStr, time)}
                 >
                   {dayAppointments.map((appointment, aptIndex) => (
                     <div
@@ -153,6 +189,9 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                       onMouseDown={(e) => {
                         e.stopPropagation();
                       }}
+                      draggable
+                      onDragStart={(e) => handleAppointmentDragStart(e, appointment)}
+                      onDragEnd={handleAppointmentDragEnd}
                     >
                       {appointment.patient_first_name} {appointment.patient_last_name}
                     </div>

@@ -6,6 +6,7 @@ interface DayViewProps {
   appointments: Appointment[];
   onTimeSlotClick: (date: string, time: string) => void;
   onAppointmentClick: (appointment: Appointment) => void;
+  onAppointmentDrop?: (appointment: Appointment, newDate: string, newTime: string) => void;
   getAppointmentDate: (apt: Appointment) => string;
   formatAppointmentTime: (apt: Appointment) => string;
   getAppointmentDuration: (apt: Appointment) => number;
@@ -24,6 +25,7 @@ export const DayView: React.FC<DayViewProps> = ({
   appointments,
   onTimeSlotClick,
   onAppointmentClick,
+  onAppointmentDrop,
   getAppointmentDate,
   formatAppointmentTime,
   getAppointmentDuration,
@@ -35,6 +37,38 @@ export const DayView: React.FC<DayViewProps> = ({
   handleMouseEnter,
   isSlotSelected,
 }) => {
+  const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
+
+  // Handle appointment drag start
+  const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
+    e.stopPropagation();
+    setDraggedAppointment(appointment);
+    e.dataTransfer.setData('text/plain', appointment.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle appointment drag end
+  const handleAppointmentDragEnd = () => {
+    setDraggedAppointment(null);
+  };
+
+  // Handle drop on time slot
+  const handleTimeSlotDrop = (e: React.DragEvent, date: string, time: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedAppointment && onAppointmentDrop) {
+      onAppointmentDrop(draggedAppointment, date, time);
+    }
+    setDraggedAppointment(null);
+  };
+
+  // Handle drag over to allow drop
+  const handleTimeSlotDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
   // Create 15-minute time slots from 8 AM to 6 PM (40 slots total)
   const timeSlots = Array.from({ length: 40 }, (_, i) => {
     const hour = Math.floor(i / 4) + 8;
@@ -126,6 +160,8 @@ export const DayView: React.FC<DayViewProps> = ({
                 onClick={() => onTimeSlotClick(dayStr, time)}
                 onMouseDown={(e) => handleMouseDown(e, dayStr, time)}
                 onMouseEnter={() => handleMouseEnter(dayStr, time)}
+                onDragOver={handleTimeSlotDragOver}
+                onDrop={(e) => handleTimeSlotDrop(e, dayStr, time)}
               >
                 {/* Appointments in this time slot */}
                 {dayAppointments.map((appointment, aptIndex) => (
@@ -151,6 +187,9 @@ export const DayView: React.FC<DayViewProps> = ({
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
+                    draggable
+                    onDragStart={(e) => handleAppointmentDragStart(e, appointment)}
+                    onDragEnd={handleAppointmentDragEnd}
                   >
                     <p className="font-semibold truncate">{getPatientName(appointment)}</p>
                     <p className="opacity-90 truncate">{appointment.type}</p>

@@ -559,6 +559,41 @@ export const Calendar: React.FC = () => {
     return currentIndex >= minIndex && currentIndex <= maxIndex;
   };
 
+  // Handle appointment rescheduling via drag and drop
+  const handleAppointmentDrop = async (appointment: Appointment, newDate: string, newTime: string) => {
+    // Calculate new end time based on appointment duration
+    const duration = getAppointmentDuration(appointment);
+    const [hours, minutes] = newTime.split(':').map(Number);
+    const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+
+    // Calculate end time
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    const newEndTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+
+    // Prepare update data
+    const updateData: AppointmentUpdate = {
+      date: newDate,
+      start_time: newStartTime,
+      end_time: newEndTime
+    };
+
+    // Update appointment
+    try {
+      setAppointmentLoading(true);
+      const updatedAppointment = await AppointmentService.updateAppointment(appointment.id, updateData);
+      setAppointments(prev => prev.map(apt => apt.id === appointment.id ? updatedAppointment : apt));
+      showNotification('success', 'Success', 'Appointment rescheduled successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reschedule appointment');
+      showNotification('error', 'Error', 'Failed to reschedule appointment');
+      console.error('Error rescheduling appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="fade-in-element">
@@ -573,6 +608,7 @@ export const Calendar: React.FC = () => {
             handleMouseEnter={handleMouseEnter}
             onSelectSlot={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
             onAppointmentClick={setSelectedAppointment}
+            onAppointmentDrop={handleAppointmentDrop}
             isSlotSelected={isSlotSelected}
             getAppointmentDate={getAppointmentDate}
             formatAppointmentTime={formatAppointmentTime}
@@ -587,6 +623,7 @@ export const Calendar: React.FC = () => {
             appointments={appointments}
             onTimeSlotClick={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
             onAppointmentClick={setSelectedAppointment}
+            onAppointmentDrop={handleAppointmentDrop}
             getAppointmentDate={getAppointmentDate}
             formatAppointmentTime={formatAppointmentTime}
             getAppointmentDuration={getAppointmentDuration}
