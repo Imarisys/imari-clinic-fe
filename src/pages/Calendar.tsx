@@ -13,6 +13,7 @@ import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } 
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
 import '../styles/calendar-day.css'; // Import the calendar day CSS
+import { RescheduleConfirmation } from '../components/calendar/RescheduleConfirmation';
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -33,6 +34,16 @@ export const Calendar: React.FC = () => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+
+  // Reschedule confirmation state
+  const [showRescheduleConfirmation, setShowRescheduleConfirmation] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState<{
+    appointment: Appointment;
+    patient: Patient;
+    newDate: string;
+    newStartTime: string;
+    newEndTime: string;
+  } | null>(null);
 
   // Drag and drop state
   const [isDragging, setIsDragging] = useState(false);
@@ -572,19 +583,38 @@ export const Calendar: React.FC = () => {
     const endMinutes = totalMinutes % 60;
     const newEndTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
 
-    // Prepare update data
-    const updateData: AppointmentUpdate = {
-      date: newDate,
-      start_time: newStartTime,
-      end_time: newEndTime
-    };
-
-    // Update appointment
+    // Load patient data and show reschedule confirmation
     try {
       setAppointmentLoading(true);
-      const updatedAppointment = await AppointmentService.updateAppointment(appointment.id, updateData);
-      setAppointments(prev => prev.map(apt => apt.id === appointment.id ? updatedAppointment : apt));
+      const patientData = await PatientService.getPatient(appointment.patient_id);
+
+      setRescheduleData({
+        appointment,
+        patient: patientData,
+        newDate,
+        newStartTime,
+        newEndTime
+      });
+      setShowRescheduleConfirmation(true);
+    } catch (err) {
+      console.error('Error loading patient data:', err);
+      showNotification('error', 'Error', 'Failed to load patient data');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle reschedule confirmation
+  const handleRescheduleConfirm = async (appointmentData: AppointmentUpdate) => {
+    if (!rescheduleData) return;
+
+    try {
+      setAppointmentLoading(true);
+      const updatedAppointment = await AppointmentService.updateAppointment(rescheduleData.appointment.id, appointmentData);
+      setAppointments(prev => prev.map(apt => apt.id === rescheduleData.appointment.id ? updatedAppointment : apt));
       showNotification('success', 'Success', 'Appointment rescheduled successfully');
+      setShowRescheduleConfirmation(false);
+      setRescheduleData(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reschedule appointment');
       showNotification('error', 'Error', 'Failed to reschedule appointment');
@@ -592,6 +622,12 @@ export const Calendar: React.FC = () => {
     } finally {
       setAppointmentLoading(false);
     }
+  };
+
+  // Handle reschedule cancel
+  const handleRescheduleCancel = () => {
+    setShowRescheduleConfirmation(false);
+    setRescheduleData(null);
   };
 
   return (
@@ -834,6 +870,20 @@ export const Calendar: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Reschedule Confirmation Modal */}
+        {showRescheduleConfirmation && rescheduleData && (
+          <RescheduleConfirmation
+            appointment={rescheduleData.appointment}
+            patient={rescheduleData.patient}
+            newDate={rescheduleData.newDate}
+            newStartTime={rescheduleData.newStartTime}
+            newEndTime={rescheduleData.newEndTime}
+            onConfirm={handleRescheduleConfirm}
+            onCancel={handleRescheduleCancel}
+            isLoading={appointmentLoading}
+          />
         )}
       </div>
     </DashboardLayout>
