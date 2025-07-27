@@ -861,7 +861,7 @@ export const Patients: React.FC = () => {
                     return (
                       <div
                         key={appointment.id}
-                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer"
+                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
@@ -877,17 +877,72 @@ export const Patients: React.FC = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-6 text-sm text-gray-600">
-                          <div className="flex items-center space-x-2">
-                            <span className="material-icons-round text-base">calendar_today</span>
-                            <span>{formatDate(appointment.date)}</span>
+                        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                          <div className="flex items-center space-x-6">
+                            <div className="flex items-center space-x-2">
+                              <span className="material-icons-round text-base">calendar_today</span>
+                              <span>{formatDate(appointment.date)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="material-icons-round text-base">schedule</span>
+                              <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                            </div>
                           </div>
+
+                          {/* Action Buttons */}
                           <div className="flex items-center space-x-2">
-                            <span className="material-icons-round text-base">schedule</span>
-                            <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                            {/* Show Consultation Details only for completed appointments */}
+                            {appointment.status === 'Completed' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Handle consultation details
+                                  console.log('View consultation details:', appointment.id);
+                                }}
+                                className="px-6 py-2 bg-success-500 hover:bg-success-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                                title="Consultation Details"
+                              >
+                                <div className="relative z-10 flex items-center justify-center">
+                                  <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">description</span>
+                                  <span className="relative z-10">Consultation Details</span>
+                                </div>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle delete appointment
+                                console.log('Delete appointment:', appointment.id);
+                              }}
+                              className="px-6 py-2 bg-error-500 hover:bg-error-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                              title="Delete"
+                            >
+                              <div className="relative z-10 flex items-center justify-center">
+                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">delete</span>
+                                <span className="relative z-10">Delete</span>
+                              </div>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle edit appointment
+                                console.log('Edit appointment:', appointment.id);
+                              }}
+                              className="px-6 py-2 bg-primary-500 hover:bg-primary-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                              title="Edit"
+                            >
+                              <div className="relative z-10 flex items-center justify-center">
+                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">edit</span>
+                                <span className="relative z-10">Edit</span>
+                              </div>
+                            </button>
                           </div>
                         </div>
-                        
+
+                        {/* Remove the old action buttons section */}
+
                         {appointment.notes && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <p className="text-sm text-gray-700">
