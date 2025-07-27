@@ -51,3 +51,11 @@ export interface PatientListResponse {
     limit: number;
     offset: number;
 }
+
+// Patient summary statistics
+export interface PatientSummary {
+    total_patients: number;
+    new_patients: number;
+    patients_with_follow_up: number;
+    patients_with_email: number;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
@@ -10,7 +10,7 @@ import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Pagination } from '../components/common/Pagination';
-import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
+import { Patient, PatientCreate, PatientUpdate, PatientSummary } from '../types/Patient';
 import { PatientService } from '../services/patientService';
 import { useNotification } from '../context/NotificationContext';
 
@@ -23,16 +23,37 @@ export const Patients: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
+  // Patient summary state
+  const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5); // Changed to state variable
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const { showNotification } = useNotification();
+
+  // Load patient summary statistics
+  const loadPatientSummary = async () => {
+    setSummaryLoading(true);
+    try {
+      const summary = await PatientService.getPatientSummary();
+      setPatientSummary(summary);
+    } catch (err) {
+      console.error('Error loading patient summary:', err);
+      // Don't show error notification for summary as it's not critical
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   // Load patients from API
   const loadPatients = async (page: number = 1) => {
@@ -52,9 +73,46 @@ export const Patients: React.FC = () => {
     }
   };
 
-  // Load patients on component mount
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string, page: number = 1) => {
+    if (!query.trim()) {
+      loadPatients(page);
+      return;
+    }
+
+    setIsSearching(true);
+    setError(null);
+    try {
+      const offset = (page - 1) * itemsPerPage;
+      const response = await PatientService.searchPatients(query.trim(), offset, itemsPerPage);
+      setPatients(response.data);
+      setTotalPatients(response.total);
+      setCurrentPage(page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search patients');
+      console.error('Error searching patients:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [itemsPerPage]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery, 1);
+      } else {
+        loadPatients(1);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
+
+  // Load initial data on component mount
   useEffect(() => {
     loadPatients(1);
+    loadPatientSummary();
   }, []);
 
   // Reload patients when itemsPerPage changes
@@ -82,6 +140,8 @@ export const Patients: React.FC = () => {
       setViewMode('detail');
       setSelectedPatient(newPatient);
       setError(null);
+      // Refresh summary statistics after creating a patient
+      loadPatientSummary();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create patient');
       console.error('Error creating patient:', err);
@@ -128,6 +188,9 @@ export const Patients: React.FC = () => {
       setSelectedPatient(null);
       setViewMode('grid');
 
+      // Refresh summary statistics after deleting a patient
+      loadPatientSummary();
+
       // Show success notification
       if (deletedPatient) {
         showNotification(
@@ -166,6 +229,38 @@ export const Patients: React.FC = () => {
     }
   };
 
+  // Handle patient export
+  const handleExportPatients = async () => {
+    setIsExporting(true);
+    try {
+      await PatientService.exportPatients();
+      showNotification('success', 'Export Successful', 'Patients data has been exported successfully');
+    } catch (err) {
+      console.error('Error exporting patients:', err);
+      showNotification('error', 'Export Failed', err instanceof Error ? err.message : 'Failed to export patients');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Handle refresh with animation
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadPatients(currentPage);
+      await loadPatientSummary();
+      showNotification('success', 'Refreshed', 'Patient data has been refreshed successfully');
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      showNotification('error', 'Refresh Failed', 'Failed to refresh patient data');
+    } finally {
+      // Add a small delay to show the animation even if the request is very fast
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  };
+
   const calculateAge = (dateOfBirth: string): number => {
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
@@ -177,11 +272,8 @@ export const Patients: React.FC = () => {
     return age;
   };
 
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    patient.phone.includes(searchQuery)
-  );
+  // Remove the filteredPatients filter since we're now using API search
+  const displayedPatients = patients;
 
   const renderHeader = () => (
     <div className="card mb-8">
@@ -240,13 +332,19 @@ export const Patients: React.FC = () => {
           <Button
             variant="secondary"
             icon="refresh"
-            onClick={() => loadPatients(currentPage)}
-            disabled={isLoading}
+            onClick={handleRefresh}
+            disabled={isLoading || isRefreshing}
+            className={isRefreshing ? 'animate-spin' : ''}
           >
-            Refresh
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button variant="secondary" icon="download">
-            Export
+          <Button
+            variant="secondary"
+            icon="download"
+            onClick={handleExportPatients}
+            disabled={isExporting || isLoading}
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
           <Button
             variant="primary"
@@ -261,26 +359,28 @@ export const Patients: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-neutral-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-success-600">{patients.length}</p>
+          <p className="text-2xl font-bold text-success-600">
+            {summaryLoading ? '...' : patientSummary?.total_patients || patients.length}
+          </p>
           <p className="text-sm text-neutral-600">Total Patients</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {patients.filter(p => p.date_of_birth && calculateAge(p.date_of_birth) < 65).length}
+            {summaryLoading ? '...' : patientSummary?.new_patients || 0}
           </p>
-          <p className="text-sm text-neutral-600">Under 65</p>
+          <p className="text-sm text-neutral-600">New Patients</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-blue-600">
+            {summaryLoading ? '...' : patientSummary?.patients_with_follow_up || 0}
+          </p>
+          <p className="text-sm text-neutral-600">Follow-up Patients</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {patients.filter(p => p.email).length}
+            {summaryLoading ? '...' : patientSummary?.patients_with_email || patients.filter(p => p.email).length}
           </p>
           <p className="text-sm text-neutral-600">With Email</p>
-        </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold text-warning-600">
-            {patients.filter(p => !p.date_of_birth).length}
-          </p>
-          <p className="text-sm text-neutral-600">Missing DOB</p>
         </div>
       </div>
     </div>
@@ -365,7 +465,7 @@ export const Patients: React.FC = () => {
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-      {filteredPatients.map((patient, index) => renderPatientCard(patient, index))}
+      {displayedPatients.map((patient, index) => renderPatientCard(patient, index))}
     </div>
   );
 
@@ -382,7 +482,7 @@ export const Patients: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPatients.map((patient, index) => (
+            {displayedPatients.map((patient, index) => (
               <tr
                 key={patient.id}
                 className="border-b border-neutral-100 hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-blue-50/30 transition-all duration-300 cursor-pointer slide-up-element"
@@ -625,7 +725,7 @@ export const Patients: React.FC = () => {
         {viewMode === 'grid' && renderGridView()}
         {viewMode === 'list' && renderListView()}
 
-        {filteredPatients.length === 0 && (
+        {displayedPatients.length === 0 && (
           <div className="card text-center py-12">
             <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
               <span className="material-icons-round text-neutral-400 text-3xl">search_off</span>

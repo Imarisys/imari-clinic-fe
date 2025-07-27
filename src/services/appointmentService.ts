@@ -62,9 +62,31 @@ export class AppointmentService {
     return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?${params.toString()}`);
   }
 
-  static async getTodayAppointments(): Promise<Appointment[]> {
-    const today = new Date().toISOString().split('T')[0];
-    // Use the API's query parameters for filtering by date
-    return this.listAppointmentsByRange(today, 1);
+  // Fetch appointments for today (use start_date and days=1, remove duplicate mock/export)
+  static async getTodaysAppointments(): Promise<Appointment[]> {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    // Use start_date and days=1 as required by API spec
+    return this.request<Appointment[]>(`${API_CONFIG.endpoints.appointments.list}?start_date=${dateStr}&days=1`);
+  }
+
+  static async updateAppointmentStatus(id: string, status: 'Booked' | 'Cancelled' | 'Completed' | 'No Show'): Promise<Appointment> {
+    // Mock: just return the updated appointment
+    return {
+      id,
+      patient_id: '1',
+      patient_first_name: 'John',
+      patient_last_name: 'Doe',
+      date: '2025-07-21',
+      start_time: '09:00:00',
+      end_time: '09:30:00',
+      type: 'Consultation',
+      status,
+      title: 'Consultation with John Doe',
+      notes: null
+    };
   }
 }

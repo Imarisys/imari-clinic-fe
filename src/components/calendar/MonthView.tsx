@@ -84,14 +84,20 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
   const monthDays = getMonthDays(currentDate);
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-7 gap-px bg-gray-200">
-        {weekDays.map(day => (
-          <div key={day} className="bg-white p-2 text-sm font-medium text-gray-600 text-center">
+    <div className="w-full h-full flex flex-col">
+      <div className="grid grid-cols-7 gap-px bg-gray-200 flex-shrink-0">
+        {weekDays.map((day, index) => (
+          <div
+            key={day}
+            className="bg-white p-2 text-sm font-medium text-gray-600 text-center slide-up-element"
+            style={{ animationDelay: `${index * 0.02}s` }}
+          >
             {day}
           </div>
         ))}
+      </div>
 
+      <div className="grid grid-cols-7 gap-px bg-gray-200 flex-1" style={{ height: 'calc(100vh - 320px)' }}>
         {monthDays.map((date, index) => {
           const dateString = date.toISOString().split('T')[0];
           const dayAppointments = getAppointmentsForDate(dateString);
@@ -99,9 +105,10 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
           return (
             <div
               key={index}
-              className={`bg-white min-h-[120px] p-2 border-t relative cursor-pointer hover:bg-gray-50 transition-colors ${
+              className={`bg-white min-h-[120px] p-2 border-t relative cursor-pointer hover:bg-gray-50 transition-colors slide-up-element ${
                 isCurrentMonth(date) ? 'bg-white' : 'bg-gray-50'
               }`}
+              style={{ animationDelay: `${index * 0.01}s` }}
               onClick={() => onDayClick && onDayClick(date)}
             >
               <div className={`text-sm ${
@@ -115,12 +122,13 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
               </div>
 
               <div className="mt-1 space-y-1">
-                {dayAppointments.slice(0, 3).map((apt) => {
+                {dayAppointments.slice(0, 3).map((apt, aptIndex) => {
                   const statusColors = getStatusColor(apt.status);
                   return (
                     <div
                       key={apt.id}
-                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity`}
+                      className={`text-xs ${statusColors.bg} ${statusColors.text} p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity slide-up-element`}
+                      style={{ animationDelay: `${(index * 0.01) + (aptIndex * 0.005)}s` }}
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent day click when clicking appointment
                         onAppointmentClick && onAppointmentClick(apt.id);
@@ -132,7 +140,10 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
                   );
                 })}
                 {dayAppointments.length > 3 && (
-                  <div className="text-xs text-gray-500 pl-1">
+                  <div 
+                    className="text-xs text-gray-500 pl-1 slide-up-element"
+                    style={{ animationDelay: `${(index * 0.01) + 0.015}s` }}
+                  >
                     +{dayAppointments.length - 3} more
                   </div>
                 )}

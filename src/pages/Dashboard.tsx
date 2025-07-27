@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { weatherService } from '../services/weatherService';
 import { WeatherResponse } from '../types/Weather';
@@ -28,12 +28,23 @@ export const Dashboard: React.FC = () => {
   const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
   const [appointmentLoading, setAppointmentLoading] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
 
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+
+  // Load patients for appointment booking
+  const loadPatients = async () => {
+    try {
+      const response = await PatientService.listPatients();
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error loading patients:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -53,7 +64,7 @@ export const Dashboard: React.FC = () => {
     const fetchTodayAppointments = async () => {
       try {
         setAppointmentsLoading(true);
-        const todayAppointments = await AppointmentService.getTodayAppointments();
+        const todayAppointments = await AppointmentService.getTodaysAppointments();
         setAppointments(todayAppointments);
         setAppointmentsError(null);
       } catch (error) {
@@ -216,7 +227,7 @@ export const Dashboard: React.FC = () => {
       showNotification('success', 'Success', 'Appointment created successfully');
 
       // Refresh today's appointments
-      const todayAppointments = await AppointmentService.getTodayAppointments();
+      const todayAppointments = await AppointmentService.getTodaysAppointments();
       setAppointments(todayAppointments);
     } catch (err) {
       console.error('Error creating appointment:', err);
@@ -291,15 +302,73 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter patients based on search query
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.phone && patient.phone.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      loadPatients();
+      return;
+    }
+
+    setIsSearchingPatients(true);
+    try {
+      const response = await PatientService.searchPatients(query.trim(), 0, 100);
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error searching patients:', err);
+      showNotification('error', 'Error', 'Failed to search patients');
+    } finally {
+      setIsSearchingPatients(false);
+    }
+  }, []);
+
+  // Debounced search effect for patients
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery);
+      } else {
+        loadPatients();
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
+
+  // Remove the filteredPatients filter since we're now using API search
+  const displayedPatients = patients;
+
+  // Handle starting an appointment
+  const handleStartAppointment = async (appointmentId: string) => {
+    const updated = await AppointmentService.updateAppointmentStatus(appointmentId, 'Booked'); // Change to 'Booked' or 'Completed' as needed
+    setAppointments(prev =>
+      prev.map(appt =>
+        appt.id === appointmentId ? { ...appt, status: updated.status } : appt
+      )
+    );
+    showNotification('success', 'Appointment Started', `Appointment #${appointmentId} is now In Progress.`);
+  };
 
   return (
     <DashboardLayout>
+      {/* Welcome Header - only show on Dashboard */}
+      <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-800 mb-1">
+              Welcome back, Dr. Badri
+            </h2>
+            <p className="text-neutral-600">
+              Today is {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-8">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -366,9 +435,35 @@ export const Dashboard: React.FC = () => {
                             {appointment.patient_first_name} {appointment.patient_last_name}
                           </p>
                           <p className="text-neutral-600 text-sm">{appointment.type}</p>
+                          <div className="flex items-center mt-1 space-x-2">
+                            <span className="material-icons-round text-neutral-400 text-sm">schedule</span>
+                            <span className="text-xs text-neutral-500">
+                              {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
+                            </span>
+                          </div>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(mapAppointmentStatus(appointment.status))}`}>
-                          {appointment.status}
+                        <div className="flex items-center space-x-3">
+                          <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(mapAppointmentStatus(appointment.status))}`}>
+                            {appointment.status}
+                          </div>
+                          {appointment.status === 'Booked' && (
+                            <button
+                              onClick={() => navigate(`/appointment/${appointment.id}/start`)}
+                              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                            >
+                              <span className="material-icons-round text-sm">play_arrow</span>
+                              <span>Start</span>
+                            </button>
+                          )}
+                          {appointment.status === 'Completed' && (
+                            <button
+                              onClick={() => navigate(`/appointment/${appointment.id}/start`)}
+                              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                            >
+                              <span className="material-icons-round text-sm">visibility</span>
+                              <span>View</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -568,7 +663,7 @@ export const Dashboard: React.FC = () => {
                           {/* Patient list - flexible height */}
                           <div className="flex-1 min-h-0">
                             <div className="space-y-3 h-full overflow-y-auto">
-                              {filteredPatients.map((patient) => (
+                              {displayedPatients.map((patient) => (
                                 <div
                                   key={patient.id}
                                   onClick={() => handlePatientSelect(patient)}
@@ -588,12 +683,12 @@ export const Dashboard: React.FC = () => {
                                   </div>
                                 </div>
                               ))}
-                              {filteredPatients.length === 0 && searchQuery && (
+                              {displayedPatients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients found matching "{searchQuery}"
                                 </div>
                               )}
-                              {filteredPatients.length === 0 && !searchQuery && (
+                              {displayedPatients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients available. Create a new patient to get started.
                                 </div>

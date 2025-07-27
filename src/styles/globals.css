@@ -99,11 +99,11 @@
   }
 
   .nav-item-active {
-    @apply bg-primary-100 text-primary-700 shadow-soft;
+    @apply bg-primary-600/90 text-white shadow-medium;
   }
 
   .nav-item-inactive {
-    @apply text-neutral-300 hover:bg-primary-700/50 hover:text-white;
+    @apply text-primary-200 hover:bg-primary-700/50 hover:text-white;
   }
 
   /* Status indicators - clean colors */

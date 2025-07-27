@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Patients } from './pages/Patients';
+import { AppointmentStart } from './pages/AppointmentStart';
 import { NotificationProvider } from './context/NotificationContext';
 import { TranslationProvider } from './context/TranslationContext';
 import './styles/globals.css';
@@ -32,6 +33,10 @@ function App() {
             <Route
               path="/patients"
               element={isAuthenticated ? <Patients /> : <Navigate to="/login" replace />}
+            />
+            <Route
+              path="/appointment/:appointmentId/start"
+              element={isAuthenticated ? <AppointmentStart /> : <Navigate to="/login" replace />}
             />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>

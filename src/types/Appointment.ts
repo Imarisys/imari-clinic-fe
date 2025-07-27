@@ -1,5 +1,5 @@
 // Appointment status and type enums matching OpenAPI schema
-export type AppointmentStatus = 'Booked' | 'Cancelled' | 'Completed' | 'No Show';
+export type AppointmentStatus = 'Booked' | 'Cancelled' | 'Completed' | 'No Show' | 'In Progress';
 export type AppointmentType = 'Consultation' | 'Follow Up' | 'Emergency' | 'Routine Check';
 
 // Base Appointment interface matching API schema

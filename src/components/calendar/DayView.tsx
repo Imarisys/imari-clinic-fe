@@ -1,196 +1,249 @@
-import React, { useRef } from 'react';
-import { useTimeSlotDrag, TimeSlot } from '../../hooks/useTimeSlotDrag';
-import { CurrentTimeLine } from './CurrentTimeLine';
-
-interface AppointmentData {
-  id: string;
-  patientName: string;
-  time: string;
-  duration: number;
-  type: string;
-  status: string;
-  title: string;
-}
+import React from 'react';
+import { Appointment, AppointmentStatus } from '../../types/Appointment';
 
 interface DayViewProps {
-  date: Date;
-  appointments: AppointmentData[];
-  onAppointmentClick?: (appointmentId: string) => void;
-  onTimeSlotSelected?: (slot: TimeSlot) => void;
+  currentDate: Date;
+  appointments: Appointment[];
+  onTimeSlotClick: (date: string, time: string) => void;
+  onAppointmentClick: (appointment: Appointment) => void;
+  onAppointmentDrop?: (appointment: Appointment, newDate: string, newTime: string) => void;
+  getAppointmentDate: (apt: Appointment) => string;
+  formatAppointmentTime: (apt: Appointment) => string;
+  getAppointmentDuration: (apt: Appointment) => number;
+  getAppointmentBackgroundColor: (status: AppointmentStatus) => string;
+  getAppointmentTextColor: (status: AppointmentStatus) => string;
+  getPatientName: (apt: Appointment) => string;
+  // Add drag and drop props similar to WeeklyView
+  handleMouseUp: () => void;
+  handleMouseDown: (e: React.MouseEvent, date: string, time: string) => void;
+  handleMouseEnter: (date: string, time: string) => void;
+  isSlotSelected: (date: string, time: string) => boolean;
 }
 
-export const DayView = ({ date, appointments, onAppointmentClick, onTimeSlotSelected }: DayViewProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dateString = date.toISOString().split('T')[0];
+export const DayView: React.FC<DayViewProps> = ({
+  currentDate,
+  appointments,
+  onTimeSlotClick,
+  onAppointmentClick,
+  onAppointmentDrop,
+  getAppointmentDate,
+  formatAppointmentTime,
+  getAppointmentDuration,
+  getAppointmentBackgroundColor,
+  getAppointmentTextColor,
+  getPatientName,
+  handleMouseUp,
+  handleMouseDown,
+  handleMouseEnter,
+  isSlotSelected,
+}) => {
+  const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
+  const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
 
-  const {
-    isDragging,
-    timeSlots,
-    handleMouseDown,
-    handleMouseMove,
-    handleMouseUp,
-    getSelectionStyle,
-    conflictMessage
-  } = useTimeSlotDrag(onTimeSlotSelected || (() => {}), appointments);
-
-  const getTimePosition = (time: string): number => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const startHour = 8; // 8 AM
-    const totalMinutes = (hours - startHour) * 60 + minutes;
-    return Math.max(0, Math.min(100, (totalMinutes / (10 * 60)) * 100)); // 10 hours total (8 AM to 6 PM)
+  // Handle appointment drag start
+  const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
+    e.stopPropagation();
+    setDraggedAppointment(appointment);
+    e.dataTransfer.setData('text/plain', appointment.id);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
-  const getAppointmentHeight = (duration: number): number => {
-    // Calculate height as percentage of total container height
-    const heightPercentage = (duration / (10 * 60)) * 100; // 10 hours = 600 minutes
-    return Math.max(4, Math.min(heightPercentage, 20)); // Min 4%, max 20% of container
+  // Handle appointment drag end
+  const handleAppointmentDragEnd = () => {
+    setDraggedAppointment(null);
+    setDragPreviewPosition(null);
   };
 
-  const formatTimeDisplay = (time: string): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const hour12 = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  // Handle drop on time slot
+  const handleTimeSlotDrop = (e: React.DragEvent, date: string, time: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedAppointment && onAppointmentDrop) {
+      onAppointmentDrop(draggedAppointment, date, time);
+    }
+    setDraggedAppointment(null);
+    setDragPreviewPosition(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Booked':
-        return {
-          bg: 'bg-blue-100 hover:bg-blue-200',
-          text: 'text-blue-800',
-          border: 'border-blue-200'
-        };
-      case 'Completed':
-        return {
-          bg: 'bg-green-100 hover:bg-green-200',
-          text: 'text-green-800',
-          border: 'border-green-200'
-        };
-      case 'Cancelled':
-        return {
-          bg: 'bg-red-100 hover:bg-red-200',
-          text: 'text-red-800',
-          border: 'border-red-200'
-        };
-      case 'No Show':
-        return {
-          bg: 'bg-orange-100 hover:bg-orange-200',
-          text: 'text-orange-800',
-          border: 'border-orange-200'
-        };
-      default:
-        return {
-          bg: 'bg-gray-100 hover:bg-gray-200',
-          text: 'text-gray-800',
-          border: 'border-gray-200'
-        };
+  // Handle drag over to allow drop and show preview
+  const handleTimeSlotDragOver = (e: React.DragEvent, date: string, time: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedAppointment) {
+      setDragPreviewPosition({ date, time });
     }
   };
 
-  return (
-    <div className="w-full h-[600px] overflow-hidden">
-      {/* Conflict Message */}
-      {conflictMessage && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <span className="text-sm font-medium">{conflictMessage}</span>
-          </div>
-        </div>
-      )}
+  // Handle drag leave to hide preview when leaving time slot
+  const handleTimeSlotDragLeave = (e: React.DragEvent) => {
+    // Only hide preview if we're actually leaving the time slot area
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const { clientX, clientY } = e;
 
-      <div className="relative w-full h-full border rounded-lg bg-white flex">
-        {/* Time slots */}
-        <div className="w-20 flex-shrink-0 border-r border-gray-300">
-          {timeSlots.filter((_, index) => index % 4 === 0).map((time) => (
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      setDragPreviewPosition(null);
+    }
+  };
+
+  // Create 15-minute time slots from 8 AM to 6 PM (40 slots total)
+  const timeSlots = Array.from({ length: 40 }, (_, i) => {
+    const hour = Math.floor(i / 4) + 8;
+    const minutes = (i % 4) * 15;
+    return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  });
+
+  const dayStr = currentDate.toISOString().split('T')[0];
+
+  return (
+    <div className="card overflow-hidden">
+      {/* Day header - similar to week header but for a single day */}
+      <div className="grid grid-cols-[80px_1fr] border-b border-gray-300">
+        <div className="p-2"></div>
+        <div
+          className={`p-4 text-center slide-up-element ${
+            currentDate.toDateString() === new Date().toDateString()
+              ? 'bg-primary-50 border-primary-200'
+              : 'bg-neutral-50'
+          }`}
+          style={{ animationDelay: '0.05s' }}
+        >
+          <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+          <p className={`text-lg font-semibold ${
+            currentDate.toDateString() === new Date().toDateString()
+              ? 'text-primary-600'
+              : 'text-neutral-800'
+          }`}>
+            {currentDate.getDate()}
+          </p>
+        </div>
+      </div>
+
+      {/* Time slots grid - 15 minute precision with drag and drop */}
+      <div
+        className="flex-1 overflow-y-auto"
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ height: 'calc(100vh - 280px)' }}
+      >
+        {timeSlots.map((time, timeIndex) => {
+          const isSelected = isSlotSelected(dayStr, time);
+          const dayAppointments = appointments.filter(apt => {
+            const aptDate = getAppointmentDate(apt);
+            const aptTime = formatAppointmentTime(apt);
+            const aptHour = parseInt(aptTime.split(':')[0]);
+            const aptMinute = parseInt(aptTime.split(':')[1]);
+            const timeHour = parseInt(time.split(':')[0]);
+            const timeMinute = parseInt(time.split(':')[1]);
+
+            return aptDate === dayStr &&
+              aptHour === timeHour &&
+              aptMinute >= timeMinute &&
+              aptMinute < timeMinute + 15;
+          });
+
+          // Define border classes for visual hierarchy
+          let borderBottomClass;
+          if (timeIndex % 4 === 3) {
+            borderBottomClass = 'border-b border-gray-300'; // Hour boundaries
+          } else if (timeIndex % 2 === 1) {
+            borderBottomClass = 'border-b border-gray-200'; // 30-minute boundaries
+          } else {
+            borderBottomClass = 'border-b border-gray-100'; // 15-minute boundaries
+          }
+
+          return (
             <div
               key={time}
-              className="h-[60px] border-b border-gray-300 px-2 py-1 text-xs text-gray-500 text-right flex items-start"
+              className="grid grid-cols-[80px_1fr] hover:bg-primary-50 transition-all duration-300 slide-up-element"
+              style={{ animationDelay: `${timeIndex * 0.02}s` }}
             >
-              {formatTimeDisplay(time)}
-            </div>
-          ))}
-        </div>
+              {/* Time label column - show hour labels in the middle of each hour block */}
+              <div className="p-2 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300 relative">
+                {timeIndex % 4 === 1 ? ( // Show in the second slot (middle of the hour)
+                  <span className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    {time.split(':')[0]}:00
+                  </span>
+                ) : null}
+              </div>
 
-        {/* Appointments area */}
-        <div
-          className="flex-1 relative overflow-hidden select-none"
-          ref={containerRef}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {/* 15-minute grid lines and drag zones */}
-          <div className="absolute inset-0">
-            {timeSlots.map((time, index) => (
+              {/* Time slot column with drag and drop */}
               <div
-                key={`${time}-${index}`}
-                className="h-[15px] border-b border-gray-200 hover:bg-blue-50/30 cursor-pointer relative"
-                style={getSelectionStyle(dateString, index)}
-                onMouseDown={(e) => handleMouseDown(e, dateString, containerRef)}
-                onMouseMove={(e) => handleMouseMove(e, dateString, containerRef)}
+                className={`p-1 min-h-[15px] relative group cursor-pointer ${borderBottomClass} ${isSelected ? 'bg-blue-200 border-blue-400' : ''}`}
+                style={{
+                  backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : '',
+                  borderColor: isSelected ? '#3b82f6' : ''
+                }}
+                onClick={() => onTimeSlotClick(dayStr, time)}
+                onMouseDown={(e) => handleMouseDown(e, dayStr, time)}
+                onMouseEnter={() => handleMouseEnter(dayStr, time)}
+                onDragOver={(e) => handleTimeSlotDragOver(e, dayStr, time)}
+                onDrop={(e) => handleTimeSlotDrop(e, dayStr, time)}
+                onDragLeave={handleTimeSlotDragLeave}
               >
-                {/* Show time labels for quarter hours */}
-                {index % 4 !== 0 && (
-                  <div className="absolute left-1 top-0 text-xs text-gray-400 pointer-events-none">
-                    {time}
+                {/* Appointments in this time slot */}
+                {dayAppointments.map((appointment, aptIndex) => (
+                  <div
+                    key={appointment.id}
+                    className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
+                    style={{
+                      top: `${aptIndex * 2}px`,
+                      height: `${Math.max(Math.min(getAppointmentDuration(appointment) / 15 * 15, 60), 15)}px`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      backgroundColor: getAppointmentBackgroundColor(appointment.status),
+                      color: getAppointmentTextColor(appointment.status)
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAppointmentClick(appointment);
+                    }}
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    draggable
+                    onDragStart={(e) => handleAppointmentDragStart(e, appointment)}
+                    onDragEnd={handleAppointmentDragEnd}
+                  >
+                    <p className="font-semibold truncate">{getPatientName(appointment)}</p>
+                    <p className="opacity-90 truncate">{appointment.type}</p>
+                  </div>
+                ))}
+
+                {/* Drag preview shadow - shows where appointment will be dropped */}
+                {draggedAppointment && dragPreviewPosition &&
+                 dragPreviewPosition.date === dayStr && dragPreviewPosition.time === time && (
+                  <div
+                    className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-lg border-2 border-dashed border-primary-400 bg-primary-100/50 pointer-events-none z-20"
+                    style={{
+                      top: '1px',
+                      height: `${Math.max(Math.min(getAppointmentDuration(draggedAppointment) / 15 * 15, 60), 15)}px`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      backdropFilter: 'blur(1px)',
+                    }}
+                  >
+                    <div className="text-primary-700 font-medium opacity-75">
+                      {getPatientName(draggedAppointment)}
+                    </div>
+                    <div className="text-primary-600 text-xs opacity-60">
+                      Moving...
+                    </div>
                   </div>
                 )}
+
+                {/* Hover effect */}
+                <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
               </div>
-            ))}
-          </div>
-
-          {/* Current Time Line - only show for today */}
-          {date.toDateString() === new Date().toDateString() && (
-            <CurrentTimeLine startHour={8} endHour={18} />
-          )}
-
-          {/* Appointments */}
-          <div className="absolute inset-0 pointer-events-none">
-            {appointments.map((appointment) => {
-              const statusColors = getStatusColor(appointment.status);
-              return (
-                <div
-                  key={appointment.id}
-                  className={`absolute left-1 right-1 ${statusColors.bg} ${statusColors.text}
-                    rounded-lg border ${statusColors.border} p-2 cursor-pointer
-                    transition-colors shadow-sm hover:shadow-md overflow-hidden
-                    flex items-center justify-between pointer-events-auto z-10`}
-                  style={{
-                    top: `${getTimePosition(appointment.time)}%`,
-                    height: `${getAppointmentHeight(appointment.duration)}%`,
-                  }}
-                  onClick={() => onAppointmentClick?.(appointment.id)}
-                >
-                  <div className="flex-1 truncate text-left">
-                    <span className="font-medium text-sm">{appointment.title}</span>
-                    <span className="mx-2 opacity-75">•</span>
-                    <span className="text-xs opacity-90">{appointment.patientName}</span>
-                    <span className="mx-2 opacity-60">•</span>
-                    <span className="text-xs opacity-75">{appointment.type}</span>
-                  </div>
-                  <div className="text-xs opacity-60 ml-2 flex-shrink-0">
-                    {formatTimeDisplay(appointment.time)} • <span className="font-bold">{appointment.status}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Drag selection overlay */}
-          {isDragging && (
-            <div className="absolute inset-0 pointer-events-none z-20">
-              <div className="absolute inset-x-1 bg-blue-500/20 border-2 border-blue-500 border-dashed rounded"
-                   style={{
-                     top: '0px',
-                     height: '100%'
-                   }}
-              />
             </div>
-          )}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

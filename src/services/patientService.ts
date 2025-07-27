@@ -1,5 +1,5 @@
 import { API_CONFIG, buildApiUrl } from '../config/api';
-import { Patient, PatientCreate, PatientUpdate, PatientRead, PatientListResponse } from '../types/Patient';
+import { Patient, PatientCreate, PatientUpdate, PatientRead, PatientListResponse, PatientSummary } from '../types/Patient';
 
 // Helper function to extract error message from response
 const extractErrorMessage = async (response: Response): Promise<string> => {
@@ -63,6 +63,105 @@ export class PatientService {
         throw error;
       }
       throw new Error('Network error occurred while loading patients');
+    }
+  }
+
+  // Search patients by query (first name, last name, phone, email)
+  static async searchPatients(query: string, offset = 0, limit = 100): Promise<PatientListResponse> {
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = buildApiUrl(`${API_CONFIG.endpoints.patients.search}?term=${encodedQuery}&offset=${offset}&limit=${limit}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while searching patients');
+    }
+  }
+
+  // Get patient summary statistics
+  static async getPatientSummary(): Promise<PatientSummary> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.summary);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while fetching patient summary');
+    }
+  }
+
+  // Export patients as Excel file
+  static async exportPatients(): Promise<void> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.export);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      // Get the filename from the response headers or use a default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'patients_export.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Get the blob data
+      const blob = await response.blob();
+
+      // Create a download link and trigger the download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while exporting patients');
     }
   }
 

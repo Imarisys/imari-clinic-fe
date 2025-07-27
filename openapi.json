@@ -106,6 +106,115 @@
         }
       }
     },
+    "/api/v1/patients/search": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Search Patients",
+        "description": "Search patients using full text search across all patient fields",
+        "operationId": "search_patients_api_v1_patients_search_get",
+        "parameters": [
+          {
+            "name": "term",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Search term to find patients by name, email, phone, or address",
+              "title": "Term"
+            },
+            "description": "Search term to find patients by name, email, phone, or address"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of records to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of records to skip"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of records to return",
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of records to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/summary": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Get Patient Summary",
+        "description": "Get patient summary statistics including total patients, new patients, and follow-up patients",
+        "operationId": "get_patient_summary_api_v1_patients_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/export": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Export Patients",
+        "description": "Export all patients as an Excel file",
+        "operationId": "export_patients_api_v1_patients_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}": {
       "get": {
         "tags": [
@@ -148,13 +257,13 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "tags": [
           "patients"
         ],
         "summary": "Update Patient",
         "description": "Update an existing patient",
-        "operationId": "update_patient_api_v1_patients__patient_id__put",
+        "operationId": "update_patient_api_v1_patients__patient_id__patch",
         "parameters": [
           {
             "name": "patient_id",
@@ -718,6 +827,58 @@
         }
       }
     },
+    "/api/v1/weather/{country_code}/{city}": {
+      "get": {
+        "tags": [
+          "weather"
+        ],
+        "summary": "Get Weather",
+        "description": "Get weather information and 24-hour forecast for a specified country code and city.\n\nArgs:\n    country_code (str): Two-letter country code (e.g., \"TN\", \"DE\", \"FR\")\n    city (str): City name (e.g., \"Tunis\", \"Berlin\", \"Paris\")\n\nReturns:\n    WeatherResponse: Weather information including location details and 24-hour forecast",
+        "operationId": "get_weather_api_v1_weather__country_code___city__get",
+        "parameters": [
+          {
+            "name": "country_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Country Code"
+            }
+          },
+          {
+            "name": "city",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "City"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -952,6 +1113,62 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HourlyForecast": {
+        "properties": {
+          "time": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Time"
+          },
+          "temperature_2m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Temperature 2M"
+          },
+          "relative_humidity_2m": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Relative Humidity 2M"
+          },
+          "precipitation": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Precipitation"
+          },
+          "weathercode": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weathercode"
+          },
+          "windspeed_10m": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Windspeed 10M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "temperature_2m",
+          "relative_humidity_2m",
+          "precipitation",
+          "weathercode",
+          "windspeed_10m"
+        ],
+        "title": "HourlyForecast"
       },
       "PatientCreate": {
         "properties": {
@@ -1190,6 +1407,35 @@
         ],
         "title": "PatientRead"
       },
+      "PatientSummary": {
+        "properties": {
+          "total_patients": {
+            "type": "integer",
+            "title": "Total Patients"
+          },
+          "new_patients": {
+            "type": "integer",
+            "title": "New Patients"
+          },
+          "patients_with_follow_up": {
+            "type": "integer",
+            "title": "Patients With Follow Up"
+          },
+          "patients_with_email": {
+            "type": "integer",
+            "title": "Patients With Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_patients",
+          "new_patients",
+          "patients_with_follow_up",
+          "patients_with_email"
+        ],
+        "title": "PatientSummary",
+        "description": "Summary statistics for patients"
+      },
       "PatientUpdate": {
         "properties": {
           "first_name": {
@@ -1338,6 +1584,115 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WeatherForecast": {
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "timezone_abbreviation": {
+            "type": "string",
+            "title": "Timezone Abbreviation"
+          },
+          "elevation": {
+            "type": "number",
+            "title": "Elevation"
+          },
+          "hourly_units": {
+            "$ref": "#/components/schemas/WeatherUnits"
+          },
+          "hourly": {
+            "$ref": "#/components/schemas/HourlyForecast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "timezone",
+          "timezone_abbreviation",
+          "elevation",
+          "hourly_units",
+          "hourly"
+        ],
+        "title": "WeatherForecast"
+      },
+      "WeatherResponse": {
+        "properties": {
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "coordinates": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Coordinates"
+          },
+          "forecast": {
+            "$ref": "#/components/schemas/WeatherForecast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "city",
+          "country",
+          "coordinates",
+          "forecast"
+        ],
+        "title": "WeatherResponse"
+      },
+      "WeatherUnits": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "temperature_2m": {
+            "type": "string",
+            "title": "Temperature 2M"
+          },
+          "relative_humidity_2m": {
+            "type": "string",
+            "title": "Relative Humidity 2M"
+          },
+          "precipitation": {
+            "type": "string",
+            "title": "Precipitation"
+          },
+          "weathercode": {
+            "type": "string",
+            "title": "Weathercode"
+          },
+          "windspeed_10m": {
+            "type": "string",
+            "title": "Windspeed 10M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "temperature_2m",
+          "relative_humidity_2m",
+          "precipitation",
+          "weathercode",
+          "windspeed_10m"
+        ],
+        "title": "WeatherUnits"
       }
     }
   }

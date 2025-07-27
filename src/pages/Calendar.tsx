@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { DayColumn } from '../components/calendar/DayColumn';
 import { MonthView } from '../components/calendar/MonthView';
+import { WeeklyView } from '../components/calendar/WeeklyView';
 import { DayView } from '../components/calendar/DayView';
 import { AppointmentDetail } from '../components/patients/AppointmentDetail';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
@@ -12,8 +12,8 @@ import { PatientService } from '../services/patientService';
 import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } from '../types/Appointment';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
-import { TimeSlot } from '../hooks/useTimeSlotDrag';
 import '../styles/calendar-day.css'; // Import the calendar day CSS
+import { RescheduleConfirmation } from '../components/calendar/RescheduleConfirmation';
 
 type CalendarView = 'month' | 'week' | 'day';
 
@@ -33,7 +33,23 @@ export const Calendar: React.FC = () => {
   const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+
+  // Reschedule confirmation state
+  const [showRescheduleConfirmation, setShowRescheduleConfirmation] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState<{
+    appointment: Appointment;
+    patient: Patient;
+    newDate: string;
+    newStartTime: string;
+    newEndTime: string;
+  } | null>(null);
+
+  // Drag and drop state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{date: string, time: string} | null>(null);
+  const [dragEnd, setDragEnd] = useState<{date: string, time: string} | null>(null);
 
   const { showNotification } = useNotification();
 
@@ -249,12 +265,37 @@ export const Calendar: React.FC = () => {
     setShowCreatePatientForm(false);
   };
 
-  // Filter patients based on search query
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.phone?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      loadPatients();
+      return;
+    }
+
+    setIsSearchingPatients(true);
+    try {
+      const response = await PatientService.searchPatients(query.trim(), 0, 100);
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error searching patients:', err);
+      showNotification('error', 'Error', 'Failed to search patients');
+    } finally {
+      setIsSearchingPatients(false);
+    }
+  }, []);
+
+  // Debounced search effect for patients
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery);
+      } else {
+        loadPatients();
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
 
   // Helper functions for date calculations
   const getViewStartDate = () => {
@@ -476,185 +517,143 @@ export const Calendar: React.FC = () => {
     </div>
   );
 
-  const renderWeekView = () => {
-    const weekStart = new Date(currentDate);
-    weekStart.setDate(currentDate.getDate() - currentDate.getDay());
-
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const day = new Date(weekStart);
-      day.setDate(weekStart.getDate() + i);
-      return day;
-    });
-
-    const timeSlots = Array.from({ length: 12 }, (_, i) => {
-      const hour = i + 8; // 8 AM to 8 PM
-      return `${hour.toString().padStart(2, '0')}:00`;
-    });
-
-    return (
-      <div className="card overflow-hidden">
-        {/* Week header */}
-        <div className="grid grid-cols-8 border-b border-gray-300">
-          <div className="p-4"></div>
-          {days.map((day, index) => (
-            <div
-              key={index}
-              className={`p-4 text-center slide-up-element ${
-                day.toDateString() === new Date().toDateString()
-                  ? 'bg-primary-50 border-primary-200'
-                  : 'bg-neutral-50'
-              }`}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <p className="text-sm text-neutral-500">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-              <p className={`text-lg font-semibold ${
-                day.toDateString() === new Date().toDateString()
-                  ? 'text-primary-600'
-                  : 'text-neutral-800'
-              }`}>
-                {day.getDate()}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Time slots grid */}
-        <div className="max-h-96 overflow-y-auto">
-          {timeSlots.map((time, timeIndex) => (
-            <div key={time} className="grid grid-cols-8 border-b border-gray-300 hover:bg-primary-50 transition-all duration-300">
-              <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
-                {time}
-              </div>
-              {days.map((day, dayIndex) => {
-                const dayStr = day.toISOString().split('T')[0];
-                const dayAppointments = appointments.filter(apt =>
-                  getAppointmentDate(apt) === dayStr &&
-                  formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
-                );
-
-                return (
-                  <div
-                    key={`${dayStr}-${time}`}
-                    className="p-2 min-h-[60px] relative group cursor-pointer border-r border-gray-200"
-                    onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
-                  >
-                    {dayAppointments.map((appointment, aptIndex) => (
-                      <div
-                        key={appointment.id}
-                        className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
-                        style={{
-                          top: `${aptIndex * 4}px`,
-                          height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          backgroundColor: getAppointmentBackgroundColor(appointment.status),
-                          color: getAppointmentTextColor(appointment.status)
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedAppointment(appointment as any);
-                        }}
-                      >
-                        <p className="font-semibold truncate">{getPatientName(appointment)}</p>
-                        <p className="opacity-90 truncate">{appointment.type}</p>
-                      </div>
-                    ))}
-                    <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+  // Drag and drop handlers
+  const handleMouseDown = (e: React.MouseEvent, date: string, time: string) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ date, time });
+    setDragEnd({ date, time });
+    console.log('Starting drag at:', date, time);
   };
 
-  const renderDayView = () => {
-    // Create time slots from 8 AM to 7 PM
-    const timeSlots = Array.from({ length: 12 }, (_, i) => {
-      const hour = i + 8; // 8 AM to 7 PM
-      return `${hour.toString().padStart(2, '0')}:00`;
+  const handleMouseEnter = (date: string, time: string) => {
+    if (isDragging && dragStart && dragStart.date === date) {
+      setDragEnd({ date, time });
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging && dragStart && dragEnd) {
+      const timeSlots = Array.from({ length: 40 }, (_, i) => {
+        const hour = Math.floor(i / 4) + 8;
+        const minutes = (i % 4) * 15;
+        return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      });
+
+      const startIndex = timeSlots.indexOf(dragStart.time);
+      const endIndex = timeSlots.indexOf(dragEnd.time);
+
+      if (startIndex !== -1 && endIndex !== -1) {
+        const minIndex = Math.min(startIndex, endIndex);
+        const maxIndex = Math.max(startIndex, endIndex);
+        const startTime = timeSlots[minIndex];
+        const endTime = timeSlots[maxIndex + 1] || timeSlots[maxIndex]; // End time is next slot or same if last
+
+        console.log('Drag completed:', {
+          date: dragStart.date,
+          startTime,
+          endTime
+        });
+
+        setSelectedTimeSlot({
+          date: dragStart.date,
+          time: startTime,
+          endTime
+        });
+
+        handleNewAppointmentClick();
+      }
+    }
+
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+  };
+
+  // Check if a slot is selected in the drag
+  const isSlotSelected = (date: string, time: string) => {
+    if (!isDragging || !dragStart || !dragEnd || dragStart.date !== date) {
+      return false;
+    }
+
+    const timeSlots = Array.from({ length: 40 }, (_, i) => {
+      const hour = Math.floor(i / 4) + 8;
+      const minutes = (i % 4) * 15;
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     });
 
-    const dayStr = currentDate.toISOString().split('T')[0];
+    const currentIndex = timeSlots.indexOf(time);
+    const startIndex = timeSlots.indexOf(dragStart.time);
+    const endIndex = timeSlots.indexOf(dragEnd.time);
 
-    return (
-      <div className="card overflow-hidden">
-        {/* Day header - similar to week header but for a single day */}
-        <div className="grid grid-cols-[80px_1fr] border-b border-gray-300">
-          <div className="p-2"></div>
-          <div
-            className={`p-4 text-center slide-up-element ${
-              currentDate.toDateString() === new Date().toDateString()
-                ? 'bg-primary-50 border-primary-200'
-                : 'bg-neutral-50'
-            }`}
-            style={{ animationDelay: '0.1s' }}
-          >
-            <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-            <p className={`text-lg font-semibold ${
-              currentDate.toDateString() === new Date().toDateString()
-                ? 'text-primary-600'
-                : 'text-neutral-800'
-            }`}>
-              {currentDate.getDate()}
-            </p>
-          </div>
-        </div>
+    if (currentIndex === -1 || startIndex === -1 || endIndex === -1) {
+      return false;
+    }
 
-        {/* Time slots grid - similar to week view but only one day column */}
-        <div className="max-h-96 overflow-y-auto">
-          {timeSlots.map((time, timeIndex) => {
-            const dayAppointments = appointments.filter(apt =>
-              getAppointmentDate(apt) === dayStr &&
-              formatAppointmentTime(apt).split(':')[0] === time.split(':')[0]
-            );
+    const minIndex = Math.min(startIndex, endIndex);
+    const maxIndex = Math.max(startIndex, endIndex);
 
-            return (
-              <div
-                key={time}
-                className="grid grid-cols-[80px_1fr] border-b border-gray-300 hover:bg-primary-50 transition-all duration-300 slide-up-element"
-                style={{ animationDelay: `${timeIndex * 0.05}s` }}
-              >
-                <div className="p-4 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300">
-                  {time}
-                </div>
-                <div
-                  className="p-2 min-h-[60px] relative group cursor-pointer"
-                  onClick={() => setSelectedTimeSlot({ date: dayStr, time })}
-                >
-                  {dayAppointments.map((appointment, aptIndex) => (
-                    <div
-                      key={appointment.id}
-                      className="absolute inset-x-1 rounded-lg p-2 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
-                      style={{
-                        top: `${aptIndex * 4}px`,
-                        height: `${Math.min(getAppointmentDuration(appointment), 60)}px`,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        backgroundColor: getAppointmentBackgroundColor(appointment.status),
-                        color: getAppointmentTextColor(appointment.status)
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedAppointment(appointment as any);
-                      }}
-                    >
-                      <p className="font-semibold truncate">{getPatientName(appointment)}</p>
-                      <p className="opacity-90 truncate">{appointment.type}</p>
-                    </div>
-                  ))}
-                  <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
+    return currentIndex >= minIndex && currentIndex <= maxIndex;
+  };
+
+  // Handle appointment rescheduling via drag and drop
+  const handleAppointmentDrop = async (appointment: Appointment, newDate: string, newTime: string) => {
+    // Calculate new end time based on appointment duration
+    const duration = getAppointmentDuration(appointment);
+    const [hours, minutes] = newTime.split(':').map(Number);
+    const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+
+    // Calculate end time
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    const newEndTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
+
+    // Load patient data and show reschedule confirmation
+    try {
+      setAppointmentLoading(true);
+      const patientData = await PatientService.getPatient(appointment.patient_id);
+
+      setRescheduleData({
+        appointment,
+        patient: patientData,
+        newDate,
+        newStartTime,
+        newEndTime
+      });
+      setShowRescheduleConfirmation(true);
+    } catch (err) {
+      console.error('Error loading patient data:', err);
+      showNotification('error', 'Error', 'Failed to load patient data');
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle reschedule confirmation
+  const handleRescheduleConfirm = async (appointmentData: AppointmentUpdate) => {
+    if (!rescheduleData) return;
+
+    try {
+      setAppointmentLoading(true);
+      const updatedAppointment = await AppointmentService.updateAppointment(rescheduleData.appointment.id, appointmentData);
+      setAppointments(prev => prev.map(apt => apt.id === rescheduleData.appointment.id ? updatedAppointment : apt));
+      showNotification('success', 'Success', 'Appointment rescheduled successfully');
+      setShowRescheduleConfirmation(false);
+      setRescheduleData(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reschedule appointment');
+      showNotification('error', 'Error', 'Failed to reschedule appointment');
+      console.error('Error rescheduling appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Handle reschedule cancel
+  const handleRescheduleCancel = () => {
+    setShowRescheduleConfirmation(false);
+    setRescheduleData(null);
   };
 
   return (
@@ -662,8 +661,43 @@ export const Calendar: React.FC = () => {
       <div className="fade-in-element">
         {renderCalendarHeader()}
 
-        {view === 'week' && renderWeekView()}
-        {view === 'day' && renderDayView()}
+        {view === 'week' && (
+          <WeeklyView
+            currentDate={currentDate}
+            appointments={appointments}
+            handleMouseUp={handleMouseUp}
+            handleMouseDown={handleMouseDown}
+            handleMouseEnter={handleMouseEnter}
+            onSelectSlot={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
+            onAppointmentClick={setSelectedAppointment}
+            onAppointmentDrop={handleAppointmentDrop}
+            isSlotSelected={isSlotSelected}
+            getAppointmentDate={getAppointmentDate}
+            formatAppointmentTime={formatAppointmentTime}
+            getAppointmentDuration={getAppointmentDuration}
+            getAppointmentBackgroundColor={getAppointmentBackgroundColor}
+            getAppointmentTextColor={getAppointmentTextColor}
+          />
+        )}
+        {view === 'day' && (
+          <DayView
+            currentDate={currentDate}
+            appointments={appointments}
+            onTimeSlotClick={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
+            onAppointmentClick={setSelectedAppointment}
+            onAppointmentDrop={handleAppointmentDrop}
+            getAppointmentDate={getAppointmentDate}
+            formatAppointmentTime={formatAppointmentTime}
+            getAppointmentDuration={getAppointmentDuration}
+            getAppointmentBackgroundColor={getAppointmentBackgroundColor}
+            getAppointmentTextColor={getAppointmentTextColor}
+            getPatientName={getPatientName}
+            handleMouseUp={handleMouseUp}
+            handleMouseDown={handleMouseDown}
+            handleMouseEnter={handleMouseEnter}
+            isSlotSelected={isSlotSelected}
+          />
+        )}
         {view === 'month' && (
           <div className="card">
             <MonthView
@@ -794,7 +828,7 @@ export const Calendar: React.FC = () => {
                           {/* Patient list - flexible height */}
                           <div className="flex-1 min-h-0">
                             <div className="space-y-3 h-full overflow-y-auto">
-                              {filteredPatients.map((patient) => (
+                              {patients.map((patient) => (
                                 <div
                                   key={patient.id}
                                   onClick={() => handlePatientSelect(patient)}
@@ -814,12 +848,12 @@ export const Calendar: React.FC = () => {
                                   </div>
                                 </div>
                               ))}
-                              {filteredPatients.length === 0 && searchQuery && (
+                              {patients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients found matching "{searchQuery}"
                                 </div>
                               )}
-                              {filteredPatients.length === 0 && !searchQuery && (
+                              {patients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients available. Create a new patient to get started.
                                 </div>
@@ -862,6 +896,20 @@ export const Calendar: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Reschedule Confirmation Modal */}
+        {showRescheduleConfirmation && rescheduleData && (
+          <RescheduleConfirmation
+            appointment={rescheduleData.appointment}
+            patient={rescheduleData.patient}
+            newDate={rescheduleData.newDate}
+            newStartTime={rescheduleData.newStartTime}
+            newEndTime={rescheduleData.newEndTime}
+            onConfirm={handleRescheduleConfirm}
+            onCancel={handleRescheduleCancel}
+            isLoading={appointmentLoading}
+          />
         )}
       </div>
     </DashboardLayout>
