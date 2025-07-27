@@ -9,6 +9,7 @@ interface WeeklyViewProps {
   handleMouseDown: (e: React.MouseEvent, date: string, time: string) => void;
   handleMouseEnter: (date: string, time: string) => void;
   onSelectSlot: (date: string, time: string) => void;
+  onAppointmentClick: (appointment: Appointment) => void;
   getAppointmentDate: (apt: Appointment) => string;
   formatAppointmentTime: (apt: Appointment) => string;
   getAppointmentDuration: (apt: Appointment) => number;
@@ -23,6 +24,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   handleMouseDown,
   handleMouseEnter,
   onSelectSlot,
+  onAppointmentClick,
   isSlotSelected,
   getAppointmentDate,
   formatAppointmentTime,
@@ -140,6 +142,16 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                         justifyContent: 'center',
                         backgroundColor: getAppointmentBackgroundColor(appointment.status),
                         color: getAppointmentTextColor(appointment.status)
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAppointmentClick(appointment);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
                       }}
                     >
                       {appointment.patient_first_name} {appointment.patient_last_name}

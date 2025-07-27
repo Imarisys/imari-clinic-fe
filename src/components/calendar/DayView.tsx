@@ -145,6 +145,12 @@ export const DayView: React.FC<DayViewProps> = ({
                       e.stopPropagation();
                       onAppointmentClick(appointment);
                     }}
+                    onMouseEnter={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
                   >
                     <p className="font-semibold truncate">{getPatientName(appointment)}</p>
                     <p className="opacity-90 truncate">{appointment.type}</p>

@@ -572,6 +572,7 @@ export const Calendar: React.FC = () => {
             handleMouseDown={handleMouseDown}
             handleMouseEnter={handleMouseEnter}
             onSelectSlot={(date, time) => { setSelectedTimeSlot({ date, time }); handleNewAppointmentClick(); }}
+            onAppointmentClick={setSelectedAppointment}
             isSlotSelected={isSlotSelected}
             getAppointmentDate={getAppointmentDate}
             formatAppointmentTime={formatAppointmentTime}
