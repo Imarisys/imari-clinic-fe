@@ -7,6 +7,7 @@ export const API_CONFIG = {
       list: '/api/v1/patients',
       search: '/api/v1/patients/search',
       summary: '/api/v1/patients/summary',
+      export: '/api/v1/patients/export',
       get: (id: string) => `/api/v1/patients/${id}`,
       create: '/api/v1/patients',
       update: (id: string) => `/api/v1/patients/${id}`,

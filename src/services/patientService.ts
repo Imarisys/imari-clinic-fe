@@ -117,6 +117,54 @@ export class PatientService {
     }
   }
 
+  // Export patients as Excel file
+  static async exportPatients(): Promise<void> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.export);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      // Get the filename from the response headers or use a default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'patients_export.xlsx';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Get the blob data
+      const blob = await response.blob();
+
+      // Create a download link and trigger the download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while exporting patients');
+    }
+  }
+
   // Get a single patient by ID
   static async getPatient(patientId: string): Promise<PatientRead> {
     try {

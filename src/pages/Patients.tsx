@@ -31,6 +31,7 @@ export const Patients: React.FC = () => {
   // Patient summary state
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,6 +228,20 @@ export const Patients: React.FC = () => {
     }
   };
 
+  // Handle patient export
+  const handleExportPatients = async () => {
+    setIsExporting(true);
+    try {
+      await PatientService.exportPatients();
+      showNotification('success', 'Export Successful', 'Patients data has been exported successfully');
+    } catch (err) {
+      console.error('Error exporting patients:', err);
+      showNotification('error', 'Export Failed', err instanceof Error ? err.message : 'Failed to export patients');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const calculateAge = (dateOfBirth: string): number => {
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
@@ -303,8 +318,13 @@ export const Patients: React.FC = () => {
           >
             Refresh
           </Button>
-          <Button variant="secondary" icon="download">
-            Export
+          <Button
+            variant="secondary"
+            icon="download"
+            onClick={handleExportPatients}
+            disabled={isExporting || isLoading}
+          >
+            {isExporting ? 'Exporting...' : 'Export'}
           </Button>
           <Button
             variant="primary"
