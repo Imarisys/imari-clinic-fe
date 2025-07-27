@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { weatherService } from '../services/weatherService';
 import { WeatherResponse } from '../types/Weather';
@@ -28,12 +28,23 @@ export const Dashboard: React.FC = () => {
   const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
   const [appointmentLoading, setAppointmentLoading] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
 
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+
+  // Load patients for appointment booking
+  const loadPatients = async () => {
+    try {
+      const response = await PatientService.listPatients();
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error loading patients:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -291,12 +302,40 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Filter patients based on search query
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.phone && patient.phone.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      loadPatients();
+      return;
+    }
+
+    setIsSearchingPatients(true);
+    try {
+      const response = await PatientService.searchPatients(query.trim(), 0, 100);
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error searching patients:', err);
+      showNotification('error', 'Error', 'Failed to search patients');
+    } finally {
+      setIsSearchingPatients(false);
+    }
+  }, []);
+
+  // Debounced search effect for patients
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery);
+      } else {
+        loadPatients();
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
+
+  // Remove the filteredPatients filter since we're now using API search
+  const displayedPatients = patients;
 
   // Handle starting an appointment
   const handleStartAppointment = async (appointmentId: string) => {
@@ -624,7 +663,7 @@ export const Dashboard: React.FC = () => {
                           {/* Patient list - flexible height */}
                           <div className="flex-1 min-h-0">
                             <div className="space-y-3 h-full overflow-y-auto">
-                              {filteredPatients.map((patient) => (
+                              {displayedPatients.map((patient) => (
                                 <div
                                   key={patient.id}
                                   onClick={() => handlePatientSelect(patient)}
@@ -644,12 +683,12 @@ export const Dashboard: React.FC = () => {
                                   </div>
                                 </div>
                               ))}
-                              {filteredPatients.length === 0 && searchQuery && (
+                              {displayedPatients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients found matching "{searchQuery}"
                                 </div>
                               )}
-                              {filteredPatients.length === 0 && !searchQuery && (
+                              {displayedPatients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients available. Create a new patient to get started.
                                 </div>

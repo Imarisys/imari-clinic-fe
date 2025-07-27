@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
@@ -23,6 +23,7 @@ export const Patients: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
@@ -30,7 +31,7 @@ export const Patients: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5); // Changed to state variable
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const { showNotification } = useNotification();
 
@@ -51,6 +52,42 @@ export const Patients: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string, page: number = 1) => {
+    if (!query.trim()) {
+      loadPatients(page);
+      return;
+    }
+
+    setIsSearching(true);
+    setError(null);
+    try {
+      const offset = (page - 1) * itemsPerPage;
+      const response = await PatientService.searchPatients(query.trim(), offset, itemsPerPage);
+      setPatients(response.data);
+      setTotalPatients(response.total);
+      setCurrentPage(page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search patients');
+      console.error('Error searching patients:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [itemsPerPage]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery, 1);
+      } else {
+        loadPatients(1);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
 
   // Load patients on component mount
   useEffect(() => {
@@ -177,11 +214,8 @@ export const Patients: React.FC = () => {
     return age;
   };
 
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.email && patient.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    patient.phone.includes(searchQuery)
-  );
+  // Remove the filteredPatients filter since we're now using API search
+  const displayedPatients = patients;
 
   const renderHeader = () => (
     <div className="card mb-8">
@@ -365,7 +399,7 @@ export const Patients: React.FC = () => {
 
   const renderGridView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-      {filteredPatients.map((patient, index) => renderPatientCard(patient, index))}
+      {displayedPatients.map((patient, index) => renderPatientCard(patient, index))}
     </div>
   );
 
@@ -382,7 +416,7 @@ export const Patients: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredPatients.map((patient, index) => (
+            {displayedPatients.map((patient, index) => (
               <tr
                 key={patient.id}
                 className="border-b border-neutral-100 hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-blue-50/30 transition-all duration-300 cursor-pointer slide-up-element"
@@ -625,7 +659,7 @@ export const Patients: React.FC = () => {
         {viewMode === 'grid' && renderGridView()}
         {viewMode === 'list' && renderListView()}
 
-        {filteredPatients.length === 0 && (
+        {displayedPatients.length === 0 && (
           <div className="card text-center py-12">
             <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
               <span className="material-icons-round text-neutral-400 text-3xl">search_off</span>

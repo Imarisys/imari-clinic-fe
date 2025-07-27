@@ -33,6 +33,7 @@ export const Calendar: React.FC = () => {
   const [bookingStep, setBookingStep] = useState<'patient' | 'appointment'>('patient');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
 
   // Reschedule confirmation state
@@ -264,12 +265,37 @@ export const Calendar: React.FC = () => {
     setShowCreatePatientForm(false);
   };
 
-  // Filter patients based on search query
-  const filteredPatients = patients.filter(patient =>
-    `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.phone?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Search patients using API
+  const searchPatients = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      loadPatients();
+      return;
+    }
+
+    setIsSearchingPatients(true);
+    try {
+      const response = await PatientService.searchPatients(query.trim(), 0, 100);
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error searching patients:', err);
+      showNotification('error', 'Error', 'Failed to search patients');
+    } finally {
+      setIsSearchingPatients(false);
+    }
+  }, []);
+
+  // Debounced search effect for patients
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        searchPatients(searchQuery);
+      } else {
+        loadPatients();
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchPatients]);
 
   // Helper functions for date calculations
   const getViewStartDate = () => {
@@ -576,7 +602,7 @@ export const Calendar: React.FC = () => {
     const duration = getAppointmentDuration(appointment);
     const [hours, minutes] = newTime.split(':').map(Number);
     const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-    
+
     // Calculate end time
     const totalMinutes = hours * 60 + minutes + duration;
     const endHours = Math.floor(totalMinutes / 60);
@@ -587,7 +613,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       const patientData = await PatientService.getPatient(appointment.patient_id);
-      
+
       setRescheduleData({
         appointment,
         patient: patientData,
@@ -802,7 +828,7 @@ export const Calendar: React.FC = () => {
                           {/* Patient list - flexible height */}
                           <div className="flex-1 min-h-0">
                             <div className="space-y-3 h-full overflow-y-auto">
-                              {filteredPatients.map((patient) => (
+                              {patients.map((patient) => (
                                 <div
                                   key={patient.id}
                                   onClick={() => handlePatientSelect(patient)}
@@ -822,12 +848,12 @@ export const Calendar: React.FC = () => {
                                   </div>
                                 </div>
                               ))}
-                              {filteredPatients.length === 0 && searchQuery && (
+                              {patients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients found matching "{searchQuery}"
                                 </div>
                               )}
-                              {filteredPatients.length === 0 && !searchQuery && (
+                              {patients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
                                   No patients available. Create a new patient to get started.
                                 </div>

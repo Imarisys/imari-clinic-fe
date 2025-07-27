@@ -66,6 +66,32 @@ export class PatientService {
     }
   }
 
+  // Search patients by query (first name, last name, phone, email)
+  static async searchPatients(query: string, offset = 0, limit = 100): Promise<PatientListResponse> {
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const url = buildApiUrl(`${API_CONFIG.endpoints.patients.search}?term=${encodedQuery}&offset=${offset}&limit=${limit}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while searching patients');
+    }
+  }
+
   // Get a single patient by ID
   static async getPatient(patientId: string): Promise<PatientRead> {
     try {
