@@ -38,6 +38,7 @@ export const DayView: React.FC<DayViewProps> = ({
   isSlotSelected,
 }) => {
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
+  const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
 
   // Handle appointment drag start
   const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
@@ -50,6 +51,7 @@ export const DayView: React.FC<DayViewProps> = ({
   // Handle appointment drag end
   const handleAppointmentDragEnd = () => {
     setDraggedAppointment(null);
+    setDragPreviewPosition(null);
   };
 
   // Handle drop on time slot
@@ -61,12 +63,28 @@ export const DayView: React.FC<DayViewProps> = ({
       onAppointmentDrop(draggedAppointment, date, time);
     }
     setDraggedAppointment(null);
+    setDragPreviewPosition(null);
   };
 
-  // Handle drag over to allow drop
-  const handleTimeSlotDragOver = (e: React.DragEvent) => {
+  // Handle drag over to allow drop and show preview
+  const handleTimeSlotDragOver = (e: React.DragEvent, date: string, time: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+
+    if (draggedAppointment) {
+      setDragPreviewPosition({ date, time });
+    }
+  };
+
+  // Handle drag leave to hide preview when leaving time slot
+  const handleTimeSlotDragLeave = (e: React.DragEvent) => {
+    // Only hide preview if we're actually leaving the time slot area
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const { clientX, clientY } = e;
+
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      setDragPreviewPosition(null);
+    }
   };
 
   // Create 15-minute time slots from 8 AM to 6 PM (40 slots total)
@@ -160,8 +178,9 @@ export const DayView: React.FC<DayViewProps> = ({
                 onClick={() => onTimeSlotClick(dayStr, time)}
                 onMouseDown={(e) => handleMouseDown(e, dayStr, time)}
                 onMouseEnter={() => handleMouseEnter(dayStr, time)}
-                onDragOver={handleTimeSlotDragOver}
+                onDragOver={(e) => handleTimeSlotDragOver(e, dayStr, time)}
                 onDrop={(e) => handleTimeSlotDrop(e, dayStr, time)}
+                onDragLeave={handleTimeSlotDragLeave}
               >
                 {/* Appointments in this time slot */}
                 {dayAppointments.map((appointment, aptIndex) => (
@@ -195,6 +214,29 @@ export const DayView: React.FC<DayViewProps> = ({
                     <p className="opacity-90 truncate">{appointment.type}</p>
                   </div>
                 ))}
+
+                {/* Drag preview shadow - shows where appointment will be dropped */}
+                {draggedAppointment && dragPreviewPosition &&
+                 dragPreviewPosition.date === dayStr && dragPreviewPosition.time === time && (
+                  <div
+                    className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-lg border-2 border-dashed border-primary-400 bg-primary-100/50 pointer-events-none z-20"
+                    style={{
+                      top: '1px',
+                      height: `${Math.max(Math.min(getAppointmentDuration(draggedAppointment) / 15 * 15, 60), 15)}px`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      backdropFilter: 'blur(1px)',
+                    }}
+                  >
+                    <div className="text-primary-700 font-medium opacity-75">
+                      {getPatientName(draggedAppointment)}
+                    </div>
+                    <div className="text-primary-600 text-xs opacity-60">
+                      Moving...
+                    </div>
+                  </div>
+                )}
 
                 {/* Hover effect */}
                 <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
