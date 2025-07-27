@@ -112,7 +112,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                 ? 'bg-primary-50 border-primary-200'
                 : 'bg-neutral-50'
             }`}
-            style={{ animationDelay: `${index * 0.1}s` }}
+            style={{ animationDelay: `${index * 0.05}s` }}
           >
             <p className="text-sm text-neutral-500">
               {day.toLocaleDateString('en-US', { weekday: 'short' })}

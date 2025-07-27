@@ -107,7 +107,7 @@ export const DayView: React.FC<DayViewProps> = ({
               ? 'bg-primary-50 border-primary-200'
               : 'bg-neutral-50'
           }`}
-          style={{ animationDelay: '0.1s' }}
+          style={{ animationDelay: '0.05s' }}
         >
           <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
           <p className={`text-lg font-semibold ${
