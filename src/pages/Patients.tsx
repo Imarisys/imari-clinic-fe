@@ -32,6 +32,7 @@ export const Patients: React.FC = () => {
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -242,6 +243,24 @@ export const Patients: React.FC = () => {
     }
   };
 
+  // Handle refresh with animation
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadPatients(currentPage);
+      await loadPatientSummary();
+      showNotification('success', 'Refreshed', 'Patient data has been refreshed successfully');
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      showNotification('error', 'Refresh Failed', 'Failed to refresh patient data');
+    } finally {
+      // Add a small delay to show the animation even if the request is very fast
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  };
+
   const calculateAge = (dateOfBirth: string): number => {
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
@@ -313,10 +332,11 @@ export const Patients: React.FC = () => {
           <Button
             variant="secondary"
             icon="refresh"
-            onClick={() => loadPatients(currentPage)}
-            disabled={isLoading}
+            onClick={handleRefresh}
+            disabled={isLoading || isRefreshing}
+            className={isRefreshing ? 'animate-spin' : ''}
           >
-            Refresh
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
           <Button
             variant="secondary"
