@@ -32,7 +32,7 @@ export const API_CONFIG = {
     },
     weather: {
       get: (countryCode: string, city: string) =>
-        `/api/v1/weather?country=${countryCode}&city=${city}`,
+        `/api/v1/weather/${countryCode}/${encodeURIComponent(city)}`,
     },
   },
 };
