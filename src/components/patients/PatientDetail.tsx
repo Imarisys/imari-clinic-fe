@@ -327,6 +327,29 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
         </div>
       </div>
 
+      {/* Patient History Statistics */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Patient Statistics</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{appointments.length}</div>
+            <div className="text-sm text-gray-500">Total {t('appointments')}</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{appointments.filter(apt => apt.status === 'Completed').length}</div>
+            <div className="text-sm text-gray-500">{t('completed')}</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-600">{upcomingAppointments.length}</div>
+            <div className="text-sm text-gray-500">Upcoming</div>
+          </div>
+          <div className="text-center p-4 bg-orange-50 rounded-lg">
+            <div className="text-2xl font-bold text-orange-600">{appointments.filter(apt => apt.status === 'Cancelled').length}</div>
+            <div className="text-sm text-gray-500">{t('cancelled')}</div>
+          </div>
+        </div>
+      </div>
+
       {/* Appointments Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming Appointments */}

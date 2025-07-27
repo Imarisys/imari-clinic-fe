@@ -200,21 +200,6 @@
         }
       }
     },
-    "/api/v1/patients/export": {
-      "get": {
-        "tags": [
-          "patients"
-        ],
-        "summary": "Export Patients",
-        "description": "Export all patients as an Excel file",
-        "operationId": "export_patients_api_v1_patients_export_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          }
-        }
-      }
-    },
     "/api/v1/patients/{patient_id}": {
       "get": {
         "tags": [
@@ -240,7 +225,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PatientRead"
+                  "$ref": "#/components/schemas/PatientReadWithAppointments"
                 }
               }
             }
@@ -1406,6 +1391,125 @@
           "id"
         ],
         "title": "PatientRead"
+      },
+      "PatientReadWithAppointments": {
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "street": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Street"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State"
+          },
+          "zip_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Code"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "appointments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AppointmentRead"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_name",
+          "last_name",
+          "phone",
+          "id"
+        ],
+        "title": "PatientReadWithAppointments"
       },
       "PatientSummary": {
         "properties": {

@@ -602,7 +602,7 @@ export const Calendar: React.FC = () => {
     const duration = getAppointmentDuration(appointment);
     const [hours, minutes] = newTime.split(':').map(Number);
     const newStartTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-
+    
     // Calculate end time
     const totalMinutes = hours * 60 + minutes + duration;
     const endHours = Math.floor(totalMinutes / 60);
@@ -613,7 +613,7 @@ export const Calendar: React.FC = () => {
     try {
       setAppointmentLoading(true);
       const patientData = await PatientService.getPatient(appointment.patient_id);
-
+      
       setRescheduleData({
         appointment,
         patient: patientData,
