@@ -10,7 +10,7 @@ import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Pagination } from '../components/common/Pagination';
-import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
+import { Patient, PatientCreate, PatientUpdate, PatientSummary } from '../types/Patient';
 import { PatientService } from '../services/patientService';
 import { useNotification } from '../context/NotificationContext';
 
@@ -28,12 +28,30 @@ export const Patients: React.FC = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
+  // Patient summary state
+  const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const { showNotification } = useNotification();
+
+  // Load patient summary statistics
+  const loadPatientSummary = async () => {
+    setSummaryLoading(true);
+    try {
+      const summary = await PatientService.getPatientSummary();
+      setPatientSummary(summary);
+    } catch (err) {
+      console.error('Error loading patient summary:', err);
+      // Don't show error notification for summary as it's not critical
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   // Load patients from API
   const loadPatients = async (page: number = 1) => {
@@ -89,9 +107,10 @@ export const Patients: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, searchPatients]);
 
-  // Load patients on component mount
+  // Load initial data on component mount
   useEffect(() => {
     loadPatients(1);
+    loadPatientSummary();
   }, []);
 
   // Reload patients when itemsPerPage changes
@@ -119,6 +138,8 @@ export const Patients: React.FC = () => {
       setViewMode('detail');
       setSelectedPatient(newPatient);
       setError(null);
+      // Refresh summary statistics after creating a patient
+      loadPatientSummary();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create patient');
       console.error('Error creating patient:', err);
@@ -164,6 +185,9 @@ export const Patients: React.FC = () => {
       setPatients(prev => prev.filter(p => p.id !== patientId));
       setSelectedPatient(null);
       setViewMode('grid');
+
+      // Refresh summary statistics after deleting a patient
+      loadPatientSummary();
 
       // Show success notification
       if (deletedPatient) {
@@ -295,26 +319,28 @@ export const Patients: React.FC = () => {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-neutral-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-success-600">{patients.length}</p>
+          <p className="text-2xl font-bold text-success-600">
+            {summaryLoading ? '...' : patientSummary?.total_patients || patients.length}
+          </p>
           <p className="text-sm text-neutral-600">Total Patients</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {patients.filter(p => p.date_of_birth && calculateAge(p.date_of_birth) < 65).length}
+            {summaryLoading ? '...' : patientSummary?.new_patients || 0}
           </p>
-          <p className="text-sm text-neutral-600">Under 65</p>
+          <p className="text-sm text-neutral-600">New Patients</p>
+        </div>
+        <div className="text-center">
+          <p className="text-2xl font-bold text-blue-600">
+            {summaryLoading ? '...' : patientSummary?.patients_with_follow_up || 0}
+          </p>
+          <p className="text-sm text-neutral-600">Follow-up Patients</p>
         </div>
         <div className="text-center">
           <p className="text-2xl font-bold text-primary-600">
-            {patients.filter(p => p.email).length}
+            {summaryLoading ? '...' : patientSummary?.patients_with_email || patients.filter(p => p.email).length}
           </p>
           <p className="text-sm text-neutral-600">With Email</p>
-        </div>
-        <div className="text-center">
-          <p className="text-2xl font-bold text-warning-600">
-            {patients.filter(p => !p.date_of_birth).length}
-          </p>
-          <p className="text-sm text-neutral-600">Missing DOB</p>
         </div>
       </div>
     </div>

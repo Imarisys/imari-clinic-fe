@@ -178,6 +178,43 @@
         }
       }
     },
+    "/api/v1/patients/summary": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Get Patient Summary",
+        "description": "Get patient summary statistics including total patients, new patients, and follow-up patients",
+        "operationId": "get_patient_summary_api_v1_patients_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patients/export": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Export Patients",
+        "description": "Export all patients as an Excel file",
+        "operationId": "export_patients_api_v1_patients_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}": {
       "get": {
         "tags": [
@@ -1369,6 +1406,35 @@
           "id"
         ],
         "title": "PatientRead"
+      },
+      "PatientSummary": {
+        "properties": {
+          "total_patients": {
+            "type": "integer",
+            "title": "Total Patients"
+          },
+          "new_patients": {
+            "type": "integer",
+            "title": "New Patients"
+          },
+          "patients_with_follow_up": {
+            "type": "integer",
+            "title": "Patients With Follow Up"
+          },
+          "patients_with_email": {
+            "type": "integer",
+            "title": "Patients With Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_patients",
+          "new_patients",
+          "patients_with_follow_up",
+          "patients_with_email"
+        ],
+        "title": "PatientSummary",
+        "description": "Summary statistics for patients"
       },
       "PatientUpdate": {
         "properties": {
