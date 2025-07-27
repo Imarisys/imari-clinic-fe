@@ -693,55 +693,6 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Today's Schedule Section */}
-        <section className="mt-8">
-          <h2 className="text-2xl font-bold mb-4 text-primary-700 flex items-center gap-2">
-            <span className="material-icons text-primary-500">event</span>
-            Today's Schedule
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {appointmentsLoading ? (
-              <div className="col-span-3 text-center text-lg text-neutral-500">Loading appointments...</div>
-            ) : appointmentsError ? (
-              <div className="col-span-3 text-center text-lg text-red-500">{appointmentsError}</div>
-            ) : appointments.length === 0 ? (
-              <div className="col-span-3 text-center text-lg text-neutral-400">No appointments scheduled for today.</div>
-            ) : (
-              appointments.map(appt => (
-                <div
-                  key={appt.id}
-                  className={`rounded-xl shadow-lg p-6 bg-gradient-to-br from-primary-50 to-white border-l-4 ${appt.status === 'In Progress' ? 'border-primary-500' : 'border-neutral-200'} transition-all duration-300`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-lg text-primary-700">
-                      {appt.patient_first_name} {appt.patient_last_name}
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${appt.status === 'In Progress' ? 'bg-primary-100 text-primary-700' : 'bg-neutral-100 text-neutral-600'}`}>{appt.status}</span>
-                  </div>
-                  <div className="flex items-center gap-4 mb-2">
-                    <span className="material-icons text-primary-400">schedule</span>
-                    <span className="text-md font-mono">{formatTime(appt.start_time)} - {formatTime(appt.end_time)}</span>
-                  </div>
-                  <div className="mb-4 text-neutral-600 text-sm">Type: <span className="font-medium text-primary-600">{appt.type}</span></div>
-                  <div className="flex justify-end">
-                    {appt.status === 'Booked' && (
-                      <button
-                        className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-semibold shadow transition-all duration-200"
-                        onClick={() => handleStartAppointment(appt.id)}
-                      >
-                        <span className="material-icons align-middle mr-1">play_arrow</span> Start
-                      </button>
-                    )}
-                    {appt.status === 'Completed' && (
-                      <span className="px-4 py-2 bg-success-100 text-success-700 rounded-lg font-semibold shadow">Completed</span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
       </div>
     </DashboardLayout>
   );

@@ -140,7 +140,7 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
                   );
                 })}
                 {dayAppointments.length > 3 && (
-                  <div
+                  <div 
                     className="text-xs text-gray-500 pl-1 slide-up-element"
                     style={{ animationDelay: `${(index * 0.01) + 0.015}s` }}
                   >

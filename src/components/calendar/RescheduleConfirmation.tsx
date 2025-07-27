@@ -33,7 +33,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
       start_time: startTime,
       end_time: endTime,
     };
-
+    
     await onConfirm(updateData);
   };
 
