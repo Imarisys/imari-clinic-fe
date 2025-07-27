@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
@@ -41,9 +42,34 @@ export const Patients: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { showNotification } = useNotification();
+  const location = useLocation();
+
+  // Escape key listener for detail view
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && viewMode === 'detail') {
+        setViewMode('grid');
+      }
+    };
+
+    if (viewMode === 'detail') {
+      window.addEventListener('keydown', handleEsc);
+      return () => window.removeEventListener('keydown', handleEsc);
+    }
+  }, [viewMode]);
+
+  // Reset to grid view when navigating to patients page
+  useEffect(() => {
+    if (location.pathname === '/patients') {
+      setViewMode('grid');
+      setSelectedPatient(null);
+      setSelectedPatientWithHistory(null);
+      setSearchQuery('');
+    }
+  }, [location.pathname]);
 
   // Load patient summary statistics
   const loadPatientSummary = async () => {
@@ -732,8 +758,8 @@ export const Patients: React.FC = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <div className="text-2xl font-bold text-blue-600">{patientAppointments.length}</div>
+                <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-100">
+                  <div className="text-2xl font-bold text-teal-600">{patientAppointments.length}</div>
                   <div className="text-sm text-gray-600">Total Appointments</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
@@ -786,17 +812,17 @@ export const Patients: React.FC = () => {
                     const getStatusColor = (status: string) => {
                       switch (status) {
                         case 'Completed':
-                          return 'bg-green-50 text-green-700 border-green-200';
+                          return 'bg-green-100 text-green-800';
                         case 'Booked':
-                          return 'bg-blue-50 text-blue-700 border-blue-200';
+                          return 'bg-blue-100 text-blue-800';
                         case 'Cancelled':
-                          return 'bg-orange-50 text-orange-700 border-orange-200';
+                          return 'bg-red-100 text-red-800';
                         case 'No Show':
-                          return 'bg-red-50 text-red-700 border-red-200';
+                          return 'bg-orange-100 text-orange-800';
                         case 'In Progress':
-                          return 'bg-purple-50 text-purple-700 border-purple-200';
+                          return 'bg-purple-100 text-purple-800';
                         default:
-                          return 'bg-gray-50 text-gray-700 border-gray-200';
+                          return 'bg-gray-100 text-gray-800';
                       }
                     };
 
@@ -835,21 +861,23 @@ export const Patients: React.FC = () => {
                     return (
                       <div
                         key={appointment.id}
-                        className={`p-4 rounded-lg border-2 hover:shadow-md transition-all duration-200 cursor-pointer ${getStatusColor(appointment.status)}`}
+                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer"
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <h4 className="text-lg font-semibold">{appointment.title}</h4>
-                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${getTypeColor(appointment.type)}`}>
-                              {appointment.type}
-                            </span>
+                          <div className="flex-1">
+                            {appointment.appointment_type_name ? (
+                              <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                            ) : null}
+                            {appointment.title ? (
+                              <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                            ) : null}
                           </div>
-                          <span className="text-sm font-medium">
-                            {appointment.status}
-                          </span>
+                          <div className="flex items-center justify-center h-full">
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>{appointment.status}</span>
+                          </div>
                         </div>
                         
-                        <div className="flex items-center space-x-6 text-sm">
+                        <div className="flex items-center space-x-6 text-sm text-gray-600">
                           <div className="flex items-center space-x-2">
                             <span className="material-icons-round text-base">calendar_today</span>
                             <span>{formatDate(appointment.date)}</span>
@@ -861,8 +889,8 @@ export const Patients: React.FC = () => {
                         </div>
                         
                         {appointment.notes && (
-                          <div className="mt-3 pt-3 border-t border-current border-opacity-20">
-                            <p className="text-sm">
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-sm text-gray-700">
                               <span className="font-medium">Notes:</span> {appointment.notes}
                             </p>
                           </div>
@@ -924,31 +952,24 @@ export const Patients: React.FC = () => {
       <div className="fade-in-element">
         {renderHeader()}
 
-        {viewMode === 'grid' && renderGridView()}
-        {viewMode === 'list' && renderListView()}
-
-        {displayedPatients.length === 0 && (
-          <div className="card text-center py-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
-              <span className="material-icons-round text-neutral-400 text-3xl">search_off</span>
-            </div>
-            <h3 className="text-xl font-semibold text-neutral-800 mb-2">No patients found</h3>
-            <p className="text-neutral-600 mb-6">Try adjusting your search criteria or add a new patient.</p>
-            <Button variant="primary" icon="person_add">
-              Add New Patient
-            </Button>
-          </div>
-        )}
-
-        {/* Pagination */}
+        {/* Patient List */}
         <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalPatients}
-            itemsPerPage={itemsPerPage}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          {viewMode === 'grid' && renderGridView()}
+          {viewMode === 'list' && renderListView()}
+
+          {/* Pagination */}
+          {totalPatients > itemsPerPage && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalPatients}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>
