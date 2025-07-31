@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../hooks/useNotification';
 
 export const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,23 +10,23 @@ export const Login: React.FC = () => {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { showNotification } = useNotification();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setLoginError(''); // Clear previous errors
 
     try {
       await login(formData.email, formData.password);
-      showNotification('success', 'Login Successful', 'Welcome back to your dashboard!');
       navigate('/dashboard');
     } catch (error) {
       // Display the specific error message from the backend
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      showNotification('error', 'Login Failed', errorMessage);
+      setLoginError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +94,7 @@ export const Login: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 required
                 variant="default"
+                error={loginError}
               />
 
               <div className="flex items-center justify-between text-sm">

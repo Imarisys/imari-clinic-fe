@@ -11,6 +11,7 @@ import { PatientService } from '../services/patientService';
 import { PatientCreate, PatientUpdate, Patient } from '../types/Patient';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { useNotification } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -35,6 +36,7 @@ export const Dashboard: React.FC = () => {
 
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const { user } = useAuth();
 
   // Load patients for appointment booking
   const loadPatients = async () => {
@@ -355,7 +357,7 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-neutral-800 mb-1">
-              Welcome back, Dr. Badri
+              {`Welcome back, Dr. ${user?.last_name || ''}`}
             </h2>
             <p className="text-neutral-600">
               Today is {new Date().toLocaleDateString('en-US', {
