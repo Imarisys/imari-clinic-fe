@@ -91,7 +91,9 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
           setFormData(prev => ({
             ...prev,
             // Only set the appointment_type_name field, which expects a string
-            appointment_type_name: typeName
+            appointment_type_name: typeName,
+            // Also set a default title if it's empty
+            title: prev.title || t('consultation_with', { name: `${patient.first_name} ${patient.last_name}` })
           }));
           setSelectedAppointmentType(types[0]);
         }
@@ -106,12 +108,16 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    console.log('Validating form with data:', formData);
+
     if (!formData.title.trim()) {
       newErrors.title = t('title_required');
+      console.log('Title validation failed - title is empty');
     }
 
     if (!formData.date) {
       newErrors.date = t('date_required_error');
+      console.log('Date validation failed - date is empty');
     } else {
       const selectedDate = new Date(formData.date);
       const today = new Date();
@@ -119,15 +125,18 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
       if (selectedDate < today) {
         newErrors.date = t('date_past_error');
+        console.log('Date validation failed - date is in the past');
       }
     }
 
     if (!formData.start_time) {
       newErrors.start_time = t('start_time_required_error');
+      console.log('Start time validation failed - start_time is empty');
     }
 
     if (!formData.end_time) {
       newErrors.end_time = t('end_time_required_error');
+      console.log('End time validation failed - end_time is empty');
     }
 
     if (formData.start_time && formData.end_time) {
@@ -136,8 +145,12 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
       if (endTime <= startTime) {
         newErrors.end_time = t('end_time_after_start');
+        console.log('End time validation failed - end time is not after start time');
       }
     }
+
+    console.log('Validation errors found:', newErrors);
+    console.log('Validation will return:', Object.keys(newErrors).length === 0);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -146,19 +159,28 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    console.log('Form submitted!', { formData, isLoading });
+
+    const validationResult = validateForm();
+    console.log('Validation result:', validationResult);
+
+    if (!validationResult) {
+      console.log('Form validation failed - current errors state:', errors);
       return;
     }
 
+    console.log('Form validation passed, submitting...');
+
     try {
-      // Convert time format to include microseconds for API compatibility
+      // Format data for API - date as date string, times as time strings
       const appointmentData: AppointmentCreate = {
         ...formData,
-        start_time: `${formData.start_time}:00.000000`,
-        end_time: `${formData.end_time}:00.000000`,
-        date: `${formData.date}T${formData.start_time}:00.000000`,
+        date: formData.date, // Keep date as YYYY-MM-DD format
+        start_time: formData.start_time, // Keep time as HH:MM format
+        end_time: formData.end_time, // Keep time as HH:MM format
       };
 
+      console.log('Calling onSubmit with data:', appointmentData);
       await onSubmit(appointmentData);
 
       // Show success notification
