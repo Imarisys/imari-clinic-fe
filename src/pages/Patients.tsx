@@ -14,6 +14,9 @@ import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
+import { AppointmentService } from '../services/appointmentService';
+import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
+import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { useNotification } from '../context/NotificationContext';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
@@ -43,6 +46,13 @@ export const Patients: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Add appointment booking state
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
+  const [appointmentLoading, setAppointmentLoading] = useState(false);
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [appointmentTypesLoading, setAppointmentTypesLoading] = useState(false);
 
   const { showNotification } = useNotification();
   const location = useLocation();
@@ -171,6 +181,27 @@ export const Patients: React.FC = () => {
     }
   }, [selectedPatient, viewMode]);
 
+  // Load appointment types from API
+  const loadAppointmentTypes = async () => {
+    setAppointmentTypesLoading(true);
+    try {
+      const types = await AppointmentTypeService.listAppointmentTypes();
+      setAppointmentTypes(types);
+    } catch (err) {
+      console.error('Error loading appointment types:', err);
+      showNotification('error', 'Error', 'Failed to load appointment types');
+    } finally {
+      setAppointmentTypesLoading(false);
+    }
+  };
+
+  // Load appointment types when modal opens
+  useEffect(() => {
+    if (showAppointmentModal) {
+      loadAppointmentTypes();
+    }
+  }, [showAppointmentModal]);
+
   // Handle page change for pagination
   const handlePageChange = (page: number) => {
     loadPatients(page);
@@ -234,7 +265,8 @@ export const Patients: React.FC = () => {
       // Get patient info before deletion for notification
       const deletedPatient = patients.find(p => p.id === patientId);
 
-      await PatientService.deletePatient(patientId);
+      // Get backend message
+      const backendMessage = await PatientService.deletePatient(patientId);
       setPatients(prev => prev.filter(p => p.id !== patientId));
       setSelectedPatient(null);
       setViewMode('grid');
@@ -242,24 +274,15 @@ export const Patients: React.FC = () => {
       // Refresh summary statistics after deleting a patient
       loadPatientSummary();
 
-      // Show success notification
-      if (deletedPatient) {
-        showNotification(
-          'success',
-          'Patient Deleted!',
-          `${deletedPatient.first_name} ${deletedPatient.last_name} has been successfully removed from your patient records.`
-        );
-      }
+      // Show success notification with backend message
+      showNotification(
+        'success',
+        'Patient Deleted!',
+        backendMessage
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete patient');
       console.error('Error deleting patient:', err);
-
-      // Show error notification
-      showNotification(
-        'error',
-        'Deletion Failed',
-        err instanceof Error ? err.message : 'Failed to delete patient. Please try again.'
-      );
     } finally {
       setIsLoading(false);
     }
@@ -724,8 +747,8 @@ export const Patients: React.FC = () => {
                   variant="primary"
                   icon="event"
                   onClick={() => {
-                    // TODO: Navigate to appointment booking for this patient
-                    console.log('Schedule appointment for', selectedPatient);
+                    setSelectedPatientForBooking(selectedPatient);
+                    setShowAppointmentModal(true);
                   }}
                 >
                   Schedule
@@ -970,6 +993,160 @@ export const Patients: React.FC = () => {
           isLoading={isLoading}
           variant="danger"
         />
+
+        {/* Appointment Booking Modal */}
+        {showAppointmentModal && selectedPatientForBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+            <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                Schedule Appointment for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+              </h3>
+
+              {/* Appointment Form */}
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setAppointmentLoading(true);
+
+                try {
+                  const formData = new FormData(e.currentTarget);
+                  const appointmentType = formData.get('appointmentType') as string;
+                  const date = formData.get('date') as string;
+                  const time = formData.get('time') as string;
+                  const duration = parseInt(formData.get('duration') as string) || 30;
+                  const notes = formData.get('notes') as string;
+
+                  // Calculate end time
+                  const [hours, minutes] = time.split(':');
+                  const startTime = `${hours}:${minutes}:00.000000`;
+                  const endHour = parseInt(hours);
+                  const endMinute = parseInt(minutes) + duration;
+                  const finalEndHour = endHour + Math.floor(endMinute / 60);
+                  const finalEndMinute = endMinute % 60;
+                  const endTime = `${finalEndHour.toString().padStart(2, '0')}:${finalEndMinute.toString().padStart(2, '0')}:00.000000`;
+
+                  const appointmentData: AppointmentCreate = {
+                    patient_id: selectedPatientForBooking.id,
+                    date: date,
+                    start_time: startTime,
+                    end_time: endTime,
+                    appointment_type_name: appointmentType,
+                    title: `${appointmentType} for ${selectedPatientForBooking.first_name} ${selectedPatientForBooking.last_name}`,
+                    notes: notes || null,
+                    status: 'Booked'
+                  };
+
+                  const newAppointment = await AppointmentService.createAppointment(appointmentData);
+
+                  // Refresh patient appointments
+                  loadPatientAppointments(selectedPatientForBooking.id);
+
+                  showNotification('success', 'Appointment Scheduled', 'The appointment has been scheduled successfully');
+                  setShowAppointmentModal(false);
+                  setSelectedPatientForBooking(null);
+                } catch (err) {
+                  console.error('Error scheduling appointment:', err);
+                  showNotification('error', 'Failed to Schedule', err instanceof Error ? err.message : 'Failed to schedule the appointment');
+                } finally {
+                  setAppointmentLoading(false);
+                }
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Type</label>
+                  <select
+                    name="appointmentType"
+                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
+                    required
+                  >
+                    <option value="">
+                      {appointmentTypesLoading ? 'Loading appointment types...' : 'Select appointment type'}
+                    </option>
+                    {appointmentTypes.map((type) => (
+                      <option key={type.name} value={type.name}>
+                        {type.name} ({type.duration_minutes} min)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    name="date"
+                    type="date"
+                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input
+                    name="time"
+                    type="time"
+                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                  <input
+                    name="duration"
+                    type="number"
+                    min="1"
+                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
+                    defaultValue={30}
+                    onChange={(e) => {
+                      // Auto-set duration based on selected appointment type
+                      const form = e.target.form;
+                      const appointmentTypeSelect = form?.querySelector('select[name="appointmentType"]') as HTMLSelectElement;
+                      if (appointmentTypeSelect?.value) {
+                        const selectedType = appointmentTypes.find(type => type.name === appointmentTypeSelect.value);
+                        if (selectedType && e.target.value === '30') {
+                          e.target.value = selectedType.duration_minutes.toString();
+                        }
+                      }
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    name="notes"
+                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
+                    rows={3}
+                    placeholder="Optional notes for the appointment"
+                  ></textarea>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowAppointmentModal(false);
+                      setSelectedPatientForBooking(null);
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full sm:w-auto"
+                    loading={appointmentLoading}
+                  >
+                    Schedule Appointment
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </DashboardLayout>
     );
   }

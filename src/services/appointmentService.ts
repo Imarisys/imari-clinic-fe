@@ -1,6 +1,11 @@
 import { Appointment, AppointmentCreate, AppointmentUpdate } from '../types/Appointment';
 import { API_CONFIG } from '../config/api';
 
+export interface TimeSlot {
+  start_time: string;
+  end_time: string;
+}
+
 export class AppointmentService {
   private static async request<T>(
     endpoint: string,
@@ -88,5 +93,9 @@ export class AppointmentService {
       title: 'Consultation with John Doe',
       notes: null
     };
+  }
+
+  static async getAvailableSlots(appointmentTypeName: string, date: string): Promise<TimeSlot[]> {
+    return this.request<TimeSlot[]>(`/api/v1/appointment-types/${appointmentTypeName}/available-slots/${date}`);
   }
 }
