@@ -74,6 +74,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [showSlots, setShowSlots] = useState(false); // New state to toggle slot display
 
   // Fetch appointment types from the API
   useEffect(() => {
@@ -387,19 +388,73 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
           />
         </div>
 
-        {/* Available Time Slots - Only show if appointment type and date are selected */}
-        {formData.appointment_type_name && formData.date && (
-          <div className="space-y-4">
+        {/* Time Input Section - Always visible */}
+        <div className="space-y-4">
+          {/* Manual Time Input - Always shown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Time
+              </label>
+              <Input
+                type="time"
+                value={formData.start_time}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
+                error={errors.start_time}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Time
+              </label>
+              <Input
+                type="time"
+                value={formData.end_time}
+                onChange={(e) => handleChange('end_time', e.target.value)}
+                error={errors.end_time}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Show Available Slots Button - Only show if appointment type and date are selected */}
+          {formData.appointment_type_name && formData.date && (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant={showSlots ? "secondary" : "primary"}
+                onClick={() => {
+                  if (!showSlots) {
+                    fetchAvailableSlots(formData.appointment_type_name, formData.date);
+                  }
+                  setShowSlots(!showSlots);
+                }}
+                disabled={isLoading}
+                className="flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+                <span>
+                  {showSlots ? 'Hide Available Slots' : 'Show Available Slots'}
+                </span>
+                {loadingSlots && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Available Time Slots - Only show when toggled on */}
+        {showSlots && formData.appointment_type_name && formData.date && (
+          <div className="space-y-4 border-t pt-4">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-gray-700">
-                Available Time Slots
+                📅 Recommended Time Slots
               </label>
-              {loadingSlots && (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-sm text-gray-500">Loading slots...</span>
-                </div>
-              )}
+              <span className="text-xs text-gray-500">Click any slot to use that time</span>
             </div>
 
             {!loadingSlots && availableSlots.length > 0 && (
@@ -512,7 +567,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
               </div>
             )}
 
-            {!loadingSlots && availableSlots.length === 0 && formData.date && formData.appointment_type_name && (
+            {!loadingSlots && availableSlots.length === 0 && (
               <div className="text-center py-8">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -523,55 +578,25 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
                 </p>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Selected Time Display */}
-        {selectedSlot && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-blue-900">
-                  Selected: {formatTimeForDisplay(selectedSlot.start_time)} - {formatTimeForDisplay(selectedSlot.end_time)}
-                </p>
-                <p className="text-xs text-blue-700">
-                  {selectedAppointmentType?.name} ({selectedAppointmentType?.duration_minutes} minutes)
-                </p>
+            {/* Selected Time Display */}
+            {selectedSlot && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      Using Recommended Slot: {formatTimeForDisplay(selectedSlot.start_time)} - {formatTimeForDisplay(selectedSlot.end_time)}
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      {selectedAppointmentType?.name} ({selectedAppointmentType?.duration_minutes} minutes)
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Manual Time Input (fallback) - hidden when slots are available */}
-        {(!formData.appointment_type_name || !formData.date || availableSlots.length === 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Time (Manual)
-              </label>
-              <Input
-                type="time"
-                value={formData.start_time}
-                onChange={(e) => handleStartTimeChange(e.target.value)}
-                error={errors.start_time}
-                disabled={isLoading}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Time (Manual)
-              </label>
-              <Input
-                type="time"
-                value={formData.end_time}
-                onChange={(e) => handleChange('end_time', e.target.value)}
-                error={errors.end_time}
-                disabled={isLoading}
-              />
-            </div>
+            )}
           </div>
         )}
 
