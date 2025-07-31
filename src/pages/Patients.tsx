@@ -1,26 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
 import { PatientForm } from '../components/patients/PatientForm';
 import { PatientDetail } from '../components/patients/PatientDetail';
+import { PatientHistory } from '../components/patients/PatientHistory';
 import { PatientSearch, PatientSearchFilters } from '../components/patients/PatientSearch';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Pagination } from '../components/common/Pagination';
-import { Patient, PatientCreate, PatientUpdate, PatientSummary } from '../types/Patient';
+import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
 import { useNotification } from '../context/NotificationContext';
 
-type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail';
+type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
 
 export const Patients: React.FC = () => {
   const { t } = useTranslation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatientWithHistory, setSelectedPatientWithHistory] = useState<PatientWithAppointments | null>(null);
+  const [patientAppointments, setPatientAppointments] = useState<any[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -37,9 +42,34 @@ export const Patients: React.FC = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const { showNotification } = useNotification();
+  const location = useLocation();
+
+  // Escape key listener for detail view
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && viewMode === 'detail') {
+        setViewMode('grid');
+      }
+    };
+
+    if (viewMode === 'detail') {
+      window.addEventListener('keydown', handleEsc);
+      return () => window.removeEventListener('keydown', handleEsc);
+    }
+  }, [viewMode]);
+
+  // Reset to grid view when navigating to patients page
+  useEffect(() => {
+    if (location.pathname === '/patients') {
+      setViewMode('grid');
+      setSelectedPatient(null);
+      setSelectedPatientWithHistory(null);
+      setSearchQuery('');
+    }
+  }, [location.pathname]);
 
   // Load patient summary statistics
   const loadPatientSummary = async () => {
@@ -119,6 +149,27 @@ export const Patients: React.FC = () => {
   useEffect(() => {
     loadPatients(1);
   }, [itemsPerPage]);
+
+  // Load patient appointments for statistics
+  const loadPatientAppointments = async (patientId: string) => {
+    setAppointmentsLoading(true);
+    try {
+      const patientWithHistory = await PatientService.getPatientWithAppointments(patientId);
+      setPatientAppointments(patientWithHistory.appointments || []);
+    } catch (error) {
+      console.error('Error loading patient appointments:', error);
+      setPatientAppointments([]);
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  // Load appointments when patient is selected for detail view
+  useEffect(() => {
+    if (selectedPatient && viewMode === 'detail') {
+      loadPatientAppointments(selectedPatient.id);
+    }
+  }, [selectedPatient, viewMode]);
 
   // Handle page change for pagination
   const handlePageChange = (page: number) => {
@@ -587,22 +638,76 @@ export const Patients: React.FC = () => {
                 <h1 className="text-3xl font-bold text-primary-600 mb-2">
                   {selectedPatient.first_name} {selectedPatient.last_name}
                 </h1>
-                <p className="text-neutral-600 mb-4">{selectedPatient.email || 'No email provided'}</p>
+                
+                {/* Contact and Address Information */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+                  {/* Contact Information */}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">Contact Information</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="material-icons-round text-lg text-gray-400">phone</span>
+                        <span className="text-gray-800">{selectedPatient.phone}</span>
+                      </div>
+                      {selectedPatient.email && (
+                        <div className="flex items-center space-x-2">
+                          <span className="material-icons-round text-lg text-gray-400">email</span>
+                          <span className="text-gray-800">{selectedPatient.email}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* Personal Information */}
                   <div>
-                    <p className="text-sm text-neutral-500">Age</p>
-                    <p className="font-semibold">
-                      {selectedPatient.date_of_birth ? calculateAge(selectedPatient.date_of_birth) : 'Not provided'}
-                    </p>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">Personal Information</h3>
+                    <div className="space-y-2">
+                      {selectedPatient.date_of_birth && (
+                        <div className="flex items-center space-x-2">
+                          <span className="material-icons-round text-lg text-gray-400">cake</span>
+                          <span className="text-gray-800">
+                            {new Date(selectedPatient.date_of_birth).toLocaleDateString()} 
+                            <span className="text-gray-500 ml-2">
+                              (Age {calculateAge(selectedPatient.date_of_birth)})
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2">
+                        <span className="material-icons-round text-lg text-gray-400">person</span>
+                        <span className="text-gray-800 capitalize">{selectedPatient.gender || 'Not specified'}</span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Address Information */}
                   <div>
-                    <p className="text-sm text-neutral-500">Gender</p>
-                    <p className="font-semibold capitalize">{selectedPatient.gender || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500">Phone</p>
-                    <p className="font-semibold">{selectedPatient.phone}</p>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">Address</h3>
+                    <div className="space-y-2">
+                      {selectedPatient.street || selectedPatient.city || selectedPatient.state || selectedPatient.zip_code ? (
+                        <>
+                          {selectedPatient.street && (
+                            <div className="flex items-center space-x-2">
+                              <span className="material-icons-round text-lg text-gray-400">home</span>
+                              <span className="text-gray-800">{selectedPatient.street}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-2">
+                            <span className="material-icons-round text-lg text-gray-400">location_on</span>
+                            <span className="text-gray-800">
+                              {[selectedPatient.city, selectedPatient.state, selectedPatient.zip_code]
+                                .filter(Boolean)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <span className="material-icons-round text-lg text-gray-400">location_off</span>
+                          <span className="text-gray-500 italic">No address provided</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -639,65 +744,217 @@ export const Patients: React.FC = () => {
             </div>
           </div>
 
-          {/* Patient Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-4">Contact Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-neutral-500">Email</p>
-                  <p className="text-neutral-800">{selectedPatient.email || 'Not provided'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-neutral-500">Phone</p>
-                  <p className="text-neutral-800">{selectedPatient.phone}</p>
-                </div>
-                {selectedPatient.date_of_birth && (
-                  <div>
-                    <p className="text-sm text-neutral-500">Date of Birth</p>
-                    <p className="text-neutral-800">{new Date(selectedPatient.date_of_birth).toLocaleDateString()}</p>
+          {/* Patient Statistics */}
+          <div className="card mb-6">
+            <h3 className="text-xl font-bold text-neutral-800 mb-4">Patient Statistics</h3>
+            {appointmentsLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="text-center p-4 bg-gray-50 rounded-lg animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
                   </div>
-                )}
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-100">
+                  <div className="text-2xl font-bold text-teal-600">{patientAppointments.length}</div>
+                  <div className="text-sm text-gray-600">Total Appointments</div>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
+                  <div className="text-2xl font-bold text-green-600">
+                    {patientAppointments.filter(apt => apt.status === 'Completed').length}
+                  </div>
+                  <div className="text-sm text-gray-600">Completed</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {patientAppointments.filter(apt => apt.status === 'Booked' && new Date(apt.date) >= new Date()).length}
+                  </div>
+                  <div className="text-sm text-gray-600">Upcoming</div>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-100">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {patientAppointments.filter(apt => apt.status === 'Cancelled').length}
+                  </div>
+                  <div className="text-sm text-gray-600">Cancelled</div>
+                </div>
+              </div>
+            )}
+          </div>
 
-            <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-4">Address</h3>
-              <div className="space-y-3">
-                {selectedPatient.street || selectedPatient.city || selectedPatient.state || selectedPatient.zip_code ? (
-                  <>
-                    {selectedPatient.street && (
-                      <div>
-                        <p className="text-sm text-neutral-500">Street</p>
-                        <p className="text-neutral-800">{selectedPatient.street}</p>
-                      </div>
-                    )}
-                    <div className="flex space-x-4">
-                      {selectedPatient.city && (
-                        <div className="flex-1">
-                          <p className="text-sm text-neutral-500">City</p>
-                          <p className="text-neutral-800">{selectedPatient.city}</p>
-                        </div>
-                      )}
-                      {selectedPatient.state && (
-                        <div className="flex-1">
-                          <p className="text-sm text-neutral-500">State</p>
-                          <p className="text-neutral-800">{selectedPatient.state}</p>
-                        </div>
-                      )}
-                      {selectedPatient.zip_code && (
-                        <div className="flex-1">
-                          <p className="text-sm text-neutral-500">ZIP Code</p>
-                          <p className="text-neutral-800">{selectedPatient.zip_code}</p>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-neutral-500 italic">No address information provided</p>
-                )}
+          {/* Appointments List */}
+          <div className="card">
+            <h3 className="text-xl font-bold text-neutral-800 mb-4">Appointment History</h3>
+            {appointmentsLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : patientAppointments.length === 0 ? (
+              <div className="text-center py-8">
+                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
+                </svg>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h4>
+                <p className="text-gray-500">This patient hasn't had any appointments yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {patientAppointments
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((appointment) => {
+                    const getStatusColor = (status: string) => {
+                      switch (status) {
+                        case 'Completed':
+                          return 'bg-green-100 text-green-800';
+                        case 'Booked':
+                          return 'bg-blue-100 text-blue-800';
+                        case 'Cancelled':
+                          return 'bg-red-100 text-red-800';
+                        case 'No Show':
+                          return 'bg-orange-100 text-orange-800';
+                        case 'In Progress':
+                          return 'bg-purple-100 text-purple-800';
+                        default:
+                          return 'bg-gray-100 text-gray-800';
+                      }
+                    };
+
+                    const getTypeColor = (type: string) => {
+                      switch (type) {
+                        case 'Consultation':
+                          return 'bg-indigo-100 text-indigo-800';
+                        case 'Follow Up':
+                          return 'bg-emerald-100 text-emerald-800';
+                        case 'Emergency':
+                          return 'bg-red-100 text-red-800';
+                        case 'Routine Check':
+                          return 'bg-amber-100 text-amber-800';
+                        default:
+                          return 'bg-gray-100 text-gray-800';
+                      }
+                    };
+
+                    const formatDate = (dateString: string) => {
+                      return new Date(dateString).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      });
+                    };
+
+                    const formatTime = (timeString: string) => {
+                      const time = timeString.split('.')[0]; // Remove microseconds
+                      const [hours, minutes] = time.split(':');
+                      const hour = parseInt(hours);
+                      const ampm = hour >= 12 ? 'PM' : 'AM';
+                      const displayHour = hour % 12 || 12;
+                      return `${displayHour}:${minutes} ${ampm}`;
+                    };
+
+                    return (
+                      <div
+                        key={appointment.id}
+                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1">
+                            {appointment.appointment_type_name ? (
+                              <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                            ) : null}
+                            {appointment.title ? (
+                              <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center justify-center h-full">
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>{appointment.status}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                          <div className="flex items-center space-x-6">
+                            <div className="flex items-center space-x-2">
+                              <span className="material-icons-round text-base">calendar_today</span>
+                              <span>{formatDate(appointment.date)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="material-icons-round text-base">schedule</span>
+                              <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-2">
+                            {/* Show Consultation Details only for completed appointments */}
+                            {appointment.status === 'Completed' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Handle consultation details
+                                  console.log('View consultation details:', appointment.id);
+                                }}
+                                className="px-6 py-2 bg-success-500 hover:bg-success-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                                title="Consultation Details"
+                              >
+                                <div className="relative z-10 flex items-center justify-center">
+                                  <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">description</span>
+                                  <span className="relative z-10">Consultation Details</span>
+                                </div>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle delete appointment
+                                console.log('Delete appointment:', appointment.id);
+                              }}
+                              className="px-6 py-2 bg-error-500 hover:bg-error-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                              title="Delete"
+                            >
+                              <div className="relative z-10 flex items-center justify-center">
+                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">delete</span>
+                                <span className="relative z-10">Delete</span>
+                              </div>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle edit appointment
+                                console.log('Edit appointment:', appointment.id);
+                              }}
+                              className="px-6 py-2 bg-primary-500 hover:bg-primary-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
+                              title="Edit"
+                            >
+                              <div className="relative z-10 flex items-center justify-center">
+                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">edit</span>
+                                <span className="relative z-10">Edit</span>
+                              </div>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Remove the old action buttons section */}
+
+                        {appointment.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">Notes:</span> {appointment.notes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -717,36 +974,57 @@ export const Patients: React.FC = () => {
     );
   }
 
+  if (viewMode === 'history' && selectedPatientWithHistory) {
+    return (
+      <PatientHistory
+        patient={selectedPatientWithHistory}
+        onBack={() => setViewMode('detail')}
+        onScheduleNew={() => {
+          // TODO: Navigate to appointment booking for this patient
+          console.log('Schedule new appointment for', selectedPatientWithHistory);
+        }}
+      />
+    );
+  }
+
+  // Handle patient history view
+  const handleViewHistory = async (patient: Patient) => {
+    try {
+      setIsLoading(true);
+      const patientWithHistory = await PatientService.getPatientWithAppointments(patient.id);
+      setSelectedPatientWithHistory(patientWithHistory);
+      setViewMode('history');
+    } catch (error) {
+      console.error('Error loading patient history:', error);
+      showNotification('error', 'Error', 'Failed to load patient history');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="fade-in-element">
         {renderHeader()}
 
-        {viewMode === 'grid' && renderGridView()}
-        {viewMode === 'list' && renderListView()}
-
-        {displayedPatients.length === 0 && (
-          <div className="card text-center py-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-neutral-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
-              <span className="material-icons-round text-neutral-400 text-3xl">search_off</span>
-            </div>
-            <h3 className="text-xl font-semibold text-neutral-800 mb-2">No patients found</h3>
-            <p className="text-neutral-600 mb-6">Try adjusting your search criteria or add a new patient.</p>
-            <Button variant="primary" icon="person_add">
-              Add New Patient
-            </Button>
-          </div>
-        )}
-
-        {/* Pagination */}
+        {/* Patient List */}
         <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalPatients}
-            itemsPerPage={itemsPerPage}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          {viewMode === 'grid' && renderGridView()}
+          {viewMode === 'list' && renderListView()}
+
+          {/* Pagination */}
+          {totalPatients > itemsPerPage && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalPatients}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

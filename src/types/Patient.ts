@@ -1,3 +1,5 @@
+import { Appointment } from './Appointment';
+
 // Base Patient interface matching simplified API schema
 export interface Patient {
     id: string;
@@ -43,6 +45,11 @@ export interface PatientUpdate {
 
 // For API responses (matches PatientRead from OpenAPI)
 export interface PatientRead extends Patient {}
+
+// Patient with appointments (matches PatientReadWithAppointments from OpenAPI)
+export interface PatientWithAppointments extends Patient {
+    appointments?: Appointment[] | null;
+}
 
 // Paginated response for patient list
 export interface PatientListResponse {
