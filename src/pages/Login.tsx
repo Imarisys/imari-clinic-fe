@@ -1,16 +1,36 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../hooks/useNotification';
 
 export const Login: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { showNotification } = useNotification();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement login logic later
+    setIsLoading(true);
+
+    try {
+      await login(formData.email, formData.password);
+      showNotification('success', 'Login Successful', 'Welcome back to your dashboard!');
+      navigate('/dashboard');
+    } catch (error) {
+      // Display the specific error message from the backend
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      showNotification('error', 'Login Failed', errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -94,6 +114,7 @@ export const Login: React.FC = () => {
                 fullWidth
                 icon="login"
                 className="mt-8"
+                loading={isLoading}
               >
                 Sign In to Dashboard
               </Button>

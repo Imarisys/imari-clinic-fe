@@ -3,6 +3,9 @@ export const API_CONFIG = {
   baseUrl: 'http://localhost:8000',
   baseURL: 'http://localhost:8000', // Legacy compatibility
   endpoints: {
+    auth: {
+      login: '/api/v1/auth/login',
+    },
     patients: {
       list: '/api/v1/patients',
       search: '/api/v1/patients/search',
