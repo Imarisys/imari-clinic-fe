@@ -155,10 +155,10 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                 const timeHour = parseInt(time.split(':')[0]);
                 const timeMinute = parseInt(time.split(':')[1]);
 
+                // Only show appointment in its starting time slot
                 return aptDate === dayStr &&
                   aptHour === timeHour &&
-                  aptMinute >= timeMinute &&
-                  aptMinute < timeMinute + 15;
+                  aptMinute === timeMinute;
               });
 
               let borderBottomClass;
@@ -191,7 +191,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                       className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-medium hover:opacity-80 transition-opacity cursor-pointer z-10"
                       style={{
                         top: `${aptIndex * 2}px`,
-                        height: `${Math.max(Math.min(getAppointmentDuration(appointment) / 15 * 15, 60), 15)}px`,
+                        height: `${getAppointmentDuration(appointment)}px`,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
@@ -222,7 +222,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                       className="absolute inset-x-1 rounded-lg p-1 text-xs shadow-lg border-2 border-dashed border-primary-400 bg-primary-100/50 pointer-events-none z-20"
                       style={{
                         top: '1px',
-                        height: `${Math.max(Math.min(getAppointmentDuration(draggedAppointment) / 15 * 15, 60), 15)}px`,
+                        height: `${getAppointmentDuration(draggedAppointment)}px`,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
