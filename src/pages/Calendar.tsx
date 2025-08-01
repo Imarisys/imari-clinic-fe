@@ -656,6 +656,12 @@ export const Calendar: React.FC = () => {
     setRescheduleData(null);
   };
 
+  // Handle day click to switch to daily view
+  const handleDayClick = (selectedDate: Date) => {
+    setCurrentDate(selectedDate);
+    setView('day');
+  };
+
   return (
     <DashboardLayout>
       <div className="fade-in-element">
@@ -677,6 +683,7 @@ export const Calendar: React.FC = () => {
             getAppointmentDuration={getAppointmentDuration}
             getAppointmentBackgroundColor={getAppointmentBackgroundColor}
             getAppointmentTextColor={getAppointmentTextColor}
+            onDayClick={handleDayClick} // Pass the handleDayClick function
           />
         )}
         {view === 'day' && (

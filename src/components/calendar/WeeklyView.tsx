@@ -11,6 +11,7 @@ interface WeeklyViewProps {
   onSelectSlot: (date: string, time: string) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   onAppointmentDrop?: (appointment: Appointment, newDate: string, newTime: string) => void;
+  onDayClick?: (date: Date) => void;
   getAppointmentDate: (apt: Appointment) => string;
   formatAppointmentTime: (apt: Appointment) => string;
   getAppointmentDuration: (apt: Appointment) => number;
@@ -33,6 +34,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   getAppointmentBackgroundColor,
   getAppointmentTextColor,
   onAppointmentDrop,
+  onDayClick,
 }) => {
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
@@ -107,12 +109,13 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
         {days.map((day, index) => (
           <div
             key={index}
-            className={`p-4 text-center slide-up-element ${
+            className={`p-4 text-center slide-up-element cursor-pointer hover:bg-primary-100 transition-colors duration-200 ${
               day.toDateString() === new Date().toDateString()
                 ? 'bg-primary-50 border-primary-200'
-                : 'bg-neutral-50'
+                : 'bg-neutral-50 hover:bg-primary-50'
             }`}
             style={{ animationDelay: `${index * 0.05}s` }}
+            onClick={() => onDayClick && onDayClick(day)} // Handle day click
           >
             <p className="text-sm text-neutral-500">
               {day.toLocaleDateString('en-US', { weekday: 'short' })}
