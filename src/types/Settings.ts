@@ -1,38 +1,33 @@
 // filepath: /home/imari/IdeaProjects/imari_fe2/src/types/Settings.ts
 
 export interface Settings {
-  // Localization
-  language: string;
-  country: string;
-  city: string;
-  timezone: string;
-  
   // Clinic Information
-  clinicName: string;
-  clinicAddress: string;
-  clinicPhone: string;
-  clinicEmail: string;
-  
+  clinic_name: string;
+  clinic_address: string;
+  clinic_phone: string;
+  clinic_email: string;
+
   // Appointment Settings
-  appointmentDuration: number; // in minutes
-  workingHoursStart: string; // HH:MM format
-  workingHoursEnd: string; // HH:MM format
-  workingDays: string[]; // ['monday', 'tuesday', etc.]
-  
+  appointments_start_time: string; // HH:MM format
+  appointments_end_time: string; // HH:MM format
+  appointments_working_days: string[]; // ['Monday', 'Tuesday', etc.]
+
   // Notification Settings
-  emailNotifications: boolean;
-  smsNotifications: boolean;
-  appointmentReminders: boolean;
-  reminderTimeBefore: number; // in minutes
-  
+  notifications_email: boolean;
+  notifications_sms: boolean;
+  notifications_appointment_reminder: boolean;
+  notifications_reminder_time: number; // in minutes
+
   // Display Settings
-  dateFormat: string; // 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'
-  timeFormat: '12h' | '24h';
-  currency: string;
-  
-  // Weather Settings
-  showWeather: boolean;
-  temperatureUnit: 'celsius' | 'fahrenheit';
+  display_date_format: string; // 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD'
+  display_time_format: string; // '12h' | '24h'
+  display_currency: string;
+  display_temperature_unit: string; // 'celsius' | 'fahrenheit'
+  display_language: string;
+
+  // IDs
+  id: string;
+  doctor_id: string;
 }
 
 export interface SettingsUpdate {
@@ -49,4 +44,13 @@ export interface Language {
   code: string;
   name: string;
   nativeName: string;
+}
+
+export interface SettingsFieldValues {
+  weekDays: string[];
+  dateFormats: string[];
+  timeFormats: string[];
+  currencies: string[];
+  temperatureUnits: string[];
+  languages: string[];
 }
