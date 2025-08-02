@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from '../../context/TranslationContext';
 import { useAuth } from '../../context/AuthContext';
+import { SettingsService, settingsEventDispatcher } from '../../services/settingsService';
 
 interface NavItem {
   path: string;
@@ -41,8 +42,68 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const [clinicName, setClinicName] = useState<string>('');
+
+  useEffect(() => {
+    const loadClinicName = async () => {
+      try {
+        // First try to get from cache
+        const cachedName = SettingsService.getClinicName();
+        if (cachedName) {
+          setClinicName(cachedName);
+        } else {
+          // If not in cache, fetch settings
+          const settings = await SettingsService.getSettings();
+          setClinicName(settings.clinic_name);
+        }
+      } catch (error) {
+        console.error('Error loading clinic name:', error);
+        // Fallback to user clinic name or default
+        setClinicName(user?.clinic_name || t('clinic_name'));
+      }
+    };
+
+    // Load clinic name initially
+    loadClinicName();
+
+    // Listen for settings updates
+    const handleSettingsUpdate = (event: any) => {
+      const updatedSettings = event.detail;
+      if (updatedSettings?.clinic_name) {
+        setClinicName(updatedSettings.clinic_name);
+      }
+    };
+
+    settingsEventDispatcher.addEventListener('settingsUpdated', handleSettingsUpdate);
+
+    // Cleanup listener on unmount
+    return () => {
+      settingsEventDispatcher.removeEventListener('settingsUpdated', handleSettingsUpdate);
+    };
+  }, [user, t]);
+
+  // Reload clinic name when user changes (for different doctor logins)
+  useEffect(() => {
+    const loadClinicNameForUser = async () => {
+      try {
+        // Clear cache when user changes to ensure fresh data
+        SettingsService.clearCache();
+        const settings = await SettingsService.getSettings();
+        setClinicName(settings.clinic_name);
+      } catch (error) {
+        console.error('Error loading clinic name for user:', error);
+        setClinicName(user?.clinic_name || t('clinic_name'));
+      }
+    };
+
+    if (user) {
+      loadClinicNameForUser();
+    }
+  }, [user?.id, t]); // Trigger when user ID changes
 
   const handleLogout = () => {
+    // Clear settings cache on logout
+    SettingsService.clearCache();
     logout();
   };
 
@@ -57,7 +118,7 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">{user?.clinic_name || t('clinic_name')}</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">{clinicName || t('clinic_name')}</h1>
             <p className="text-primary-200 text-sm">Healthcare Excellence</p>
           </div>
         </div>
@@ -98,21 +159,6 @@ export const Sidebar: React.FC = () => {
             );
           })}
         </nav>
-
-        {/* Quick Stats */}
-        <div className="mt-12 space-y-4">
-          <div className="bg-primary-700/50 rounded-3xl p-4 border border-primary-600 group hover:scale-105 transition-transform duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-primary-200 text-sm">Today's Appointments</p>
-                <p className="text-white text-2xl font-bold">12</p>
-              </div>
-              <div className="w-10 h-10 bg-success-500 rounded-2xl flex items-center justify-center">
-                <span className="material-icons-round text-white">event</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Bottom Section - User Profile centered with margin */}

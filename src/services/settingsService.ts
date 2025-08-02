@@ -2,20 +2,65 @@ import { API_CONFIG, buildApiUrl } from '../config/api';
 import { Settings, SettingsUpdate, SettingsFieldValues } from '../types/Settings';
 import { authService } from './authService';
 
-export class SettingsService {
-  /**
-   * Get current settings for the authenticated doctor
-   */
-  static async getSettings(): Promise<Settings> {
-    try {
-      const doctorId = authService.getDoctorId();
-      console.log('Doctor ID retrieved:', doctorId); // Debug log
+// Event dispatcher for settings updates
+class SettingsEventDispatcher extends EventTarget {
+  dispatchSettingsUpdate(settings: Settings) {
+    this.dispatchEvent(new CustomEvent('settingsUpdated', { detail: settings }));
+  }
+}
 
-      if (!doctorId) {
+export const settingsEventDispatcher = new SettingsEventDispatcher();
+
+export class SettingsService {
+  private static cachedSettings: Settings | null = null;
+  private static cacheTimestamp: number | null = null;
+  private static cachedDoctorId: string | null = null; // Track which doctor's settings are cached
+  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+  /**
+   * Check if cached settings are still valid for the current doctor
+   */
+  private static isCacheValid(): boolean {
+    const currentDoctorId = authService.getDoctorId();
+    return this.cachedSettings !== null &&
+           this.cacheTimestamp !== null &&
+           this.cachedDoctorId === currentDoctorId &&
+           (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION;
+  }
+
+  /**
+   * Clear the settings cache
+   */
+  static clearCache(): void {
+    this.cachedSettings = null;
+    this.cacheTimestamp = null;
+    this.cachedDoctorId = null;
+  }
+
+  /**
+   * Get current settings for the authenticated doctor (with caching)
+   */
+  static async getSettings(forceRefresh: boolean = false): Promise<Settings> {
+    const currentDoctorId = authService.getDoctorId();
+
+    // Clear cache if doctor changed
+    if (this.cachedDoctorId && this.cachedDoctorId !== currentDoctorId) {
+      this.clearCache();
+    }
+
+    // Return cached settings if valid and not forcing refresh
+    if (!forceRefresh && this.isCacheValid()) {
+      return this.cachedSettings!;
+    }
+
+    try {
+      console.log('Doctor ID retrieved:', currentDoctorId); // Debug log
+
+      if (!currentDoctorId) {
         throw new Error('Doctor ID not found. Please log in again.');
       }
 
-      const url = buildApiUrl(`/api/v1/settings/${doctorId}`);
+      const url = buildApiUrl(`/api/v1/settings/${currentDoctorId}`);
       console.log('Making request to:', url); // Debug log
 
       const response = await fetch(url);
@@ -27,11 +72,31 @@ export class SettingsService {
 
       const data: Settings = await response.json();
       console.log('Settings data received:', data); // Debug log
+
+      // Cache the settings with doctor ID
+      this.cachedSettings = data;
+      this.cacheTimestamp = Date.now();
+      this.cachedDoctorId = currentDoctorId;
+
       return data;
     } catch (error) {
       console.error('Error fetching settings:', error);
       throw error;
     }
+  }
+
+  /**
+   * Get clinic name from cached settings (fast access)
+   */
+  static getClinicName(): string | null {
+    const currentDoctorId = authService.getDoctorId();
+
+    // Return null if cache is for a different doctor
+    if (this.cachedDoctorId !== currentDoctorId) {
+      return null;
+    }
+
+    return this.cachedSettings?.clinic_name || null;
   }
 
   /**
@@ -81,6 +146,15 @@ export class SettingsService {
       }
 
       const data: Settings = await response.json();
+
+      // Update cache with new settings
+      this.cachedSettings = data;
+      this.cacheTimestamp = Date.now();
+      this.cachedDoctorId = doctorId;
+
+      // Dispatch settings update event
+      settingsEventDispatcher.dispatchSettingsUpdate(data);
+
       return data;
     } catch (error) {
       console.error('Error updating settings:', error);
