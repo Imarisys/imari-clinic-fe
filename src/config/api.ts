@@ -44,3 +44,30 @@ export const API_CONFIG = {
 export const buildApiUrl = (endpoint: string): string => {
   return `${API_CONFIG.baseUrl}${endpoint}`;
 };
+
+// Simple API instance for reports
+export const api = {
+  get: async (url: string): Promise<{ data: any }> => {
+    // Mock implementation for development - return appropriate data based on endpoint
+    if (url.includes('/reports/performance')) {
+      return {
+        data: {
+          totalAppointments: 0,
+          completedAppointments: 0,
+          cancelledAppointments: 0,
+          noShowRate: 0,
+          averageWaitTime: 0,
+          patientSatisfaction: 0,
+          revenue: 0,
+          newPatients: 0
+        }
+      };
+    }
+    // For other endpoints, return empty array
+    return { data: [] };
+  },
+  post: async (url: string, data: any, config?: any): Promise<{ data: any }> => {
+    // Mock implementation for development
+    return { data: null };
+  }
+};

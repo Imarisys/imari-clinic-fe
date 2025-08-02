@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Patients } from './pages/Patients';
 import { SettingsPage } from './pages/Settings';
+import { Reports } from './pages/Reports';
 import { AppointmentStart } from './pages/AppointmentStart';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -64,6 +65,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Reports />
           </ProtectedRoute>
         }
       />
