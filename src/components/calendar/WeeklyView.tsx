@@ -17,6 +17,11 @@ interface WeeklyViewProps {
   getAppointmentDuration: (apt: Appointment) => number;
   getAppointmentBackgroundColor: (status: AppointmentStatus) => string;
   getAppointmentTextColor: (status: AppointmentStatus) => string;
+  workingHours?: {
+    startTime: string;
+    endTime: string;
+  };
+  workingDays?: string[];
 }
 
 export const WeeklyView: React.FC<WeeklyViewProps> = ({
@@ -35,6 +40,8 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   getAppointmentTextColor,
   onAppointmentDrop,
   onDayClick,
+  workingHours = { startTime: '08:00', endTime: '17:00' },
+  workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
 }) => {
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
@@ -95,40 +102,78 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
     return day;
   });
 
-  const timeSlots = Array.from({ length: 40 }, (_, i) => {
-    const hour = Math.floor(i / 4) + 8;
-    const minutes = (i % 4) * 15;
-    return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  });
+  // Check if a day is a working day
+  const isWorkingDay = (date: Date): boolean => {
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    return workingDays.includes(dayName);
+  };
+
+  // Generate time slots based on working hours
+  const generateTimeSlots = () => {
+    const startHour = parseInt(workingHours.startTime.split(':')[0]);
+    const endHour = parseInt(workingHours.endTime.split(':')[0]);
+    const totalHours = endHour - startHour;
+    const slotsPerHour = 4; // 15-minute intervals
+    const totalSlots = totalHours * slotsPerHour;
+
+    return Array.from({ length: totalSlots }, (_, i) => {
+      const hour = Math.floor(i / slotsPerHour) + startHour;
+      const minutes = (i % slotsPerHour) * 15;
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    });
+  };
+
+  const timeSlots = generateTimeSlots();
 
   return (
     <div className="card overflow-hidden">
       {/* Week header */}
       <div className="grid grid-cols-8 border-b border-gray-300">
         <div className="p-4"></div>
-        {days.map((day, index) => (
-          <div
-            key={index}
-            className={`p-4 text-center slide-up-element cursor-pointer hover:bg-primary-100 transition-colors duration-200 ${
-              day.toDateString() === new Date().toDateString()
-                ? 'bg-primary-50 border-primary-200'
-                : 'bg-neutral-50 hover:bg-primary-50'
-            }`}
-            style={{ animationDelay: `${index * 0.05}s` }}
-            onClick={() => onDayClick && onDayClick(day)} // Handle day click
-          >
-            <p className="text-sm text-neutral-500">
-              {day.toLocaleDateString('en-US', { weekday: 'short' })}
-            </p>
-            <p className={`text-lg font-semibold ${
-              day.toDateString() === new Date().toDateString()
-                ? 'text-primary-600'
-                : 'text-neutral-800'
-            }`}>
-              {day.getDate()}
-            </p>
-          </div>
-        ))}
+        {days.map((day, index) => {
+          const isWorking = isWorkingDay(day);
+          const isToday = day.toDateString() === new Date().toDateString();
+          
+          return (
+            <div
+              key={index}
+              className={`p-4 text-center slide-up-element cursor-pointer transition-colors duration-200 ${
+                isToday
+                  ? isWorking 
+                    ? 'bg-primary-50 border-primary-200'
+                    : 'bg-red-200 hover:bg-red-250'
+                  : isWorking
+                  ? 'bg-neutral-50 hover:bg-primary-50'
+                  : 'bg-red-50 hover:bg-red-100'
+              }`}
+              style={{ animationDelay: `${index * 0.05}s` }}
+              onClick={() => onDayClick && onDayClick(day)}
+            >
+              <p className={`text-sm ${
+                isToday
+                  ? isWorking 
+                    ? 'text-neutral-500'
+                    : 'text-red-600'
+                  : isWorking 
+                  ? 'text-neutral-500' 
+                  : 'text-red-400'
+              }`}>
+                {day.toLocaleDateString('en-US', { weekday: 'short' })}
+              </p>
+              <p className={`text-lg font-semibold ${
+                isToday
+                  ? isWorking
+                    ? 'text-primary-600'
+                    : 'text-red-700'
+                  : isWorking
+                  ? 'text-neutral-800'
+                  : 'text-red-600'
+              }`}>
+                {day.getDate()}
+              </p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Time slots grid - 15 minute precision */}
@@ -150,6 +195,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
             {days.map((day) => {
               const dayStr = day.toISOString().split('T')[0];
               const isSelected = isSlotSelected(dayStr, time);
+              const isWorking = isWorkingDay(day);
               const dayAppointments = appointments.filter(apt => {
                 const aptDate = getAppointmentDate(apt);
                 const aptTime = formatAppointmentTime(apt);
@@ -173,10 +219,14 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                 borderBottomClass = 'border-b border-gray-100';
               }
 
+              // Apply red hue to non-working days
+              const baseBackground = isWorking ? '' : 'bg-red-50/30';
+              const hoverBackground = isWorking ? 'hover:bg-primary-50' : 'hover:bg-red-100/50';
+
               return (
                 <div
                   key={`${dayStr}-${time}`}
-                  className={`p-1 min-h-[15px] relative group cursor-pointer border-r border-gray-200 ${borderBottomClass} ${isSelected ? 'bg-blue-200 border-blue-400' : ''}`}
+                  className={`p-1 min-h-[15px] relative group cursor-pointer border-r border-gray-200 ${borderBottomClass} ${baseBackground} ${hoverBackground} ${isSelected ? 'bg-blue-200 border-blue-400' : ''}`}
                   style={{
                     backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : '',
                     borderColor: isSelected ? '#3b82f6' : ''

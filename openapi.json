@@ -759,24 +759,34 @@
         }
       }
     },
-    "/api/v1/appointment-types/{appointment_type_id}": {
-      "get": {
+    "/api/v1/appointment-types/{appointment_name}": {
+      "put": {
         "tags": [
           "appointment-types"
         ],
-        "summary": "Get Appointment Type",
-        "operationId": "get_appointment_type_api_v1_appointment_types__appointment_type_id__get",
+        "summary": "Update Appointment Type",
+        "operationId": "update_appointment_type_api_v1_appointment_types__appointment_name__put",
         "parameters": [
           {
-            "name": "appointment_type_id",
+            "name": "appointment_name",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Appointment Type Id"
+              "title": "Appointment Name"
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentTypeUpdate"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -805,15 +815,15 @@
           "appointment-types"
         ],
         "summary": "Delete Appointment Type",
-        "operationId": "delete_appointment_type_api_v1_appointment_types__appointment_type_id__delete",
+        "operationId": "delete_appointment_type_api_v1_appointment_types__appointment_name__delete",
         "parameters": [
           {
-            "name": "appointment_type_id",
+            "name": "appointment_name",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Appointment Type Id"
+              "title": "Appointment Name"
             }
           }
         ],
@@ -865,6 +875,44 @@
               "format": "date-time",
               "title": "Date"
             }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Start time in HH:MM format",
+              "default": "08:00",
+              "title": "Start Time"
+            },
+            "description": "Start time in HH:MM format"
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "End time in HH:MM format",
+              "default": "18:00",
+              "title": "End Time"
+            },
+            "description": "End time in HH:MM format"
           }
         ],
         "responses": {
@@ -948,6 +996,163 @@
         }
       }
     },
+    "/api/v1/settings/{doctor_id}": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Settings",
+        "description": "Get settings for a specific doctor",
+        "operationId": "get_settings_api_v1_settings__doctor_id__get",
+        "parameters": [
+          {
+            "name": "doctor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doctor Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update Settings",
+        "description": "Update settings for a specific doctor",
+        "operationId": "update_settings_api_v1_settings__doctor_id__put",
+        "parameters": [
+          {
+            "name": "doctor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doctor Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/{doctor_id}/reset": {
+      "post": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Reset Settings",
+        "description": "Reset settings to default values for a specific doctor",
+        "operationId": "reset_settings_api_v1_settings__doctor_id__reset_post",
+        "parameters": [
+          {
+            "name": "doctor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Doctor Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/fields/values": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Settings Enums",
+        "description": "Get all available enum values for settings",
+        "operationId": "get_settings_enums_api_v1_settings_fields_values_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -979,7 +1184,7 @@
           },
           "date": {
             "type": "string",
-            "format": "date-time",
+            "format": "date",
             "title": "Date"
           },
           "start_time": {
@@ -1019,7 +1224,7 @@
           },
           "date": {
             "type": "string",
-            "format": "date-time",
+            "format": "date",
             "title": "Date"
           },
           "start_time": {
@@ -1082,6 +1287,31 @@
             "type": "integer",
             "exclusiveMinimum": 0.0,
             "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "default": "event"
           }
         },
         "type": "object",
@@ -1101,6 +1331,31 @@
             "type": "integer",
             "exclusiveMinimum": 0.0,
             "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "default": "event"
           }
         },
         "type": "object",
@@ -1110,18 +1365,63 @@
         ],
         "title": "AppointmentTypeRead"
       },
-      "AppointmentUpdate": {
+      "AppointmentTypeUpdate": {
         "properties": {
-          "date": {
+          "name": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
+            "title": "Name"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          }
+        },
+        "type": "object",
+        "title": "AppointmentTypeUpdate"
+      },
+      "AppointmentUpdate": {
+        "properties": {
+          "date": {
+            "type": "null",
             "title": "Date"
           },
           "start_time": {
@@ -1161,6 +1461,24 @@
         },
         "type": "object",
         "title": "AppointmentUpdate"
+      },
+      "Currency": {
+        "type": "string",
+        "enum": [
+          "TND",
+          "USD",
+          "EUR"
+        ],
+        "title": "Currency"
+      },
+      "DateFormat": {
+        "type": "string",
+        "enum": [
+          "MM/DD/YYYY",
+          "DD/MM/YYYY",
+          "YYYY-MM-DD"
+        ],
+        "title": "DateFormat"
       },
       "DoctorCreate": {
         "properties": {
@@ -1306,6 +1624,15 @@
         ],
         "title": "HourlyForecast"
       },
+      "Language": {
+        "type": "string",
+        "enum": [
+          "en",
+          "fr",
+          "ar"
+        ],
+        "title": "Language"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1327,6 +1654,10 @@
       },
       "LoginResponse": {
         "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
           "first_name": {
             "type": "string",
             "title": "First Name"
@@ -1342,6 +1673,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "first_name",
           "last_name",
           "clinic_name"
@@ -1848,6 +2180,304 @@
         },
         "type": "object",
         "title": "PatientUpdate"
+      },
+      "SettingsRead": {
+        "properties": {
+          "clinic_name": {
+            "type": "string",
+            "title": "Clinic Name",
+            "default": "Imarisys Clinic"
+          },
+          "clinic_address": {
+            "type": "string",
+            "title": "Clinic Address",
+            "default": "123 Medical Center Dr"
+          },
+          "clinic_phone": {
+            "type": "string",
+            "title": "Clinic Phone",
+            "default": "99 999 999"
+          },
+          "clinic_email": {
+            "type": "string",
+            "title": "Clinic Email",
+            "default": "info@imarisys.com"
+          },
+          "appointments_start_time": {
+            "type": "string",
+            "title": "Appointments Start Time",
+            "default": "08:00"
+          },
+          "appointments_end_time": {
+            "type": "string",
+            "title": "Appointments End Time",
+            "default": "18:00"
+          },
+          "appointments_working_days": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Appointments Working Days",
+            "default": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ]
+          },
+          "notifications_email": {
+            "type": "boolean",
+            "title": "Notifications Email",
+            "default": true
+          },
+          "notifications_sms": {
+            "type": "boolean",
+            "title": "Notifications Sms",
+            "default": false
+          },
+          "notifications_appointment_reminder": {
+            "type": "boolean",
+            "title": "Notifications Appointment Reminder",
+            "default": true
+          },
+          "notifications_reminder_time": {
+            "type": "integer",
+            "title": "Notifications Reminder Time",
+            "default": 60
+          },
+          "display_date_format": {
+            "$ref": "#/components/schemas/DateFormat",
+            "default": "MM/DD/YYYY"
+          },
+          "display_time_format": {
+            "$ref": "#/components/schemas/TimeFormat",
+            "default": "12h"
+          },
+          "display_currency": {
+            "$ref": "#/components/schemas/Currency",
+            "default": "TND"
+          },
+          "display_temperature_unit": {
+            "$ref": "#/components/schemas/TemperatureUnit",
+            "default": "celsius"
+          },
+          "display_language": {
+            "$ref": "#/components/schemas/Language",
+            "default": "en"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "doctor_id": {
+            "type": "string",
+            "title": "Doctor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "doctor_id"
+        ],
+        "title": "SettingsRead"
+      },
+      "SettingsUpdate": {
+        "properties": {
+          "clinic_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinic Name"
+          },
+          "clinic_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinic Address"
+          },
+          "clinic_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinic Phone"
+          },
+          "clinic_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clinic Email"
+          },
+          "appointments_start_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointments Start Time"
+          },
+          "appointments_end_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointments End Time"
+          },
+          "appointments_working_days": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Appointments Working Days"
+          },
+          "notifications_email": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications Email"
+          },
+          "notifications_sms": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications Sms"
+          },
+          "notifications_appointment_reminder": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications Appointment Reminder"
+          },
+          "notifications_reminder_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notifications Reminder Time"
+          },
+          "display_date_format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_time_format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TimeFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_currency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Currency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_temperature_unit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemperatureUnit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "display_language": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Language"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SettingsUpdate"
+      },
+      "TemperatureUnit": {
+        "type": "string",
+        "enum": [
+          "celsius",
+          "fahrenheit"
+        ],
+        "title": "TemperatureUnit"
+      },
+      "TimeFormat": {
+        "type": "string",
+        "enum": [
+          "12h",
+          "24h"
+        ],
+        "title": "TimeFormat"
       },
       "ValidationError": {
         "properties": {

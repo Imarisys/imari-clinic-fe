@@ -18,6 +18,11 @@ interface DayViewProps {
   handleMouseDown: (e: React.MouseEvent, date: string, time: string) => void;
   handleMouseEnter: (date: string, time: string) => void;
   isSlotSelected: (date: string, time: string) => boolean;
+  workingHours?: {
+    startTime: string;
+    endTime: string;
+  };
+  workingDays?: string[];
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -36,9 +41,36 @@ export const DayView: React.FC<DayViewProps> = ({
   handleMouseDown,
   handleMouseEnter,
   isSlotSelected,
+  workingHours = { startTime: '08:00', endTime: '17:00' },
+  workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
 }) => {
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
+
+  // Check if current date is a working day
+  const isWorkingDay = (): boolean => {
+    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+    return workingDays.includes(dayName);
+  };
+
+  const isWorking = isWorkingDay();
+
+  // Generate time slots based on working hours
+  const generateTimeSlots = () => {
+    const startHour = parseInt(workingHours.startTime.split(':')[0]);
+    const endHour = parseInt(workingHours.endTime.split(':')[0]);
+    const totalHours = endHour - startHour;
+    const slotsPerHour = 4; // 15-minute intervals
+    const totalSlots = totalHours * slotsPerHour;
+
+    return Array.from({ length: totalSlots }, (_, i) => {
+      const hour = Math.floor(i / slotsPerHour) + startHour;
+      const minutes = (i % slotsPerHour) * 15;
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    });
+  };
+
+  const timeSlots = generateTimeSlots();
 
   // Handle appointment drag start
   const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
@@ -87,13 +119,6 @@ export const DayView: React.FC<DayViewProps> = ({
     }
   };
 
-  // Create 15-minute time slots from 8 AM to 6 PM (40 slots total)
-  const timeSlots = Array.from({ length: 40 }, (_, i) => {
-    const hour = Math.floor(i / 4) + 8;
-    const minutes = (i % 4) * 15;
-    return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  });
-
   const dayStr = currentDate.toISOString().split('T')[0];
 
   return (
@@ -104,16 +129,34 @@ export const DayView: React.FC<DayViewProps> = ({
         <div
           className={`p-4 text-center slide-up-element ${
             currentDate.toDateString() === new Date().toDateString()
-              ? 'bg-primary-50 border-primary-200'
-              : 'bg-neutral-50'
+              ? isWorking
+                ? 'bg-primary-50 border-primary-200'
+                : 'bg-red-200'
+              : isWorking
+              ? 'bg-neutral-50'
+              : 'bg-red-50'
           }`}
           style={{ animationDelay: '0.05s' }}
         >
-          <p className="text-sm text-neutral-500">{currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+          <p className={`text-sm ${
+            currentDate.toDateString() === new Date().toDateString()
+              ? isWorking 
+                ? 'text-neutral-500'
+                : 'text-red-600'
+              : isWorking 
+              ? 'text-neutral-500' 
+              : 'text-red-400'
+          }`}>
+            {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
+          </p>
           <p className={`text-lg font-semibold ${
             currentDate.toDateString() === new Date().toDateString()
-              ? 'text-primary-600'
-              : 'text-neutral-800'
+              ? isWorking
+                ? 'text-primary-600'
+                : 'text-red-700'
+              : isWorking
+              ? 'text-neutral-800'
+              : 'text-red-600'
           }`}>
             {currentDate.getDate()}
           </p>
@@ -153,10 +196,14 @@ export const DayView: React.FC<DayViewProps> = ({
             borderBottomClass = 'border-b border-gray-100'; // 15-minute boundaries
           }
 
+          // Apply red hue to non-working days
+          const baseBackground = isWorking ? '' : 'bg-red-50/30';
+          const hoverBackground = isWorking ? 'hover:bg-primary-50' : 'hover:bg-red-100/50';
+
           return (
             <div
               key={time}
-              className="grid grid-cols-[80px_1fr] hover:bg-primary-50 transition-all duration-300 slide-up-element"
+              className={`grid grid-cols-[80px_1fr] transition-all duration-300 slide-up-element ${hoverBackground}`}
               style={{ animationDelay: `${timeIndex * 0.02}s` }}
             >
               {/* Time label column - show hour labels in the middle of each hour block */}
@@ -170,7 +217,7 @@ export const DayView: React.FC<DayViewProps> = ({
 
               {/* Time slot column with drag and drop */}
               <div
-                className={`p-1 min-h-[15px] relative group cursor-pointer ${borderBottomClass} ${isSelected ? 'bg-blue-200 border-blue-400' : ''}`}
+                className={`p-1 min-h-[15px] relative group cursor-pointer ${borderBottomClass} ${baseBackground} ${isSelected ? 'bg-blue-200 border-blue-400' : ''}`}
                 style={{
                   backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.3)' : '',
                   borderColor: isSelected ? '#3b82f6' : ''
@@ -239,7 +286,9 @@ export const DayView: React.FC<DayViewProps> = ({
                 )}
 
                 {/* Hover effect */}
-                <div className="absolute inset-0 bg-primary-100/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg ${
+                  isWorking ? 'bg-primary-100/30' : 'bg-red-100/30'
+                }`}></div>
               </div>
             </div>
           );

@@ -79,6 +79,18 @@ class AuthService {
   isAuthenticated(): boolean {
     return localStorage.getItem('isAuthenticated') === 'true';
   }
+
+  getDoctorId(): string | null {
+    const user = this.getCurrentUser();
+    console.log('Current user data:', user); // Debug log
+    console.log('User data type:', typeof user); // Debug log
+    console.log('User keys:', user ? Object.keys(user) : 'null'); // Debug log
+
+    // Use 'id' field as the doctor ID since that's what the login API returns
+    const doctorId = user?.id || null;
+    console.log('Doctor ID extracted:', doctorId); // Debug log
+    return doctorId;
+  }
 }
 
 export const authService = AuthService.getInstance();

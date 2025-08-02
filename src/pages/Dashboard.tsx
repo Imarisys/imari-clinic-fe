@@ -8,10 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../components/common/Modal';
 import { PatientForm } from '../components/patients/PatientForm';
 import { PatientService } from '../services/patientService';
-import { PatientCreate, PatientUpdate, Patient } from '../types/Patient';
+import { PatientCreate, PatientUpdate, Patient, PatientSummary } from '../types/Patient';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
+import { SettingsService } from '../services/settingsService';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -22,6 +23,18 @@ export const Dashboard: React.FC = () => {
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+
+  // Add state for patient summary and currency
+  const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
+  const [patientSummaryLoading, setPatientSummaryLoading] = useState(true);
+  const [patientSummaryError, setPatientSummaryError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<string>('$');
+
+  // Working hours from settings
+  const [workingHours, setWorkingHours] = useState({
+    startTime: '08:00',
+    endTime: '17:00'
+  });
 
   // New state variables for appointment scheduling
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
@@ -86,9 +99,38 @@ export const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchSettings = async () => {
+      try {
+        const settings = await SettingsService.getSettings();
+        setWorkingHours({
+          startTime: settings.appointments_start_time || '08:00',
+          endTime: settings.appointments_end_time || '17:00'
+        });
+        setCurrency(settings.display_currency || '$'); // Use display_currency from settings
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+
+    const fetchPatientSummary = async () => {
+      try {
+        setPatientSummaryLoading(true);
+        const summary = await PatientService.getPatientSummary();
+        setPatientSummary(summary);
+        setPatientSummaryError(null);
+      } catch (error) {
+        console.error('Failed to fetch patient summary:', error);
+        setPatientSummaryError('Failed to load patient summary');
+      } finally {
+        setPatientSummaryLoading(false);
+      }
+    };
+
     fetchWeather();
     fetchTodayAppointments();
     fetchPatients();
+    fetchSettings();
+    fetchPatientSummary();
   }, []);
 
   const getCurrentTemperature = () => {
@@ -117,7 +159,7 @@ export const Dashboard: React.FC = () => {
     if (temperature >= 30) return '☀️';
     if (temperature >= 20) return '🌤️';
     if (temperature >= 10) return '⛅';
-    return '🌧️';
+    return '🌧��';
   };
 
   // Map API appointment status to UI status
@@ -142,6 +184,15 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Calculate unique patients from today's appointments
+  const getUniquePatientCount = (): string => {
+    if (appointmentsLoading) return "...";
+    if (appointmentsError) return "Error";
+
+    const uniquePatientIds = new Set(appointments.map(appointment => appointment.patient_id));
+    return uniquePatientIds.size.toString();
+  };
+
   // Update first stats card to show actual appointment count
   const stats = [
     {
@@ -153,7 +204,7 @@ export const Dashboard: React.FC = () => {
     },
     {
       title: "Total Patients",
-      value: "248",
+      value: patientSummaryLoading ? "..." : patientSummaryError ? "Error" : patientSummary?.total_patients?.toString() || "0",
       icon: "people",
       bgColor: "bg-success-50",
       iconColor: "bg-success-500"
@@ -169,20 +220,13 @@ export const Dashboard: React.FC = () => {
     },
     {
       title: "Revenue Today",
-      value: "$2,340",
+      value: `${currency} --`,
       icon: "attach_money",
       bgColor: "bg-amber-50",
       iconColor: "bg-amber-600"
     }
   ];
 
-  const recentAppointments = [
-    { time: "09:00", patient: "John Doe", type: "Consultation", status: "confirmed" },
-    { time: "10:30", patient: "Sarah Wilson", type: "Follow-up", status: "in-progress" },
-    { time: "11:15", patient: "Mike Johnson", type: "Check-up", status: "waiting" },
-    { time: "14:00", patient: "Emily Davis", type: "Surgery", status: "confirmed" },
-    { time: "15:30", patient: "Robert Brown", type: "Consultation", status: "pending" }
-  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -726,6 +770,7 @@ export const Dashboard: React.FC = () => {
                         preselectedDate={selectedTimeSlot?.date}
                         preselectedTime={selectedTimeSlot?.time}
                         preselectedEndTime={selectedTimeSlot?.endTime}
+                        workingHours={workingHours}
                       />
                     </div>
                   )}

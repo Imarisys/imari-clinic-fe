@@ -4,87 +4,19 @@ import { useTranslation } from '../context/TranslationContext';
 import { useNotification } from '../context/NotificationContext';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Settings as SettingsType, Country, Language } from '../types/Settings';
+import { Modal } from '../components/common/Modal';
+import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
+import { Settings as SettingsType, SettingsFieldValues } from '../types/Settings';
 import { SettingsService } from '../services/settingsService';
-
-const LANGUAGES: Language[] = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'fr', name: 'French', nativeName: 'Français' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-];
-
-const COUNTRIES: Country[] = [
-  {
-    code: 'US',
-    name: 'United States',
-    cities: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix']
-  },
-  {
-    code: 'CA',
-    name: 'Canada',
-    cities: ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Ottawa']
-  },
-  {
-    code: 'FR',
-    name: 'France',
-    cities: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice']
-  },
-  {
-    code: 'MA',
-    name: 'Morocco',
-    cities: ['Casablanca', 'Rabat', 'Marrakech', 'Fes', 'Tangier']
-  }
-];
-
-const TIMEZONES = [
-  'UTC-12:00', 'UTC-11:00', 'UTC-10:00', 'UTC-09:00', 'UTC-08:00',
-  'UTC-07:00', 'UTC-06:00', 'UTC-05:00', 'UTC-04:00', 'UTC-03:00',
-  'UTC-02:00', 'UTC-01:00', 'UTC+00:00', 'UTC+01:00', 'UTC+02:00',
-  'UTC+03:00', 'UTC+04:00', 'UTC+05:00', 'UTC+06:00', 'UTC+07:00',
-  'UTC+08:00', 'UTC+09:00', 'UTC+10:00', 'UTC+11:00', 'UTC+12:00'
-];
-
-const WORKING_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+import { AppointmentTypeService, AppointmentType, AppointmentTypeCreate } from '../services/appointmentTypeService';
+import { authService } from '../services/authService';
 
 export const SettingsPage: React.FC = () => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
 
-  const [settings, setSettings] = useState<SettingsType>({
-    // Localization
-    language: 'en',
-    country: 'US',
-    city: 'New York',
-    timezone: 'UTC-05:00',
-
-    // Clinic Information
-    clinicName: 'Imarisys Clinic',
-    clinicAddress: '123 Medical Center Dr, New York, NY 10001',
-    clinicPhone: '+1 (555) 123-4567',
-    clinicEmail: 'info@imarisys.com',
-
-    // Appointment Settings
-    appointmentDuration: 30,
-    workingHoursStart: '09:00',
-    workingHoursEnd: '17:00',
-    workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-
-    // Notification Settings
-    emailNotifications: true,
-    smsNotifications: false,
-    appointmentReminders: true,
-    reminderTimeBefore: 60,
-
-    // Display Settings
-    dateFormat: 'MM/DD/YYYY',
-    timeFormat: '12h',
-    currency: 'USD',
-
-    // Weather Settings
-    showWeather: true,
-    temperatureUnit: 'fahrenheit'
-  });
-
+  const [settings, setSettings] = useState<SettingsType | null>(null);
+  const [fieldValues, setFieldValues] = useState<SettingsFieldValues | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [isLoading, setIsLoading] = useState(true);
@@ -96,18 +28,71 @@ export const SettingsPage: React.FC = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
-  const selectedCountry = COUNTRIES.find(country => country.code === settings.country);
+  // Appointment types management states
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [isLoadingAppointmentTypes, setIsLoadingAppointmentTypes] = useState(false);
+  const [showAppointmentTypeModal, setShowAppointmentTypeModal] = useState(false);
+  const [editingAppointmentType, setEditingAppointmentType] = useState<AppointmentType | null>(null);
+  const [appointmentTypeForm, setAppointmentTypeForm] = useState<AppointmentTypeCreate>({
+    name: '',
+    duration_minutes: 30,
+    cost: 0,
+    icon: 'event'
+  });
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [appointmentTypeToDelete, setAppointmentTypeToDelete] = useState<string | null>(null);
+
+  // Available icons for appointment types
+  const availableIcons = [
+    { value: 'event', label: 'General Appointment', color: 'text-blue-600' },
+    { value: 'medical_services', label: 'Medical Checkup', color: 'text-green-600' },
+    { value: 'healing', label: 'Treatment', color: 'text-purple-600' },
+    { value: 'vaccines', label: 'Vaccination', color: 'text-orange-600' },
+    { value: 'psychology', label: 'Consultation', color: 'text-indigo-600' },
+    { value: 'monitor_heart', label: 'Cardiology', color: 'text-red-600' },
+    { value: 'visibility', label: 'Eye Exam', color: 'text-cyan-600' },
+    { value: 'hearing', label: 'Hearing Test', color: 'text-yellow-600' },
+    { value: 'pregnant_woman', label: 'Prenatal Care', color: 'text-pink-600' },
+    { value: 'child_care', label: 'Pediatric', color: 'text-emerald-600' },
+    { value: 'elderly', label: 'Geriatric Care', color: 'text-gray-600' },
+    { value: 'psychology_alt', label: 'Mental Health', color: 'text-violet-600' },
+    { value: 'sports_soccer', label: 'Sports Medicine', color: 'text-lime-600' },
+    { value: 'spa', label: 'Wellness', color: 'text-teal-600' }
+  ];
 
   useEffect(() => {
-    loadSettings();
+    loadData();
   }, []);
 
-  const loadSettings = async () => {
+  useEffect(() => {
+    if (activeTab === 'appointments') {
+      loadAppointmentTypes();
+    }
+  }, [activeTab]);
+
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const response = await SettingsService.getSettings();
-      setSettings(response.data);
+
+      // Debug: Check if user is authenticated and doctor_id exists
+      const isAuth = authService.isAuthenticated();
+      const currentUser = authService.getCurrentUser();
+      const doctorId = authService.getDoctorId();
+
+      console.log('=== Settings Page Debug ===');
+      console.log('Is authenticated:', isAuth);
+      console.log('Current user:', currentUser);
+      console.log('Doctor ID:', doctorId);
+      console.log('========================');
+
+      const [settingsData, fieldValuesData] = await Promise.all([
+        SettingsService.getSettings(),
+        SettingsService.getSettingsFieldValues()
+      ]);
+      setSettings(settingsData);
+      setFieldValues(fieldValuesData);
     } catch (error) {
+      console.error('Error loading settings:', error);
       showNotification('error', 'Error', 'Failed to load settings');
     } finally {
       setIsLoading(false);
@@ -115,26 +100,32 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleInputChange = (field: keyof SettingsType, value: any) => {
-    setSettings(prev => ({
+    if (!settings) return;
+    setSettings(prev => prev ? {
       ...prev,
       [field]: value
-    }));
+    } : null);
   };
 
   const handleWorkingDayToggle = (day: string) => {
-    const updatedDays = settings.workingDays.includes(day)
-      ? settings.workingDays.filter(d => d !== day)
-      : [...settings.workingDays, day];
+    if (!settings) return;
+    const updatedDays = settings.appointments_working_days.includes(day)
+      ? settings.appointments_working_days.filter(d => d !== day)
+      : [...settings.appointments_working_days, day];
 
-    handleInputChange('workingDays', updatedDays);
+    handleInputChange('appointments_working_days', updatedDays);
   };
 
   const handleSave = async () => {
+    if (!settings) return;
+
     setIsSaving(true);
     try {
-      await SettingsService.updateSettings(settings);
+      const updatedSettings = await SettingsService.updateSettings(settings);
+      setSettings(updatedSettings);
       showNotification('success', 'Success', 'Settings saved successfully');
     } catch (error) {
+      console.error('Error saving settings:', error);
       showNotification('error', 'Error', 'Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -169,7 +160,7 @@ export const SettingsPage: React.FC = () => {
     } catch (error) {
       showNotification('error', 'Error', 'Failed to import settings');
     }
-    
+
     // Reset input
     event.target.value = '';
   };
@@ -202,266 +193,509 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const renderGeneralTab = () => (
-    <div className="space-y-6">
-      {/* Clinic Information Section */}
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-          <span className="material-icons-round text-primary-600 mr-2">local_hospital</span>
-          {t('clinic_information')}
-        </h3>
+  // Appointment types handlers
+  const loadAppointmentTypes = async () => {
+    setIsLoadingAppointmentTypes(true);
+    try {
+      const types = await AppointmentTypeService.getAll();
+      setAppointmentTypes(types);
+    } catch (error) {
+      console.error('Error loading appointment types:', error);
+      showNotification('error', 'Error', 'Failed to load appointment types');
+    } finally {
+      setIsLoadingAppointmentTypes(false);
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <Input
-              label={t('clinic_name')}
-              value={settings.clinicName}
-              onChange={(e) => handleInputChange('clinicName', e.target.value)}
-              placeholder={t('enter_clinic_name')}
-            />
-          </div>
+  const handleAddEditAppointmentType = async () => {
+    if (!appointmentTypeForm.name) return;
 
-          <div className="md:col-span-2">
-            <Input
-              label={t('clinic_address')}
-              value={settings.clinicAddress}
-              onChange={(e) => handleInputChange('clinicAddress', e.target.value)}
-              placeholder={t('enter_clinic_address')}
-            />
-          </div>
+    try {
+      let response: AppointmentType;
+      if (editingAppointmentType) {
+        // Update existing appointment type
+        response = await AppointmentTypeService.updateAppointmentType(
+          editingAppointmentType.name,
+          appointmentTypeForm
+        );
+        showNotification('success', 'Success', 'Appointment type updated successfully');
+      } else {
+        // Create new appointment type
+        response = await AppointmentTypeService.createAppointmentType(appointmentTypeForm);
+        showNotification('success', 'Success', 'Appointment type created successfully');
+      }
 
-          <div>
-            <Input
-              label={t('clinic_phone')}
-              value={settings.clinicPhone}
-              onChange={(e) => handleInputChange('clinicPhone', e.target.value)}
-              placeholder={t('enter_phone_number')}
-            />
-          </div>
+      // Update local state
+      setAppointmentTypes(prev => {
+        if (editingAppointmentType) {
+          return prev?.map(type => type.name === editingAppointmentType.name ? response : type) || [];
+        } else {
+          return [...(prev || []), response];
+        }
+      });
 
-          <div>
-            <Input
-              label={t('clinic_email')}
-              type="email"
-              value={settings.clinicEmail}
-              onChange={(e) => handleInputChange('clinicEmail', e.target.value)}
-              placeholder={t('enter_email_address')}
-            />
+      // Reset form and close modal
+      setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+      setEditingAppointmentType(null);
+      setShowAppointmentTypeModal(false);
+    } catch (error) {
+      console.error('Error saving appointment type:', error);
+      showNotification('error', 'Error', 'Failed to save appointment type');
+    }
+  };
+
+  const handleDeleteAppointmentType = async () => {
+    if (!appointmentTypeToDelete) return;
+
+    try {
+      await AppointmentTypeService.deleteAppointmentType(appointmentTypeToDelete);
+      setAppointmentTypes(prev => prev?.filter(type => type.name !== appointmentTypeToDelete) || []);
+      showNotification('success', 'Success', 'Appointment type deleted successfully');
+    } catch (error) {
+      console.error('Error deleting appointment type:', error);
+      showNotification('error', 'Error', 'Failed to delete appointment type');
+    } finally {
+      setShowDeleteConfirmation(false);
+      setAppointmentTypeToDelete(null);
+    }
+  };
+
+  const renderGeneralTab = () => {
+    if (!settings) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Clinic Information Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">local_hospital</span>
+            {t('clinic_information')}
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <Input
+                label={t('clinic_name')}
+                value={settings.clinic_name}
+                onChange={(e) => handleInputChange('clinic_name', e.target.value)}
+                placeholder="Enter clinic name"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Input
+                label={t('clinic_address')}
+                value={settings.clinic_address}
+                onChange={(e) => handleInputChange('clinic_address', e.target.value)}
+                placeholder="Enter clinic address"
+              />
+            </div>
+
+            <div>
+              <Input
+                label={t('clinic_phone')}
+                value={settings.clinic_phone}
+                onChange={(e) => handleInputChange('clinic_phone', e.target.value)}
+                placeholder="Enter clinic phone"
+              />
+            </div>
+
+            <div>
+              <Input
+                label={t('clinic_email')}
+                type="email"
+                value={settings.clinic_email}
+                onChange={(e) => handleInputChange('clinic_email', e.target.value)}
+                placeholder="Enter clinic email"
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderAppointmentsTab = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-          <span className="material-icons-round text-primary-600 mr-2">schedule</span>
-          {t('working_hours')}
-        </h3>
+  const renderAppointmentsTab = () => {
+    if (!settings || !fieldValues) return null;
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div>
-            <Input
-              label={t('start_time')}
-              type="time"
-              value={settings.workingHoursStart}
-              onChange={(e) => handleInputChange('workingHoursStart', e.target.value)}
-            />
+    return (
+      <div className="space-y-6">
+        {/* Working Hours Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">schedule</span>
+            {t('working_hours')}
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <Input
+                label={t('start_time')}
+                type="time"
+                value={settings.appointments_start_time}
+                onChange={(e) => handleInputChange('appointments_start_time', e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Input
+                label={t('end_time')}
+                type="time"
+                value={settings.appointments_end_time}
+                onChange={(e) => handleInputChange('appointments_end_time', e.target.value)}
+              />
+            </div>
           </div>
 
           <div>
-            <Input
-              label={t('end_time')}
-              type="time"
-              value={settings.workingHoursEnd}
-              onChange={(e) => handleInputChange('workingHoursEnd', e.target.value)}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-3">{t('working_days')}</label>
+            <div className="flex flex-wrap gap-2">
+              {fieldValues.weekDays.map(day => (
+                <button
+                  key={day}
+                  onClick={() => handleWorkingDayToggle(day)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    settings.appointments_working_days.includes(day)
+                      ? 'bg-primary-100 text-primary-700 border-2 border-primary-300'
+                      : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  {day.charAt(0).toUpperCase() + day.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">{t('working_days')}</label>
-          <div className="flex flex-wrap gap-2">
-            {WORKING_DAYS.map(day => (
-              <button
-                key={day}
-                onClick={() => handleWorkingDayToggle(day)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  settings.workingDays.includes(day)
-                    ? 'bg-primary-100 text-primary-700 border-2 border-primary-300'
-                    : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
-                }`}
+        {/* Appointment Types Management Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+              <span className="material-icons-round text-primary-600 mr-2">category</span>
+              Appointment Types
+            </h3>
+            <Button
+              onClick={() => {
+                setEditingAppointmentType(null);
+                setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+                setShowAppointmentTypeModal(true);
+              }}
+              variant="primary"
+              className="flex items-center"
+            >
+              <span className="material-icons-round mr-2">add</span>
+              Add Type
+            </Button>
+          </div>
+
+          {isLoadingAppointmentTypes ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <span className="material-icons-round animate-spin text-2xl text-primary-600 mb-2">autorenew</span>
+                <p className="text-gray-600">Loading appointment types...</p>
+              </div>
+            </div>
+          ) : appointmentTypes.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="material-icons-round text-gray-400 text-2xl">category</span>
+              </div>
+              <h4 className="text-lg font-medium text-gray-800 mb-2">No Appointment Types</h4>
+              <p className="text-gray-600 mb-4">Create your first appointment type to get started.</p>
+              <Button
+                onClick={() => {
+                  setEditingAppointmentType(null);
+                  setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+                  setShowAppointmentTypeModal(true);
+                }}
+                variant="primary"
               >
-                {day.charAt(0).toUpperCase() + day.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderNotificationsTab = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-          <span className="material-icons-round text-primary-600 mr-2">notifications</span>
-          Notification Preferences
-        </h3>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-800">Email Notifications</h4>
-              <p className="text-sm text-gray-600">Receive notifications via email</p>
+                <span className="material-icons-round mr-2">add</span>
+                Add Appointment Type
+              </Button>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.emailNotifications}
-                onChange={(e) => handleInputChange('emailNotifications', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {appointmentTypes.map((type) => {
+                const selectedIcon = availableIcons.find(icon => icon.value === type.icon) || availableIcons[0];
+                // Use proper currency symbol based on backend settings
+                const getCurrencySymbol = (currency: string) => {
+                  switch (currency) {
+                    case 'USD': return '$ ';
+                    case 'EUR': return '€ ';
+                    case 'GBP': return '£ ';
+                    default: return currency + ' ';
+                  }
+                };
+                const currencySymbol = getCurrencySymbol(settings?.display_currency || 'USD');
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-800">SMS Notifications</h4>
-              <p className="text-sm text-gray-600">Receive notifications via SMS</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.smsNotifications}
-                onChange={(e) => handleInputChange('smsNotifications', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-800">Appointment Reminders</h4>
-              <p className="text-sm text-gray-600">Send reminders before appointments</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.appointmentReminders}
-                onChange={(e) => handleInputChange('appointmentReminders', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-          </div>
-
-          {settings.appointmentReminders && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Reminder Time</label>
-              <select
-                value={settings.reminderTimeBefore}
-                onChange={(e) => handleInputChange('reminderTimeBefore', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value={15}>15 minutes before</option>
-                <option value={30}>30 minutes before</option>
-                <option value={60}>1 hour before</option>
-                <option value={120}>2 hours before</option>
-                <option value={1440}>1 day before</option>
-              </select>
+                return (
+                  <div
+                    key={type.name}
+                    className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-3 ${
+                          selectedIcon.value === 'event' ? 'bg-primary-100' : 'bg-gray-100'
+                        }`}>
+                          <span className={`material-icons-round text-xl ${
+                            selectedIcon.value === 'event' ? 'text-primary-600' : selectedIcon.color
+                          }`}>
+                            {type.icon}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-800">{type.name}</h4>
+                          <p className="text-sm text-gray-600">{type.duration_minutes} minutes</p>
+                          <p className="text-sm font-medium text-green-600">
+                            {currencySymbol}{type.cost.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => {
+                            setEditingAppointmentType(type);
+                            setAppointmentTypeForm({
+                              name: type.name,
+                              duration_minutes: type.duration_minutes,
+                              cost: type.cost,
+                              icon: type.icon
+                            });
+                            setShowAppointmentTypeModal(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <span className="material-icons-round text-sm">edit</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAppointmentTypeToDelete(type.name);
+                            setShowDeleteConfirmation(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <span className="material-icons-round text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const renderDisplayTab = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-          <span className="material-icons-round text-primary-600 mr-2">display_settings</span>
-          Display Preferences
-        </h3>
+  // Keep the new beautiful notifications design
+  const renderNotificationsTab = () => {
+    if (!settings) return null;
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
-            <select
-              value={settings.dateFormat}
-              onChange={(e) => handleInputChange('dateFormat', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-              <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Time Format</label>
-            <select
-              value={settings.timeFormat}
-              onChange={(e) => handleInputChange('timeFormat', e.target.value as '12h' | '24h')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="12h">12 Hour (AM/PM)</option>
-              <option value="24h">24 Hour</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-            <select
-              value={settings.currency}
-              onChange={(e) => handleInputChange('currency', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="MAD">MAD (د.م.)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Temperature Unit</label>
-            <select
-              value={settings.temperatureUnit}
-              onChange={(e) => handleInputChange('temperatureUnit', e.target.value as 'celsius' | 'fahrenheit')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="celsius">Celsius (°C)</option>
-              <option value="fahrenheit">Fahrenheit (°F)</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-800">Show Weather Widget</h4>
-              <p className="text-sm text-gray-600">Display weather information on dashboard</p>
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('notifications')}</h3>
+          <div className="space-y-6">
+            {/* Email Notifications */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-blue-600 text-xl">email</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
+                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="email-notifications"
+                  checked={settings.notifications_email}
+                  onChange={(e) => handleInputChange('notifications_email', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="email-notifications"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.showWeather}
-                onChange={(e) => handleInputChange('showWeather', e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
+
+            {/* SMS Notifications */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-green-600 text-xl">sms</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">SMS Notifications</h4>
+                  <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="sms-notifications"
+                  checked={settings.notifications_sms}
+                  onChange={(e) => handleInputChange('notifications_sms', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="sms-notifications"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Appointment Reminders */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-orange-600 text-xl">schedule</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Appointment Reminders</h4>
+                  <p className="text-sm text-gray-500">Send automatic appointment reminders</p>
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="appointment-reminders"
+                  checked={settings.notifications_appointment_reminder}
+                  onChange={(e) => handleInputChange('notifications_appointment_reminder', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="appointment-reminders"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Reminder Time Setting */}
+            {settings.notifications_appointment_reminder && (
+              <div className="ml-14 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1">
+                    <Input
+                      label="Reminder Time (minutes before)"
+                      type="number"
+                      value={settings.notifications_reminder_time.toString()}
+                      onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
+                      placeholder="60"
+                      className="w-32"
+                    />
+                  </div>
+                  <span className="text-sm text-gray-500 mt-6">{t('minutes')}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderDisplayTab = () => {
+    if (!settings || !fieldValues) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">display_settings</span>
+            Display Preferences
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
+              <select
+                value={settings.display_date_format}
+                onChange={(e) => handleInputChange('display_date_format', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {fieldValues.dateFormats.map((format) => (
+                  <option key={format} value={format}>{format}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Time Format</label>
+              <select
+                value={settings.display_time_format}
+                onChange={(e) => handleInputChange('display_time_format', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {fieldValues.timeFormats.map((format) => (
+                  <option key={format} value={format}>{format === '12h' ? '12 Hour (AM/PM)' : '24 Hour'}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <select
+                value={settings.display_currency}
+                onChange={(e) => handleInputChange('display_currency', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {fieldValues.currencies.map((currency) => (
+                  <option key={currency} value={currency}>{currency}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Temperature Unit</label>
+              <select
+                value={settings.display_temperature_unit}
+                onChange={(e) => handleInputChange('display_temperature_unit', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {fieldValues.temperatureUnits.map((unit) => (
+                  <option key={unit} value={unit}>{unit === 'celsius' ? 'Celsius (°C)' : 'Fahrenheit (°F)'}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <select
+                value={settings.display_language}
+                onChange={(e) => handleInputChange('display_language', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {fieldValues.languages.map((lang) => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderBackupRestoreTab = () => (
     <div className="space-y-6">
@@ -754,7 +988,105 @@ export const SettingsPage: React.FC = () => {
             {activeTab === 'backup_restore' && renderBackupRestoreTab()}
           </div>
         </div>
+
+        {/* Appointment Types Modal */}
+        <Modal
+          isOpen={showAppointmentTypeModal}
+          onClose={() => setShowAppointmentTypeModal(false)}
+          title={`${editingAppointmentType ? 'Edit' : 'Add'} Appointment Type`}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+              <Input
+                value={appointmentTypeForm.name}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, name: e.target.value })}
+                placeholder="Enter appointment type name"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
+              <Input
+                type="number"
+                value={appointmentTypeForm.duration_minutes.toString()}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, duration_minutes: parseInt(e.target.value) })}
+                placeholder="Enter duration in minutes"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cost</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={appointmentTypeForm.cost.toString()}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, cost: parseFloat(e.target.value) || 0 })}
+                placeholder="Enter cost"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Icon</label>
+              <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                {availableIcons.map(icon => (
+                  <button
+                    key={icon.value}
+                    type="button"
+                    onClick={() => setAppointmentTypeForm({ ...appointmentTypeForm, icon: icon.value })}
+                    className={`flex items-center justify-center p-3 rounded-lg transition-all hover:scale-105 ${
+                      appointmentTypeForm.icon === icon.value
+                        ? 'bg-primary-100 border-2 border-primary-300 shadow-md'
+                        : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                    title={icon.label}
+                  >
+                    <span className={`material-icons-round text-xl ${
+                      appointmentTypeForm.icon === icon.value ? 'text-primary-600' : icon.color
+                    }`}>
+                      {icon.value}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Select an icon that best represents this appointment type</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-4 mt-6">
+            <Button
+              onClick={() => setShowAppointmentTypeModal(false)}
+              variant="secondary"
+              className="px-4 py-2 rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddEditAppointmentType}
+              variant="primary"
+              className="px-4 py-2 rounded-lg"
+            >
+              Save
+            </Button>
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showDeleteConfirmation}
+          onClose={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleDeleteAppointmentType}
+          title="Delete Appointment Type"
+          message="Are you sure you want to delete this appointment type? This action cannot be undone."
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+        />
       </div>
     </DashboardLayout>
   );
 };
+
+export default SettingsPage;

@@ -4,6 +4,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
+  id: string;
   first_name: string;
   last_name: string;
   clinic_name: string;

@@ -8,6 +8,7 @@ import { AppointmentBookingForm } from './AppointmentBookingForm';
 import { AppointmentDetail } from './AppointmentDetail';
 import { useNotification } from '../../hooks/useNotification';
 import { Notification } from '../common/Notification';
+import { SettingsService } from '../../services/settingsService';
 
 interface PatientDetailProps {
   patient: Patient;
@@ -35,6 +36,12 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
   const [showAppointmentDetail, setShowAppointmentDetail] = useState(false);
   const { notification, hideNotification, showError, showSuccess } = useNotification();
 
+  // Working hours from settings
+  const [workingHours, setWorkingHours] = useState({
+    startTime: '08:00',
+    endTime: '17:00'
+  });
+
   const loadPatientAppointments = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -50,6 +57,28 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
 
   useEffect(() => {
     loadPatientAppointments();
+
+    // Load settings for working hours
+    const loadSettings = async () => {
+      try {
+        const settings = await SettingsService.getSettings();
+        console.log('PatientDetail - Settings loaded:', settings);
+        console.log('PatientDetail - appointments_start_time:', settings.appointments_start_time);
+        console.log('PatientDetail - appointments_end_time:', settings.appointments_end_time);
+        
+        const newWorkingHours = {
+          startTime: settings.appointments_start_time || '08:00',
+          endTime: settings.appointments_end_time || '17:00'
+        };
+        
+        console.log('PatientDetail - Setting working hours to:', newWorkingHours);
+        setWorkingHours(newWorkingHours);
+      } catch (error) {
+        console.error('PatientDetail - Failed to fetch settings:', error);
+      }
+    };
+
+    loadSettings();
   }, [loadPatientAppointments]);
 
   const handleBookAppointment = async (appointmentData: AppointmentCreate) => {
@@ -452,6 +481,7 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
           onSubmit={handleBookAppointment}
           onCancel={() => setShowBookingForm(false)}
           isLoading={isBookingLoading}
+          workingHours={workingHours}
         />
       )}
 
