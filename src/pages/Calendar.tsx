@@ -10,6 +10,7 @@ import { PatientForm } from '../components/patients/PatientForm';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { AppointmentService } from '../services/appointmentService';
 import { PatientService } from '../services/patientService';
+import { SettingsService, settingsEventDispatcher } from '../services/settingsService';
 import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } from '../types/Appointment';
 import { Patient, PatientCreate, PatientUpdate } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
@@ -36,6 +37,17 @@ export const Calendar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
+
+  // Working hours from settings
+  const [workingHours, setWorkingHours] = useState({
+    startTime: '08:00',
+    endTime: '17:00'
+  });
+
+  // Working days from settings
+  const [workingDays, setWorkingDays] = useState<string[]>([
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
+  ]);
 
   // Reschedule confirmation state
   const [showRescheduleConfirmation, setShowRescheduleConfirmation] = useState(false);
@@ -92,11 +104,48 @@ export const Calendar: React.FC = () => {
     }
   };
 
+  // Load settings for working hours
+  const loadSettings = async () => {
+    try {
+      const settings = await SettingsService.getSettings();
+      setWorkingHours({
+        startTime: settings.appointments_start_time || '08:00',
+        endTime: settings.appointments_end_time || '17:00'
+      });
+      setWorkingDays(settings.appointments_working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+    } catch (err) {
+      console.error('Error loading settings:', err);
+    }
+  };
+
   // Load data on component mount and when date/view changes
   useEffect(() => {
     loadAppointments();
     loadPatients();
+    loadSettings();
   }, [currentDate, view]);
+
+  // Listen for settings updates
+  useEffect(() => {
+    const handleSettingsUpdate = (event: any) => {
+      const updatedSettings = event.detail;
+      if (updatedSettings?.appointments_start_time || updatedSettings?.appointments_end_time) {
+        setWorkingHours({
+          startTime: updatedSettings.appointments_start_time || workingHours.startTime,
+          endTime: updatedSettings.appointments_end_time || workingHours.endTime
+        });
+      }
+      if (updatedSettings?.appointments_working_days) {
+        setWorkingDays(updatedSettings.appointments_working_days);
+      }
+    };
+
+    settingsEventDispatcher.addEventListener('settingsUpdated', handleSettingsUpdate);
+
+    return () => {
+      settingsEventDispatcher.removeEventListener('settingsUpdated', handleSettingsUpdate);
+    };
+  }, [workingHours, workingDays]);
 
   // Handle appointment creation
   const handleCreateAppointment = async (appointmentData: AppointmentCreate) => {
@@ -528,6 +577,21 @@ export const Calendar: React.FC = () => {
     </div>
   );
 
+  // Generate time slots based on working hours for drag and drop logic
+  const generateTimeSlots = () => {
+    const startHour = parseInt(workingHours.startTime.split(':')[0]);
+    const endHour = parseInt(workingHours.endTime.split(':')[0]);
+    const totalHours = endHour - startHour;
+    const slotsPerHour = 4; // 15-minute intervals
+    const totalSlots = totalHours * slotsPerHour;
+
+    return Array.from({ length: totalSlots }, (_, i) => {
+      const hour = Math.floor(i / slotsPerHour) + startHour;
+      const minutes = (i % slotsPerHour) * 15;
+      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    });
+  };
+
   // Drag and drop handlers
   const handleMouseDown = (e: React.MouseEvent, date: string, time: string) => {
     e.preventDefault();
@@ -545,11 +609,7 @@ export const Calendar: React.FC = () => {
 
   const handleMouseUp = () => {
     if (isDragging && dragStart && dragEnd) {
-      const timeSlots = Array.from({ length: 40 }, (_, i) => {
-        const hour = Math.floor(i / 4) + 8;
-        const minutes = (i % 4) * 15;
-        return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      });
+      const timeSlots = generateTimeSlots();
 
       const startIndex = timeSlots.indexOf(dragStart.time);
       const endIndex = timeSlots.indexOf(dragEnd.time);
@@ -587,11 +647,7 @@ export const Calendar: React.FC = () => {
       return false;
     }
 
-    const timeSlots = Array.from({ length: 40 }, (_, i) => {
-      const hour = Math.floor(i / 4) + 8;
-      const minutes = (i % 4) * 15;
-      return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    });
+    const timeSlots = generateTimeSlots();
 
     const currentIndex = timeSlots.indexOf(time);
     const startIndex = timeSlots.indexOf(dragStart.time);
@@ -694,7 +750,9 @@ export const Calendar: React.FC = () => {
             getAppointmentDuration={getAppointmentDuration}
             getAppointmentBackgroundColor={getAppointmentBackgroundColor}
             getAppointmentTextColor={getAppointmentTextColor}
-            onDayClick={handleDayClick} // Pass the handleDayClick function
+            onDayClick={handleDayClick}
+            workingHours={workingHours}
+            workingDays={workingDays}
           />
         )}
         {view === 'day' && (
@@ -714,6 +772,8 @@ export const Calendar: React.FC = () => {
             handleMouseDown={handleMouseDown}
             handleMouseEnter={handleMouseEnter}
             isSlotSelected={isSlotSelected}
+            workingHours={workingHours}
+            workingDays={workingDays}
           />
         )}
         {view === 'month' && (
