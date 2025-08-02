@@ -22,8 +22,8 @@ export class SettingsService {
    */
   private static isCacheValid(): boolean {
     const currentDoctorId = authService.getDoctorId();
-    return this.cachedSettings !== null &&
-           this.cacheTimestamp !== null &&
+    return this.cachedSettings !== null && 
+           this.cacheTimestamp !== null && 
            this.cachedDoctorId === currentDoctorId &&
            (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION;
   }
@@ -42,7 +42,7 @@ export class SettingsService {
    */
   static async getSettings(forceRefresh: boolean = false): Promise<Settings> {
     const currentDoctorId = authService.getDoctorId();
-
+    
     // Clear cache if doctor changed
     if (this.cachedDoctorId && this.cachedDoctorId !== currentDoctorId) {
       this.clearCache();
@@ -72,12 +72,12 @@ export class SettingsService {
 
       const data: Settings = await response.json();
       console.log('Settings data received:', data); // Debug log
-
+      
       // Cache the settings with doctor ID
       this.cachedSettings = data;
       this.cacheTimestamp = Date.now();
       this.cachedDoctorId = currentDoctorId;
-
+      
       return data;
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -90,12 +90,12 @@ export class SettingsService {
    */
   static getClinicName(): string | null {
     const currentDoctorId = authService.getDoctorId();
-
+    
     // Return null if cache is for a different doctor
     if (this.cachedDoctorId !== currentDoctorId) {
       return null;
     }
-
+    
     return this.cachedSettings?.clinic_name || null;
   }
 
@@ -146,15 +146,15 @@ export class SettingsService {
       }
 
       const data: Settings = await response.json();
-
+      
       // Update cache with new settings
       this.cachedSettings = data;
       this.cacheTimestamp = Date.now();
       this.cachedDoctorId = doctorId;
-
+      
       // Dispatch settings update event
       settingsEventDispatcher.dispatchSettingsUpdate(data);
-
+      
       return data;
     } catch (error) {
       console.error('Error updating settings:', error);

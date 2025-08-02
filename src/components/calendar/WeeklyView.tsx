@@ -133,7 +133,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
         {days.map((day, index) => {
           const isWorking = isWorkingDay(day);
           const isToday = day.toDateString() === new Date().toDateString();
-
+          
           return (
             <div
               key={index}

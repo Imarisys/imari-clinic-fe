@@ -967,6 +967,7 @@ export const Calendar: React.FC = () => {
                         preselectedDate={selectedTimeSlot?.date}
                         preselectedTime={selectedTimeSlot?.time}
                         preselectedEndTime={selectedTimeSlot?.endTime}
+                        workingHours={workingHours}
                       />
                     </div>
                   )}

@@ -12,6 +12,7 @@ import { PatientCreate, PatientUpdate, Patient } from '../types/Patient';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
+import { SettingsService } from '../services/settingsService';
 
 export const Dashboard: React.FC = () => {
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
@@ -22,6 +23,12 @@ export const Dashboard: React.FC = () => {
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+
+  // Working hours from settings
+  const [workingHours, setWorkingHours] = useState({
+    startTime: '08:00',
+    endTime: '17:00'
+  });
 
   // New state variables for appointment scheduling
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
@@ -86,9 +93,22 @@ export const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchSettings = async () => {
+      try {
+        const settings = await SettingsService.getSettings();
+        setWorkingHours({
+          startTime: settings.appointments_start_time || '08:00',
+          endTime: settings.appointments_end_time || '17:00'
+        });
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+
     fetchWeather();
     fetchTodayAppointments();
     fetchPatients();
+    fetchSettings();
   }, []);
 
   const getCurrentTemperature = () => {
@@ -726,6 +746,7 @@ export const Dashboard: React.FC = () => {
                         preselectedDate={selectedTimeSlot?.date}
                         preselectedTime={selectedTimeSlot?.time}
                         preselectedEndTime={selectedTimeSlot?.endTime}
+                        workingHours={workingHours}
                       />
                     </div>
                   )}

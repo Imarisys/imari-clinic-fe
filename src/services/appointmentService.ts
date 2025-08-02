@@ -95,7 +95,16 @@ export class AppointmentService {
     };
   }
 
-  static async getAvailableSlots(appointmentTypeName: string, date: string): Promise<TimeSlot[]> {
-    return this.request<TimeSlot[]>(`/api/v1/appointment-types/${appointmentTypeName}/available-slots/${date}`);
+  static async getAvailableSlots(
+    appointmentTypeName: string, 
+    date: string, 
+    startTime: string, 
+    endTime: string
+  ): Promise<TimeSlot[]> {
+    const params = new URLSearchParams({
+      start_time: startTime,
+      end_time: endTime
+    });
+    return this.request<TimeSlot[]>(`/api/v1/appointment-types/${appointmentTypeName}/available-slots/${date}?${params.toString()}`);
   }
 }

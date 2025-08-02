@@ -16,6 +16,10 @@ interface AppointmentBookingFormProps {
   preselectedDate?: string;
   preselectedTime?: string;
   preselectedEndTime?: string;
+  workingHours?: {
+    startTime: string;
+    endTime: string;
+  };
 }
 
 export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
@@ -26,10 +30,18 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   preselectedDate,
   preselectedTime,
   preselectedEndTime,
+  workingHours = { startTime: '08:00', endTime: '17:00' },
 }) => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
   const [isClosing, setIsClosing] = useState(false);
+
+  // Debug log to see what working hours we're receiving
+  useEffect(() => {
+    console.log('AppointmentBookingForm - Received workingHours prop:', workingHours);
+    console.log('AppointmentBookingForm - startTime:', workingHours?.startTime);
+    console.log('AppointmentBookingForm - endTime:', workingHours?.endTime);
+  }, [workingHours]);
 
   const [formData, setFormData] = useState<AppointmentCreate>({
     patient_id: patient.id,
@@ -263,9 +275,50 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const fetchAvailableSlots = async (appointmentTypeName: string, date: string) => {
     if (!appointmentTypeName || !date) return;
 
+    // Add debugging to check working hours
+    console.log('Fetching slots with working hours:', workingHours);
+    console.log('Start time:', workingHours?.startTime, 'End time:', workingHours?.endTime);
+
+    // Ensure we have valid working hours before making the API call
+    const startTime = workingHours?.startTime || '08:00';
+    const endTime = workingHours?.endTime || '17:00';
+
+    // Additional validation to ensure times are not undefined
+    if (!startTime || startTime === 'undefined' || !endTime || endTime === 'undefined') {
+      console.warn('Working hours are invalid, using fallback times');
+      const fallbackStartTime = '08:00';
+      const fallbackEndTime = '17:00';
+      console.log('Using fallback working hours - Start:', fallbackStartTime, 'End:', fallbackEndTime);
+
+      setLoadingSlots(true);
+      try {
+        const slots = await AppointmentService.getAvailableSlots(
+          appointmentTypeName,
+          date,
+          fallbackStartTime,
+          fallbackEndTime
+        );
+        setAvailableSlots(slots);
+      } catch (error) {
+        console.error('Error fetching available slots:', error);
+        showNotification('error', 'Error', 'Failed to fetch available time slots');
+        setAvailableSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
+      return;
+    }
+
+    console.log('Using working hours - Start:', startTime, 'End:', endTime);
+
     setLoadingSlots(true);
     try {
-      const slots = await AppointmentService.getAvailableSlots(appointmentTypeName, date);
+      const slots = await AppointmentService.getAvailableSlots(
+        appointmentTypeName, 
+        date, 
+        startTime,
+        endTime
+      );
       setAvailableSlots(slots);
     } catch (error) {
       console.error('Error fetching available slots:', error);
