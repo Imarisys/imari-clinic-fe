@@ -4,7 +4,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Patients } from './pages/Patients';
-// import { SettingsPage } from './pages/Settings';
+import { SettingsPage } from './pages/Settings';
 import { AppointmentStart } from './pages/AppointmentStart';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -59,14 +59,14 @@ const AppRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      {/*<Route*/}
-      {/*  path="/settings"*/}
-      {/*  element={*/}
-      {/*    <ProtectedRoute>*/}
-      {/*      <SettingsPage />*/}
-      {/*    </ProtectedRoute>*/}
-      {/*  }*/}
-      {/*/>*/}
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
   );
