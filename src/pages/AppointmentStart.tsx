@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AppointmentService } from '../services/appointmentService';
-import { Appointment } from '../types/Appointment';
+import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { useNotification } from '../context/NotificationContext';
+import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
+import { Modal } from '../components/common/Modal';
 
 interface AppointmentNote {
   id: string;
@@ -32,6 +34,10 @@ export const AppointmentStart: React.FC = () => {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'overview' | 'vitals' | 'notes' | 'treatment'>('overview');
+
+  // Follow-up appointment modal state
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [isCreatingFollowUp, setIsCreatingFollowUp] = useState(false);
 
   // Notes and documentation
   const [notes, setNotes] = useState<AppointmentNote[]>([]);
@@ -136,6 +142,29 @@ export const AppointmentStart: React.FC = () => {
       case 'treatment': return 'bg-green-100 text-green-700 border-green-200';
       default: return 'bg-blue-100 text-blue-700 border-blue-200';
     }
+  };
+
+  // Follow-up appointment handlers
+  const handleFollowUpClick = () => {
+    setShowFollowUpModal(true);
+  };
+
+  const handleFollowUpSubmit = async (appointmentData: AppointmentCreate) => {
+    try {
+      setIsCreatingFollowUp(true);
+      await AppointmentService.createAppointment(appointmentData);
+      showNotification('success', 'Follow-up Appointment Created', 'The follow-up appointment has been scheduled successfully');
+      setShowFollowUpModal(false);
+    } catch (error) {
+      console.error('Failed to create follow-up appointment:', error);
+      showNotification('error', 'Error', 'Failed to create follow-up appointment');
+    } finally {
+      setIsCreatingFollowUp(false);
+    }
+  };
+
+  const handleFollowUpCancel = () => {
+    setShowFollowUpModal(false);
   };
 
   if (loading) {
@@ -286,7 +315,10 @@ export const AppointmentStart: React.FC = () => {
                       <span className="material-icons-round text-blue-600 text-2xl mb-2 block">description</span>
                       <span className="text-sm font-medium">Prescription</span>
                     </button>
-                    <button className="bg-white border border-neutral-200 rounded-lg p-4 hover:bg-neutral-100 transition-colors">
+                    <button
+                      onClick={handleFollowUpClick}
+                      className="bg-white border border-neutral-200 rounded-lg p-4 hover:bg-neutral-100 transition-colors"
+                    >
                       <span className="material-icons-round text-orange-600 text-2xl mb-2 block">event</span>
                       <span className="text-sm font-medium">Follow-up</span>
                     </button>
@@ -435,6 +467,35 @@ export const AppointmentStart: React.FC = () => {
               Complete Appointment
             </button>
           </div>
+        )}
+
+        {/* Follow-up Appointment Modal */}
+        {showFollowUpModal && appointment && (
+          <Modal
+            isOpen={showFollowUpModal}
+            onClose={handleFollowUpCancel}
+            title="Schedule Follow-up Appointment"
+            size="xl"
+          >
+            <AppointmentBookingForm
+              patient={{
+                id: appointment.patient_id,
+                first_name: appointment.patient_first_name,
+                last_name: appointment.patient_last_name,
+                email: '',
+                phone: '',
+                date_of_birth: '',
+                gender: 'male',
+                street: '',
+                city: '',
+                state: '',
+                zip_code: ''
+              }}
+              onSubmit={handleFollowUpSubmit}
+              onCancel={handleFollowUpCancel}
+              isLoading={isCreatingFollowUp}
+            />
+          </Modal>
         )}
       </div>
     </DashboardLayout>
