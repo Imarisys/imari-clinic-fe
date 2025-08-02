@@ -156,18 +156,28 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         <div>
-          <h4 className="text-md font-medium text-gray-900 mb-3">Working Days</h4>
+          <h4 className="text-md font-medium text-gray-900 mb-4">Working Days</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {fieldValues.weekDays.map((day) => (
-              <label key={day} className="flex items-center space-x-2 cursor-pointer">
+              <div key={day} className="relative">
                 <input
                   type="checkbox"
+                  id={`day-${day}`}
                   checked={settings.appointments_working_days.includes(day)}
                   onChange={() => handleWorkingDayToggle(day)}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="sr-only peer"
                 />
-                <span className="text-sm text-gray-700">{day}</span>
-              </label>
+                <label
+                  htmlFor={`day-${day}`}
+                  className={`flex items-center justify-center p-3 text-sm font-medium rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                    settings.appointments_working_days.includes(day)
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {day.substring(0, 3)}
+                </label>
+              </div>
             ))}
           </div>
         </div>
@@ -181,59 +191,116 @@ export const SettingsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('notifications')}</h3>
-          <div className="space-y-4">
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={settings.notifications_email}
-                onChange={(e) => handleInputChange('notifications_email', e.target.checked)}
-                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Email Notifications</div>
-                <div className="text-sm text-gray-500">Receive notifications via email</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('notifications')}</h3>
+          <div className="space-y-6">
+            {/* Email Notifications */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-blue-600 text-xl">email</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
+                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                </div>
               </div>
-            </label>
-
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={settings.notifications_sms}
-                onChange={(e) => handleInputChange('notifications_sms', e.target.checked)}
-                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">SMS Notifications</div>
-                <div className="text-sm text-gray-500">Receive notifications via SMS</div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="email-notifications"
+                  checked={settings.notifications_email}
+                  onChange={(e) => handleInputChange('notifications_email', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="email-notifications"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
               </div>
-            </label>
-
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={settings.notifications_appointment_reminder}
-                onChange={(e) => handleInputChange('notifications_appointment_reminder', e.target.checked)}
-                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Appointment Reminders</div>
-                <div className="text-sm text-gray-500">Send automatic appointment reminders</div>
-              </div>
-            </label>
-
-            <div className="ml-6">
-              <Input
-                label="Reminder Time (minutes before)"
-                type="number"
-                value={settings.notifications_reminder_time.toString()}
-                onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
-                placeholder="60"
-                disabled={!settings.notifications_appointment_reminder}
-                className="w-32"
-              />
-              <span className="ml-2 text-sm text-gray-500">{t('minutes')}</span>
             </div>
+
+            {/* SMS Notifications */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-green-600 text-xl">sms</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">SMS Notifications</h4>
+                  <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="sms-notifications"
+                  checked={settings.notifications_sms}
+                  onChange={(e) => handleInputChange('notifications_sms', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="sms-notifications"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Appointment Reminders */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <span className="material-icons-round text-orange-600 text-xl">schedule</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Appointment Reminders</h4>
+                  <p className="text-sm text-gray-500">Send automatic appointment reminders</p>
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="appointment-reminders"
+                  checked={settings.notifications_appointment_reminder}
+                  onChange={(e) => handleInputChange('notifications_appointment_reminder', e.target.checked)}
+                  className="sr-only peer"
+                />
+                <label
+                  htmlFor="appointment-reminders"
+                  className="relative flex items-center justify-center w-11 h-6 bg-gray-200 rounded-full cursor-pointer transition-colors peer-checked:bg-primary-600"
+                >
+                  <span className="absolute left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Reminder Time Setting */}
+            {settings.notifications_appointment_reminder && (
+              <div className="ml-14 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-1">
+                    <Input
+                      label="Reminder Time (minutes before)"
+                      type="number"
+                      value={settings.notifications_reminder_time.toString()}
+                      onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
+                      placeholder="60"
+                      className="w-32"
+                    />
+                  </div>
+                  <span className="text-sm text-gray-500 mt-6">{t('minutes')}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
