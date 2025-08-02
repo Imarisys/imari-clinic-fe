@@ -289,12 +289,12 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       const fallbackStartTime = '08:00';
       const fallbackEndTime = '17:00';
       console.log('Using fallback working hours - Start:', fallbackStartTime, 'End:', fallbackEndTime);
-
+      
       setLoadingSlots(true);
       try {
         const slots = await AppointmentService.getAvailableSlots(
-          appointmentTypeName,
-          date,
+          appointmentTypeName, 
+          date, 
           fallbackStartTime,
           fallbackEndTime
         );

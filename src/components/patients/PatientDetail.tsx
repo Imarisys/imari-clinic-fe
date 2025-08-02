@@ -65,12 +65,12 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({
         console.log('PatientDetail - Settings loaded:', settings);
         console.log('PatientDetail - appointments_start_time:', settings.appointments_start_time);
         console.log('PatientDetail - appointments_end_time:', settings.appointments_end_time);
-
+        
         const newWorkingHours = {
           startTime: settings.appointments_start_time || '08:00',
           endTime: settings.appointments_end_time || '17:00'
         };
-
+        
         console.log('PatientDetail - Setting working hours to:', newWorkingHours);
         setWorkingHours(newWorkingHours);
       } catch (error) {

@@ -6,14 +6,14 @@ async function testSettings() {
     // First, let's see what the auth service returns for doctor ID
     const doctorId = localStorage.getItem('doctorId') || 'test-doctor-id';
     console.log('Doctor ID:', doctorId);
-
+    
     // Test the settings API call
     const url = `${API_BASE_URL}/api/v1/settings/${doctorId}`;
     console.log('Making request to:', url);
-
+    
     const response = await fetch(url);
     console.log('Response status:', response.status);
-
+    
     if (response.ok) {
       const data = await response.json();
       console.log('Settings data:', data);
