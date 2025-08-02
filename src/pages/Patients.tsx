@@ -611,10 +611,20 @@ export const Patients: React.FC = () => {
     return (
       <DashboardLayout>
         <div className="fade-in-element">
+          <div className="mb-6">
+            <button
+              onClick={() => setViewMode('grid')}
+              className="btn-secondary mb-4"
+            >
+              <span className="material-icons-round mr-2">arrow_back</span>
+              Back to Patients
+            </button>
+          </div>
           <PatientForm
             onSubmit={handleCreateFormSubmit}
             onCancel={() => setViewMode('grid')}
             isLoading={isLoading}
+            fullWidth={true}
           />
         </div>
       </DashboardLayout>

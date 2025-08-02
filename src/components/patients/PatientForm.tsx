@@ -11,6 +11,7 @@ interface PatientFormProps {
   onCancel: () => void;
   isEditing?: boolean;
   isLoading?: boolean;
+  fullWidth?: boolean; // Add prop to control full width usage
 }
 
 export const PatientForm: React.FC<PatientFormProps> = ({
@@ -19,6 +20,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   onCancel,
   isEditing = false,
   isLoading = false,
+  fullWidth = false, // Default to false
 }) => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
@@ -136,7 +138,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   return (
-    <div className="card max-w-4xl mx-auto">
+    <div className={`card ${fullWidth ? 'max-w-full' : 'max-w-4xl'} mx-auto`}>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-primary-600 mb-2">
           {isEditing ? 'Edit Patient' : 'Add New Patient'}
