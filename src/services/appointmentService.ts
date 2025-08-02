@@ -89,6 +89,7 @@ export class AppointmentService {
       start_time: '09:00:00',
       end_time: '09:30:00',
       type: 'Consultation',
+      appointment_type_name: 'General Consultation',
       status,
       title: 'Consultation with John Doe',
       notes: null
@@ -96,9 +97,9 @@ export class AppointmentService {
   }
 
   static async getAvailableSlots(
-    appointmentTypeName: string, 
-    date: string, 
-    startTime: string, 
+    appointmentTypeName: string,
+    date: string,
+    startTime: string,
     endTime: string
   ): Promise<TimeSlot[]> {
     const params = new URLSearchParams({

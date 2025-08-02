@@ -180,9 +180,8 @@ export const AppointmentStart: React.FC = () => {
                 <h1 className="text-2xl font-bold">
                   {appointment.patient_first_name} {appointment.patient_last_name}
                 </h1>
-                <p className="text-primary-100 text-lg">{appointment.type}</p>
                 <p className="text-primary-200 text-sm">
-                  Scheduled: {new Date(appointment.start_time).toLocaleString()}
+                  Scheduled: {new Date(appointment.date).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -192,10 +191,6 @@ export const AppointmentStart: React.FC = () => {
                 <div className="bg-white/20 rounded-xl p-4 backdrop-blur-sm">
                   <p className="text-primary-100 text-sm mb-1">Session Duration</p>
                   <p className="text-3xl font-mono font-bold">{getElapsedTime()}</p>
-                  <div className="flex items-center mt-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>
-                    <span className="text-sm text-primary-100">In Progress</span>
-                  </div>
                 </div>
               ) : (
                 <button
@@ -248,8 +243,7 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                     <h3 className="font-semibold text-neutral-800">Appointment Time</h3>
                     <p className="text-sm text-neutral-600">
-                      {new Date(appointment.start_time).toLocaleTimeString()} -
-                      {new Date(appointment.end_time).toLocaleTimeString()}
+                      {appointment.start_time} - {appointment.end_time}
                     </p>
                   </div>
 
@@ -261,7 +255,7 @@ export const AppointmentStart: React.FC = () => {
                       </span>
                     </div>
                     <h3 className="font-semibold text-neutral-800">Appointment Type</h3>
-                    <p className="text-sm text-neutral-600">{appointment.type}</p>
+                    <p className="text-sm text-neutral-600">{appointment.appointment_type_name}</p>
                   </div>
 
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
