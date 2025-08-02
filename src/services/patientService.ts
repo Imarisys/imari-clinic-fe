@@ -243,7 +243,7 @@ export class PatientService {
   }
 
   // Delete a patient
-  static async deletePatient(patientId: string): Promise<void> {
+  static async deletePatient(patientId: string): Promise<string> {
     try {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.delete(patientId));
       const response = await fetch(url, {
@@ -257,6 +257,9 @@ export class PatientService {
         const errorMessage = await extractErrorMessage(response);
         throw new Error(errorMessage);
       }
+      // Expecting a JSON response with a message
+      const data = await response.json();
+      return data.message || 'Patient deleted successfully';
     } catch (error) {
       if (error instanceof Error) {
         throw error;

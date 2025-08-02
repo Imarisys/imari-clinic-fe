@@ -184,10 +184,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this appointment? This action cannot be undone.')) {
-      return;
-    }
-
+    // Remove the window.confirm - let the parent component handle confirmation
     setIsCancelLoading(true);
     try {
       await onDelete();

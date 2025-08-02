@@ -4,51 +4,95 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Patients } from './pages/Patients';
-// import { SettingsPage } from './pages/Settings';
+import { SettingsPage } from './pages/Settings';
+import { Reports } from './pages/Reports';
 import { AppointmentStart } from './pages/AppointmentStart';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { TranslationProvider } from './context/TranslationContext';
 import './styles/globals.css';
 
-function App() {
-    // Mock authentication state (replace with actual auth later)
-    const isAuthenticated = true;
+// Protected Route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
 
-    return (
-        <TranslationProvider>
-            <Router>
-                <NotificationProvider>
-                    <Routes>
-                        <Route
-                            path="/login"
-                            element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
-                        />
-                        <Route
-                            path="/dashboard"
-                            element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />}
-                        />
-                        <Route
-                            path="/calendar"
-                            element={isAuthenticated ? <Calendar /> : <Navigate to="/login" replace />}
-                        />
-                        <Route
-                            path="/patients"
-                            element={isAuthenticated ? <Patients /> : <Navigate to="/login" replace />}
-                        />
-                        <Route
-                            path="/appointment/:appointmentId/start"
-                            element={isAuthenticated ? <AppointmentStart /> : <Navigate to="/login" replace />}
-                        />
-                        {/*<Route*/}
-                        {/*  path="/settings"*/}
-                        {/*  element={isAuthenticated ? <SettingsPage /> : <Navigate to="/login" replace />}*/}
-                        {/*/>*/}
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    </Routes>
-                </NotificationProvider>
-            </Router>
-        </TranslationProvider>
-    );
+// App Routes component (needs to be inside AuthProvider)
+const AppRoutes: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <Calendar />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients"
+        element={
+          <ProtectedRoute>
+            <Patients />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/appointment/:appointmentId/start"
+        element={
+          <ProtectedRoute>
+            <AppointmentStart />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+};
+
+function App() {
+  return (
+    <TranslationProvider>
+      <AuthProvider>
+        <Router>
+          <NotificationProvider>
+            <AppRoutes />
+          </NotificationProvider>
+        </Router>
+      </AuthProvider>
+    </TranslationProvider>
+  );
 }
 
 export default App;

@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement login logic later
+    setIsLoading(true);
+    setLoginError(''); // Clear previous errors
+
+    try {
+      await login(formData.email, formData.password);
+      navigate('/dashboard');
+    } catch (error) {
+      // Display the specific error message from the backend
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setLoginError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -75,6 +94,7 @@ export const Login: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 required
                 variant="default"
+                error={loginError}
               />
 
               <div className="flex items-center justify-between text-sm">
@@ -94,6 +114,7 @@ export const Login: React.FC = () => {
                 fullWidth
                 icon="login"
                 className="mt-8"
+                loading={isLoading}
               >
                 Sign In to Dashboard
               </Button>

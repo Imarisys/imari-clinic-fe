@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from '../../context/TranslationContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface NavItem {
   path: string;
@@ -39,6 +40,11 @@ const navItems: NavItem[] = [
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { t } = useTranslation();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
     <aside className="fixed left-4 top-4 w-64 lg:w-80 bg-primary-800 h-[calc(100vh-2rem)] flex flex-col overflow-y-auto shadow-large z-50 rounded-3xl sidebar-scroll-left">
@@ -51,7 +57,7 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white mb-1">{t('clinic_name')}</h1>
+            <h1 className="text-2xl font-bold text-white mb-1">{user?.clinic_name || t('clinic_name')}</h1>
             <p className="text-primary-200 text-sm">Healthcare Excellence</p>
           </div>
         </div>
@@ -120,12 +126,18 @@ export const Sidebar: React.FC = () => {
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success-500 rounded-full border-2 border-white"></div>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-medium truncate">Dr. Ahmed Wilson</p>
+              <p className="text-white font-medium truncate">
+                {user ? `Dr. ${user.first_name} ${user.last_name}` : 'Dr. Ahmed Wilson'}
+              </p>
               <p className="text-primary-200 text-sm">Administrator</p>
             </div>
-            <span className="material-icons-round text-primary-200 group-hover:text-white transition-colors duration-300">
-              more_vert
-            </span>
+            <button
+              onClick={handleLogout}
+              className="material-icons-round text-primary-200 group-hover:text-white transition-colors duration-300 hover:bg-primary-600 rounded-lg p-1"
+              title="Logout"
+            >
+              logout
+            </button>
           </div>
         </div>
       </div>

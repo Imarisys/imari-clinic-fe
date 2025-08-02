@@ -7,6 +7,7 @@ import { DayView } from '../components/calendar/DayView';
 import { AppointmentDetail } from '../components/patients/AppointmentDetail';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { PatientForm } from '../components/patients/PatientForm';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { AppointmentService } from '../services/appointmentService';
 import { PatientService } from '../services/patientService';
 import { Appointment, AppointmentUpdate, AppointmentStatus, AppointmentCreate } from '../types/Appointment';
@@ -50,6 +51,12 @@ export const Calendar: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{date: string, time: string} | null>(null);
   const [dragEnd, setDragEnd] = useState<{date: string, time: string} | null>(null);
+
+  // Confirmation dialog state
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
 
   const { showNotification } = useNotification();
 
@@ -124,26 +131,6 @@ export const Calendar: React.FC = () => {
     }
   };
 
-  // Handle appointment deletion
-  const handleDeleteAppointment = async (appointmentId: string) => {
-    if (!window.confirm('Are you sure you want to delete this appointment?')) {
-      return;
-    }
-
-    setAppointmentLoading(true);
-    try {
-      await AppointmentService.deleteAppointment(appointmentId);
-      setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
-      setSelectedAppointment(null);
-      showNotification('success', 'Success', 'Appointment deleted successfully');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete appointment');
-      console.error('Error deleting appointment:', err);
-    } finally {
-      setAppointmentLoading(false);
-    }
-  };
-
   // Handle appointment status update
   const handleUpdateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus) => {
     setAppointmentLoading(true);
@@ -160,12 +147,36 @@ export const Calendar: React.FC = () => {
     }
   };
 
+  // Handle appointment deletion
+  const handleDeleteAppointment = async (appointmentId: string) => {
+    setAppointmentToDelete(appointmentId);
+    setShowDeleteConfirm(true);
+  };
+
+  // Actual deletion logic (called from confirmation dialog)
+  const performDeleteAppointment = async (appointmentId: string) => {
+    setAppointmentLoading(true);
+    try {
+      await AppointmentService.deleteAppointment(appointmentId);
+      setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
+      setSelectedAppointment(null);
+      showNotification('success', 'Success', 'Appointment deleted successfully');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete appointment');
+      console.error('Error deleting appointment:', err);
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
   // Handle appointment cancellation
   const handleCancelAppointment = async (appointmentId: string) => {
-    if (!window.confirm('Are you sure you want to cancel this appointment?')) {
-      return;
-    }
+    setAppointmentToCancel(appointmentId);
+    setShowCancelConfirm(true);
+  };
 
+  // Actual cancellation logic (called from confirmation dialog)
+  const performCancelAppointment = async (appointmentId: string) => {
     setAppointmentLoading(true);
     try {
       const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status: 'Cancelled' });
@@ -656,6 +667,12 @@ export const Calendar: React.FC = () => {
     setRescheduleData(null);
   };
 
+  // Handle day click to switch to daily view
+  const handleDayClick = (selectedDate: Date) => {
+    setCurrentDate(selectedDate);
+    setView('day');
+  };
+
   return (
     <DashboardLayout>
       <div className="fade-in-element">
@@ -677,6 +694,7 @@ export const Calendar: React.FC = () => {
             getAppointmentDuration={getAppointmentDuration}
             getAppointmentBackgroundColor={getAppointmentBackgroundColor}
             getAppointmentTextColor={getAppointmentTextColor}
+            onDayClick={handleDayClick} // Pass the handleDayClick function
           />
         )}
         {view === 'day' && (
@@ -911,6 +929,46 @@ export const Calendar: React.FC = () => {
             isLoading={appointmentLoading}
           />
         )}
+
+        {/* Cancel Appointment Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showCancelConfirm}
+          title="Cancel Appointment"
+          message="Are you sure you want to cancel this appointment? This will change the appointment status to cancelled."
+          confirmText="Cancel Appointment"
+          cancelText="Keep Appointment"
+          type="warning"
+          isLoading={appointmentLoading}
+          onConfirm={async () => {
+            await performCancelAppointment(appointmentToCancel!);
+            setShowCancelConfirm(false);
+            setAppointmentToCancel(null);
+          }}
+          onCancel={() => {
+            setShowCancelConfirm(false);
+            setAppointmentToCancel(null);
+          }}
+        />
+
+        {/* Delete Appointment Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Delete Appointment"
+          message="Are you sure you want to delete this appointment? This action cannot be undone and will permanently remove the appointment from the system."
+          confirmText="Delete Appointment"
+          cancelText="Keep Appointment"
+          type="danger"
+          isLoading={appointmentLoading}
+          onConfirm={async () => {
+            await performDeleteAppointment(appointmentToDelete!);
+            setShowDeleteConfirm(false);
+            setAppointmentToDelete(null);
+          }}
+          onCancel={() => {
+            setShowDeleteConfirm(false);
+            setAppointmentToDelete(null);
+          }}
+        />
       </div>
     </DashboardLayout>
   );
