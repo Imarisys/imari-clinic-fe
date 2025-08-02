@@ -87,4 +87,65 @@ export class SettingsService {
       throw error;
     }
   }
+
+  /**
+   * Export settings as a JSON file blob
+   */
+  static async exportSettings(): Promise<Blob> {
+    try {
+      const settings = await this.getSettings();
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        version: '1.0',
+        settings: settings
+      };
+
+      const jsonString = JSON.stringify(exportData, null, 2);
+      return new Blob([jsonString], { type: 'application/json' });
+    } catch (error) {
+      console.error('Error exporting settings:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Import settings from a JSON file
+   */
+  static async importSettings(file: File): Promise<{ data: Settings }> {
+    try {
+      const fileContent = await this.readFileAsText(file);
+      const importData = JSON.parse(fileContent);
+
+      // Validate the imported data structure
+      if (!importData.settings) {
+        throw new Error('Invalid settings file format');
+      }
+
+      // Update the settings via API
+      const updatedSettings = await this.updateSettings(importData.settings);
+
+      return { data: updatedSettings };
+    } catch (error) {
+      console.error('Error importing settings:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to read file as text
+   */
+  private static readFileAsText(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          resolve(event.target.result as string);
+        } else {
+          reject(new Error('Failed to read file'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
 }
