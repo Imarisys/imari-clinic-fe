@@ -1287,6 +1287,31 @@
             "type": "integer",
             "exclusiveMinimum": 0.0,
             "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "default": "event"
           }
         },
         "type": "object",
@@ -1306,6 +1331,31 @@
             "type": "integer",
             "exclusiveMinimum": 0.0,
             "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon",
+            "default": "event"
           }
         },
         "type": "object",
@@ -1339,6 +1389,30 @@
               }
             ],
             "title": "Duration Minutes"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
           }
         },
         "type": "object",

@@ -3,11 +3,15 @@ import { API_CONFIG } from '../config/api';
 export interface AppointmentType {
   name: string;
   duration_minutes: number;
+  cost: number;
+  icon: string;
 }
 
 export interface AppointmentTypeCreate {
   name: string;
   duration_minutes: number;
+  cost: number;
+  icon: string;
 }
 
 export interface TimeSlot {
@@ -64,24 +68,24 @@ export class AppointmentTypeService {
   public static async createAppointmentType(
     appointmentTypeData: AppointmentTypeCreate
   ): Promise<AppointmentType> {
-    return this.request<AppointmentType>(API_CONFIG.endpoints.appointmentTypes.create, {
+    return this.request<AppointmentType>('/api/v1/appointment-types/', {
       method: 'POST',
       body: JSON.stringify(appointmentTypeData),
     });
   }
 
   public static async updateAppointmentType(
-    id: string,
+    appointmentName: string,
     data: Partial<AppointmentTypeCreate>
   ): Promise<AppointmentType> {
-    return this.request<AppointmentType>(API_CONFIG.endpoints.appointmentTypes.update(id), {
+    return this.request<AppointmentType>(`/api/v1/appointment-types/${appointmentName}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  public static async deleteAppointmentType(id: string): Promise<void> {
-    return this.request<void>(API_CONFIG.endpoints.appointmentTypes.delete(id), {
+  public static async deleteAppointmentType(appointmentName: string): Promise<void> {
+    return this.request<void>(`/api/v1/appointment-types/${appointmentName}`, {
       method: 'DELETE',
     });
   }

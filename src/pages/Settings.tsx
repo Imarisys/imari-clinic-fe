@@ -4,8 +4,11 @@ import { useTranslation } from '../context/TranslationContext';
 import { useNotification } from '../context/NotificationContext';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Settings as SettingsType, SettingsFieldValues, Country, Language } from '../types/Settings';
+import { Modal } from '../components/common/Modal';
+import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
+import { Settings as SettingsType, SettingsFieldValues } from '../types/Settings';
 import { SettingsService } from '../services/settingsService';
+import { AppointmentTypeService, AppointmentType, AppointmentTypeCreate } from '../services/appointmentTypeService';
 import { authService } from '../services/authService';
 
 export const SettingsPage: React.FC = () => {
@@ -25,9 +28,47 @@ export const SettingsPage: React.FC = () => {
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
+  // Appointment types management states
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
+  const [isLoadingAppointmentTypes, setIsLoadingAppointmentTypes] = useState(false);
+  const [showAppointmentTypeModal, setShowAppointmentTypeModal] = useState(false);
+  const [editingAppointmentType, setEditingAppointmentType] = useState<AppointmentType | null>(null);
+  const [appointmentTypeForm, setAppointmentTypeForm] = useState<AppointmentTypeCreate>({
+    name: '',
+    duration_minutes: 30,
+    cost: 0,
+    icon: 'event'
+  });
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [appointmentTypeToDelete, setAppointmentTypeToDelete] = useState<string | null>(null);
+
+  // Available icons for appointment types
+  const availableIcons = [
+    { value: 'event', label: 'General Appointment', color: 'text-blue-600' },
+    { value: 'medical_services', label: 'Medical Checkup', color: 'text-green-600' },
+    { value: 'healing', label: 'Treatment', color: 'text-purple-600' },
+    { value: 'vaccines', label: 'Vaccination', color: 'text-orange-600' },
+    { value: 'psychology', label: 'Consultation', color: 'text-indigo-600' },
+    { value: 'monitor_heart', label: 'Cardiology', color: 'text-red-600' },
+    { value: 'visibility', label: 'Eye Exam', color: 'text-cyan-600' },
+    { value: 'hearing', label: 'Hearing Test', color: 'text-yellow-600' },
+    { value: 'pregnant_woman', label: 'Prenatal Care', color: 'text-pink-600' },
+    { value: 'child_care', label: 'Pediatric', color: 'text-emerald-600' },
+    { value: 'elderly', label: 'Geriatric Care', color: 'text-gray-600' },
+    { value: 'psychology_alt', label: 'Mental Health', color: 'text-violet-600' },
+    { value: 'sports_soccer', label: 'Sports Medicine', color: 'text-lime-600' },
+    { value: 'spa', label: 'Wellness', color: 'text-teal-600' }
+  ];
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'appointments') {
+      loadAppointmentTypes();
+    }
+  }, [activeTab]);
 
   const loadData = async () => {
     try {
@@ -152,6 +193,73 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  // Appointment types handlers
+  const loadAppointmentTypes = async () => {
+    setIsLoadingAppointmentTypes(true);
+    try {
+      const types = await AppointmentTypeService.getAll();
+      setAppointmentTypes(types);
+    } catch (error) {
+      console.error('Error loading appointment types:', error);
+      showNotification('error', 'Error', 'Failed to load appointment types');
+    } finally {
+      setIsLoadingAppointmentTypes(false);
+    }
+  };
+
+  const handleAddEditAppointmentType = async () => {
+    if (!appointmentTypeForm.name) return;
+
+    try {
+      let response: AppointmentType;
+      if (editingAppointmentType) {
+        // Update existing appointment type
+        response = await AppointmentTypeService.updateAppointmentType(
+          editingAppointmentType.name,
+          appointmentTypeForm
+        );
+        showNotification('success', 'Success', 'Appointment type updated successfully');
+      } else {
+        // Create new appointment type
+        response = await AppointmentTypeService.createAppointmentType(appointmentTypeForm);
+        showNotification('success', 'Success', 'Appointment type created successfully');
+      }
+
+      // Update local state
+      setAppointmentTypes(prev => {
+        if (editingAppointmentType) {
+          return prev?.map(type => type.name === editingAppointmentType.name ? response : type) || [];
+        } else {
+          return [...(prev || []), response];
+        }
+      });
+
+      // Reset form and close modal
+      setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+      setEditingAppointmentType(null);
+      setShowAppointmentTypeModal(false);
+    } catch (error) {
+      console.error('Error saving appointment type:', error);
+      showNotification('error', 'Error', 'Failed to save appointment type');
+    }
+  };
+
+  const handleDeleteAppointmentType = async () => {
+    if (!appointmentTypeToDelete) return;
+
+    try {
+      await AppointmentTypeService.deleteAppointmentType(appointmentTypeToDelete);
+      setAppointmentTypes(prev => prev?.filter(type => type.name !== appointmentTypeToDelete) || []);
+      showNotification('success', 'Success', 'Appointment type deleted successfully');
+    } catch (error) {
+      console.error('Error deleting appointment type:', error);
+      showNotification('error', 'Error', 'Failed to delete appointment type');
+    } finally {
+      setShowDeleteConfirmation(false);
+      setAppointmentTypeToDelete(null);
+    }
+  };
+
   const renderGeneralTab = () => {
     if (!settings) return null;
 
@@ -212,6 +320,7 @@ export const SettingsPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Working Hours Section */}
         <div className="bg-white rounded-2xl shadow-card p-6">
           <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
             <span className="material-icons-round text-primary-600 mr-2">schedule</span>
@@ -256,6 +365,128 @@ export const SettingsPage: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Appointment Types Management Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+              <span className="material-icons-round text-primary-600 mr-2">category</span>
+              Appointment Types
+            </h3>
+            <Button
+              onClick={() => {
+                setEditingAppointmentType(null);
+                setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+                setShowAppointmentTypeModal(true);
+              }}
+              variant="primary"
+              className="flex items-center"
+            >
+              <span className="material-icons-round mr-2">add</span>
+              Add Type
+            </Button>
+          </div>
+
+          {isLoadingAppointmentTypes ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="text-center">
+                <span className="material-icons-round animate-spin text-2xl text-primary-600 mb-2">autorenew</span>
+                <p className="text-gray-600">Loading appointment types...</p>
+              </div>
+            </div>
+          ) : appointmentTypes.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="material-icons-round text-gray-400 text-2xl">category</span>
+              </div>
+              <h4 className="text-lg font-medium text-gray-800 mb-2">No Appointment Types</h4>
+              <p className="text-gray-600 mb-4">Create your first appointment type to get started.</p>
+              <Button
+                onClick={() => {
+                  setEditingAppointmentType(null);
+                  setAppointmentTypeForm({ name: '', duration_minutes: 30, cost: 0, icon: 'event' });
+                  setShowAppointmentTypeModal(true);
+                }}
+                variant="primary"
+              >
+                <span className="material-icons-round mr-2">add</span>
+                Add Appointment Type
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {appointmentTypes.map((type) => {
+                const selectedIcon = availableIcons.find(icon => icon.value === type.icon) || availableIcons[0];
+                // Use proper currency symbol based on backend settings
+                const getCurrencySymbol = (currency: string) => {
+                  switch (currency) {
+                    case 'USD': return '$ ';
+                    case 'EUR': return '€ ';
+                    case 'GBP': return '£ ';
+                    default: return currency + ' ';
+                  }
+                };
+                const currencySymbol = getCurrencySymbol(settings?.display_currency || 'USD');
+
+                return (
+                  <div
+                    key={type.name}
+                    className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center mr-3 ${
+                          selectedIcon.value === 'event' ? 'bg-primary-100' : 'bg-gray-100'
+                        }`}>
+                          <span className={`material-icons-round text-xl ${
+                            selectedIcon.value === 'event' ? 'text-primary-600' : selectedIcon.color
+                          }`}>
+                            {type.icon}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-800">{type.name}</h4>
+                          <p className="text-sm text-gray-600">{type.duration_minutes} minutes</p>
+                          <p className="text-sm font-medium text-green-600">
+                            {currencySymbol}{type.cost.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => {
+                            setEditingAppointmentType(type);
+                            setAppointmentTypeForm({
+                              name: type.name,
+                              duration_minutes: type.duration_minutes,
+                              cost: type.cost,
+                              icon: type.icon
+                            });
+                            setShowAppointmentTypeModal(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <span className="material-icons-round text-sm">edit</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAppointmentTypeToDelete(type.name);
+                            setShowDeleteConfirmation(true);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <span className="material-icons-round text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -757,6 +988,102 @@ export const SettingsPage: React.FC = () => {
             {activeTab === 'backup_restore' && renderBackupRestoreTab()}
           </div>
         </div>
+
+        {/* Appointment Types Modal */}
+        <Modal
+          isOpen={showAppointmentTypeModal}
+          onClose={() => setShowAppointmentTypeModal(false)}
+          title={`${editingAppointmentType ? 'Edit' : 'Add'} Appointment Type`}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+              <Input
+                value={appointmentTypeForm.name}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, name: e.target.value })}
+                placeholder="Enter appointment type name"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
+              <Input
+                type="number"
+                value={appointmentTypeForm.duration_minutes.toString()}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, duration_minutes: parseInt(e.target.value) })}
+                placeholder="Enter duration in minutes"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cost</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={appointmentTypeForm.cost.toString()}
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, cost: parseFloat(e.target.value) || 0 })}
+                placeholder="Enter cost"
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Icon</label>
+              <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                {availableIcons.map(icon => (
+                  <button
+                    key={icon.value}
+                    type="button"
+                    onClick={() => setAppointmentTypeForm({ ...appointmentTypeForm, icon: icon.value })}
+                    className={`flex items-center justify-center p-3 rounded-lg transition-all hover:scale-105 ${
+                      appointmentTypeForm.icon === icon.value
+                        ? 'bg-primary-100 border-2 border-primary-300 shadow-md'
+                        : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                    title={icon.label}
+                  >
+                    <span className={`material-icons-round text-xl ${
+                      appointmentTypeForm.icon === icon.value ? 'text-primary-600' : icon.color
+                    }`}>
+                      {icon.value}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Select an icon that best represents this appointment type</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-4 mt-6">
+            <Button
+              onClick={() => setShowAppointmentTypeModal(false)}
+              variant="secondary"
+              className="px-4 py-2 rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddEditAppointmentType}
+              variant="primary"
+              className="px-4 py-2 rounded-lg"
+            >
+              Save
+            </Button>
+          </div>
+        </Modal>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showDeleteConfirmation}
+          onClose={() => setShowDeleteConfirmation(false)}
+          onConfirm={handleDeleteAppointmentType}
+          title="Delete Appointment Type"
+          message="Are you sure you want to delete this appointment type? This action cannot be undone."
+          confirmButtonText="Delete"
+          cancelButtonText="Cancel"
+        />
       </div>
     </DashboardLayout>
   );
