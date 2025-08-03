@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -23,6 +23,25 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   type = 'danger',
   isLoading = false,
 }) => {
+  // Add ESC key functionality
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onCancel();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onCancel]);
+
   if (!isOpen) return null;
 
   const getIconAndColors = () => {

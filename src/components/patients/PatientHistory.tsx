@@ -71,6 +71,25 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
   const [patientData, setPatientData] = useState<PatientWithAppointments>(patient);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
+  // Add ESC key functionality for the appointment detail modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedAppointment) {
+        setSelectedAppointment(null);
+      }
+    };
+
+    if (selectedAppointment) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedAppointment]);
+
   useEffect(() => {
     const loadPatientHistory = async () => {
       setIsLoading(true);
