@@ -463,7 +463,8 @@ export const AppointmentStart: React.FC = () => {
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleUploadFile}
-                className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors"
+                disabled={!isStarted}
+                className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
               >
                 <span className="material-icons-round text-sm">upload_file</span>
                 <span className="text-sm font-medium">Upload File</span>
@@ -471,7 +472,8 @@ export const AppointmentStart: React.FC = () => {
 
               <button
                 onClick={handleFollowUpClick}
-                className="flex items-center space-x-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-100 transition-colors"
+                disabled={!isStarted}
+                className="flex items-center space-x-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
               >
                 <span className="material-icons-round text-sm">event</span>
                 <span className="text-sm font-medium">Follow Up</span>
@@ -479,7 +481,8 @@ export const AppointmentStart: React.FC = () => {
 
               <button
                 onClick={handleGeneratePrescription}
-                className="flex items-center space-x-2 bg-green-50 text-green-600 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors"
+                disabled={!isStarted}
+                className="flex items-center space-x-2 bg-green-50 text-green-600 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
               >
                 <span className="material-icons-round text-sm">prescription</span>
                 <span className="text-sm font-medium">Generate Prescription</span>
@@ -552,7 +555,8 @@ export const AppointmentStart: React.FC = () => {
                       </button>
                       <button
                         onClick={addVitalSign}
-                        className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors"
+                        disabled={!isStarted}
+                        className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
                       >
                         <span className="material-icons-round text-sm">add</span>
                         <span className="text-sm font-medium">Add</span>
@@ -573,7 +577,8 @@ export const AppointmentStart: React.FC = () => {
                               <select
                                 value={vital.name}
                                 onChange={(e) => updateVitalSign(vital.id, 'name', e.target.value)}
-                                className="appearance-none w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8"
+                                disabled={!isStarted}
+                                className="appearance-none w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8 disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                               >
                                 <option value="">Select vital sign</option>
                                 {VITAL_SIGN_OPTIONS.map((option, index) => (
@@ -593,7 +598,8 @@ export const AppointmentStart: React.FC = () => {
                             value={vital.value}
                             onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
                             placeholder="Value"
-                            className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm"
+                            disabled={!isStarted}
+                            className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                           />
 
                           {vital.unit ? (
@@ -604,14 +610,16 @@ export const AppointmentStart: React.FC = () => {
                               placeholder="Unit"
                               value={vital.unit}
                               onChange={(e) => updateVitalSign(vital.id, 'unit', e.target.value)}
-                              className="w-12 px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center"
+                              disabled={!isStarted}
+                              className="w-12 px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                             />
                           )}
                         </div>
 
                         <button
                           onClick={() => removeVitalSign(vital.id)}
-                          className="w-7 h-7 bg-red-50 text-red-600 rounded flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0"
+                          disabled={!isStarted}
+                          className="w-7 h-7 bg-red-50 text-red-600 rounded flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0 disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
                           title="Remove vital sign"
                         >
                           <span className="material-icons-round text-sm">remove</span>
@@ -645,7 +653,8 @@ export const AppointmentStart: React.FC = () => {
                     rows={3}
                     value={diagnosis}
                     onChange={(e) => setDiagnosis(e.target.value)}
-                    className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    disabled={!isStarted}
+                    className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -668,7 +677,8 @@ export const AppointmentStart: React.FC = () => {
                     rows={4}
                     value={treatmentPlan}
                     onChange={(e) => setTreatmentPlan(e.target.value)}
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    disabled={!isStarted}
+                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -691,7 +701,8 @@ export const AppointmentStart: React.FC = () => {
                     rows={3}
                     value={prescription}
                     onChange={(e) => setPrescription(e.target.value)}
-                    className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    disabled={!isStarted}
+                    className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
