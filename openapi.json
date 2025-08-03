@@ -2155,6 +2155,10 @@
             "type": "string",
             "title": "Appointment Id"
           },
+          "appointment_type_name": {
+            "type": "string",
+            "title": "Appointment Type Name"
+          },
           "date": {
             "type": "string",
             "format": "date",
@@ -2209,6 +2213,7 @@
         "type": "object",
         "required": [
           "appointment_id",
+          "appointment_type_name",
           "date"
         ],
         "title": "PatientMedicalHistoryEntry",

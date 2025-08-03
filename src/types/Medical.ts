@@ -27,6 +27,7 @@ export interface VitalSign {
 export interface PatientMedicalHistoryEntry {
   appointment_id: string;
   date: string;
+  appointment_type_name?: string | null;
   diagnosis?: string | null;
   treatment_plan?: string | null;
   prescription?: string | null;

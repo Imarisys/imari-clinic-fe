@@ -57,6 +57,7 @@ export const AppointmentStart: React.FC = () => {
   const [showTreatmentHistory, setShowTreatmentHistory] = useState(false);
   const [showPrescriptionHistory, setShowPrescriptionHistory] = useState(false);
   const [patientHistory, setPatientHistory] = useState<PatientMedicalHistory | null>(null);
+  const [expandedHistoryItems, setExpandedHistoryItems] = useState<Set<string>>(new Set());
 
   // Mock uploaded files data
   const [uploadedFiles] = useState([
@@ -345,6 +346,25 @@ export const AppointmentStart: React.FC = () => {
     setShowPrescriptionHistory(true);
   };
 
+  const toggleExpandHistoryItem = (id: string) => {
+    setExpandedHistoryItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper to format time as HH:MM
+  const formatTimeHHMM = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hh, mm] = timeStr.split(':');
+    return `${hh}:${mm}`;
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -423,7 +443,7 @@ export const AppointmentStart: React.FC = () => {
                 <div>
                   <p className="text-sm text-neutral-600">Appointment Time</p>
                   <p className="font-semibold text-neutral-800">
-                    {appointment.start_time} - {appointment.end_time}
+                    {formatTimeHHMM(appointment.start_time)} - {formatTimeHHMM(appointment.end_time)}
                   </p>
                 </div>
               </div>
@@ -767,35 +787,35 @@ export const AppointmentStart: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        {isStarted && (
-          <div className="flex items-center justify-center space-x-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="btn-secondary px-8 py-3"
-            >
-              <span className="material-icons-round mr-2">arrow_back</span>
-              Back to Dashboard
-            </button>
+        <div className="flex items-center justify-center space-x-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="btn-secondary px-8 py-3"
+          >
+            <span className="material-icons-round mr-2">arrow_back</span>
+            Back to Dashboard
+          </button>
 
-            {!isCompleted ? (
-              <button
-                onClick={handleEndAppointment}
-                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300"
-              >
-                <span className="material-icons-round mr-2">check_circle</span>
-                Complete Appointment
-              </button>
-            ) : (
-              <button
-                disabled
-                className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
-              >
-                <span className="material-icons-round mr-2">check_circle</span>
-                Appointment Completed
-              </button>
-            )}
-          </div>
-        )}
+          {isStarted && !isCompleted && (
+            <button
+              onClick={handleEndAppointment}
+              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300"
+            >
+              <span className="material-icons-round mr-2">check_circle</span>
+              Complete Appointment
+            </button>
+          )}
+
+          {isStarted && isCompleted && (
+            <button
+              disabled
+              className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
+            >
+              <span className="material-icons-round mr-2">check_circle</span>
+              Appointment Completed
+            </button>
+          )}
+        </div>
 
         {/* Follow-up Appointment Modal */}
         {showFollowUpModal && appointment && (
@@ -851,7 +871,7 @@ export const AppointmentStart: React.FC = () => {
                             day: 'numeric'
                           })}
                         </h5>
-                        <span className="text-sm text-neutral-500">Appointment</span>
+                        <span className="text-sm text-neutral-500">{record.appointment_type_name}</span>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -903,24 +923,40 @@ export const AppointmentStart: React.FC = () => {
                 <div className="space-y-4">
                   {patientHistory.medical_history
                     .filter(record => record.diagnosis && record.diagnosis.trim() !== '')
-                    .map((record, index) => (
-                    <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-semibold text-neutral-800">
-                          {new Date(record.date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </h5>
-                        <span className="text-sm text-neutral-500">Appointment</span>
-                      </div>
+                    .map((record, index) => {
+                      const itemId = `diagnosis-${index}`;
+                      const isExpanded = expandedHistoryItems.has(itemId);
+                      const text = record.diagnosis || '';
+                      const shouldTruncate = text.length > 150;
+                      const displayText = shouldTruncate && !isExpanded ? text.substring(0, 150) + '...' : text;
 
-                      <div className="text-neutral-800">
-                        <p className="text-sm whitespace-pre-wrap">{record.diagnosis}</p>
-                      </div>
-                    </div>
-                  ))}
+                      return (
+                        <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-semibold text-neutral-800">
+                              {new Date(record.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </h5>
+                            <span className="text-sm text-neutral-500">{record.appointment_type_name}</span>
+                          </div>
+
+                          <div className="text-neutral-800">
+                            <p className="text-sm whitespace-pre-wrap">{displayText}</p>
+                            {shouldTruncate && (
+                              <button
+                                onClick={() => toggleExpandHistoryItem(itemId)}
+                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                              >
+                                {isExpanded ? 'Show Less' : 'Show More'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-neutral-500">
@@ -943,38 +979,51 @@ export const AppointmentStart: React.FC = () => {
             <div className="space-y-4">
               <p className="text-neutral-600 mb-4">Patient treatment plan history across appointments</p>
 
-              {/* Mock History Data */}
-              <div className="space-y-4">
-                {[
-                  { date: '2024-08-01', treatment: 'Lifestyle changes, Medication' },
-                  { date: '2024-07-15', treatment: 'Normal' },
-                  { date: '2024-07-01', treatment: 'Dietary changes' },
-                  { date: '2024-06-20', treatment: 'Normal' },
-                ].map((record, index) => (
-                  <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="font-semibold text-neutral-800">
-                        {new Date(record.date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </h5>
-                      <span className="text-sm text-neutral-500">Appointment</span>
-                    </div>
+              {patientHistory && patientHistory.medical_history.length > 0 ? (
+                <div className="space-y-4">
+                  {patientHistory.medical_history
+                    .filter(record => record.treatment_plan && record.treatment_plan.trim() !== '')
+                    .map((record, index) => {
+                      const itemId = `treatment-${index}`;
+                      const isExpanded = expandedHistoryItems.has(itemId);
+                      const text = record.treatment_plan || '';
+                      const shouldTruncate = text.length > 150;
+                      const displayText = shouldTruncate && !isExpanded ? text.substring(0, 150) + '...' : text;
 
-                    <div className="text-neutral-800">
-                      <p className="text-sm">{record.treatment}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      return (
+                        <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-semibold text-neutral-800">
+                              {new Date(record.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </h5>
+                            <span className="text-sm text-neutral-500">{record.appointment_type_name}</span>
+                          </div>
 
-              {/* Empty state if no history */}
-              <div className="text-center py-8 text-neutral-500">
-                <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                <p>Complete treatment plan history shown above</p>
-              </div>
+                          <div className="text-neutral-800">
+                            <p className="text-sm whitespace-pre-wrap">{displayText}</p>
+                            {shouldTruncate && (
+                              <button
+                                onClick={() => toggleExpandHistoryItem(itemId)}
+                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                              >
+                                {isExpanded ? 'Show Less' : 'Show More'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-neutral-500">
+                  <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
+                  <p>No treatment plan history available</p>
+                </div>
+              )}
             </div>
           </Modal>
         )}
@@ -990,38 +1039,51 @@ export const AppointmentStart: React.FC = () => {
             <div className="space-y-4">
               <p className="text-neutral-600 mb-4">Patient prescription history across appointments</p>
 
-              {/* Mock History Data */}
-              <div className="space-y-4">
-                {[
-                  { date: '2024-08-01', prescription: 'Atenolol 50mg, Lisinopril 10mg' },
-                  { date: '2024-07-15', prescription: 'Normal' },
-                  { date: '2024-07-01', prescription: 'Amlodipine 5mg' },
-                  { date: '2024-06-20', prescription: 'Normal' },
-                ].map((record, index) => (
-                  <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="font-semibold text-neutral-800">
-                        {new Date(record.date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </h5>
-                      <span className="text-sm text-neutral-500">Appointment</span>
-                    </div>
+              {patientHistory && patientHistory.medical_history.length > 0 ? (
+                <div className="space-y-4">
+                  {patientHistory.medical_history
+                    .filter(record => record.prescription && record.prescription.trim() !== '')
+                    .map((record, index) => {
+                      const itemId = `prescription-${index}`;
+                      const isExpanded = expandedHistoryItems.has(itemId);
+                      const text = record.prescription || '';
+                      const shouldTruncate = text.length > 150;
+                      const displayText = shouldTruncate && !isExpanded ? text.substring(0, 150) + '...' : text;
 
-                    <div className="text-neutral-800">
-                      <p className="text-sm">{record.prescription}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      return (
+                        <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="font-semibold text-neutral-800">
+                              {new Date(record.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </h5>
+                            <span className="text-sm text-neutral-500">{record.appointment_type_name}</span>
+                          </div>
 
-              {/* Empty state if no history */}
-              <div className="text-center py-8 text-neutral-500">
-                <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                <p>Complete prescription history shown above</p>
-              </div>
+                          <div className="text-neutral-800">
+                            <p className="text-sm whitespace-pre-wrap">{displayText}</p>
+                            {shouldTruncate && (
+                              <button
+                                onClick={() => toggleExpandHistoryItem(itemId)}
+                                className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                              >
+                                {isExpanded ? 'Show Less' : 'Show More'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-neutral-500">
+                  <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
+                  <p>No prescription history available</p>
+                </div>
+              )}
             </div>
           </Modal>
         )}
