@@ -23,6 +23,11 @@ export const API_CONFIG = {
       create: '/api/v1/appointments',
       update: (id: string) => `/api/v1/appointments/${id}`,
       delete: (id: string) => `/api/v1/appointments/${id}`,
+      medical: {
+        get: (appointmentId: string) => `/api/v1/appointments/${appointmentId}/medical`,
+        update: (appointmentId: string) => `/api/v1/appointments/${appointmentId}/medical`,
+        byDate: (date: string) => `/api/v1/appointments/medical/by_date/${date}`,
+      },
     },
     appointmentTypes: {
       list: '/api/v1/appointment-types',

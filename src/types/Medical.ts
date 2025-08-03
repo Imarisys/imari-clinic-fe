@@ -1,0 +1,25 @@
+export interface AppointmentMedicalData {
+  diagnosis?: string | null;
+  treatment_plan?: string | null;
+  prescription?: string | null;
+  vital_signs?: Record<string, any> | null;
+  appointment_id: string;
+  patient_id: string;
+  date: string;
+}
+
+export interface AppointmentMedicalDataUpdate {
+  diagnosis?: string | null;
+  treatment_plan?: string | null;
+  prescription?: string | null;
+  vital_signs?: Record<string, any> | null;
+}
+
+export interface VitalSign {
+  id: string;
+  name: string;
+  value: string;
+  unit: string;
+  icon: string;
+  color: string;
+}

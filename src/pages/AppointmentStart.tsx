@@ -3,18 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AppointmentService } from '../services/appointmentService';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
+import { AppointmentMedicalData, VitalSign } from '../types/Medical';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
-
-interface VitalSign {
-  id: string;
-  name: string;
-  value: string;
-  unit: string;
-  icon: string;
-  color: string;
-}
 
 // Predefined vital signs with their units and styling
 const VITAL_SIGN_OPTIONS = [
@@ -35,13 +27,21 @@ export const AppointmentStart: React.FC = () => {
   const { showNotification } = useNotification();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [medicalData, setMedicalData] = useState<AppointmentMedicalData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingMedicalData, setSavingMedicalData] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [isCreatingFollowUp, setIsCreatingFollowUp] = useState(false);
   const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files'>('consultation');
+
+  // Medical data fields
+  const [diagnosis, setDiagnosis] = useState('');
+  const [treatmentPlan, setTreatmentPlan] = useState('');
+  const [prescription, setPrescription] = useState('');
 
   // Vital signs - only show 3 by default
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([
@@ -93,6 +93,96 @@ export const AppointmentStart: React.FC = () => {
     fetchAppointment();
   }, [appointmentId, navigate, showNotification]);
 
+  // Medical data functions
+  const fetchMedicalData = async () => {
+    if (!appointmentId) return;
+
+    try {
+      const data = await AppointmentService.getMedicalData(appointmentId);
+      setMedicalData(data);
+
+      // Populate form fields
+      setDiagnosis(data.diagnosis || '');
+      setTreatmentPlan(data.treatment_plan || '');
+      setPrescription(data.prescription || '');
+
+      // Populate vital signs from the API data
+      if (data.vital_signs) {
+        const vitalsFromApi = Object.entries(data.vital_signs).map(([key, value], index) => {
+          const vitalOption = VITAL_SIGN_OPTIONS.find(option =>
+            option.name.toLowerCase().replace(/\s+/g, '_') === key.toLowerCase()
+          );
+
+          return {
+            id: (index + 1).toString(),
+            name: vitalOption?.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            value: String(value),
+            unit: vitalOption?.unit || '',
+            icon: vitalOption?.icon || 'health_and_safety',
+            color: vitalOption?.color || 'gray'
+          };
+        });
+
+        if (vitalsFromApi.length > 0) {
+          setVitalSigns(vitalsFromApi);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch medical data:', error);
+      // Don't show error notification as medical data might not exist yet
+    }
+  };
+
+  const saveMedicalData = async () => {
+    if (!appointmentId) return;
+
+    setSavingMedicalData(true);
+    try {
+      // Convert vital signs to the format expected by the API
+      const vitalSignsObject: Record<string, string> = {};
+      vitalSigns.forEach(vital => {
+        if (vital.name && vital.value) {
+          const key = vital.name.toLowerCase().replace(/\s+/g, '_');
+          vitalSignsObject[key] = vital.value;
+        }
+      });
+
+      const medicalDataUpdate = {
+        diagnosis: diagnosis || null,
+        treatment_plan: treatmentPlan || null,
+        prescription: prescription || null,
+        vital_signs: Object.keys(vitalSignsObject).length > 0 ? vitalSignsObject : null
+      };
+
+      const updatedData = await AppointmentService.updateMedicalData(appointmentId, medicalDataUpdate);
+      setMedicalData(updatedData);
+      // Remove the success notification for auto-saves - they should be silent
+    } catch (error) {
+      console.error('Failed to save medical data:', error);
+      showNotification('error', 'Error', 'Failed to save medical data');
+    } finally {
+      setSavingMedicalData(false);
+    }
+  };
+
+  // Auto-save medical data when fields change (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isStarted && (diagnosis || treatmentPlan || prescription || vitalSigns.some(v => v.value))) {
+        saveMedicalData();
+      }
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [diagnosis, treatmentPlan, prescription, vitalSigns, isStarted]);
+
+  // Fetch medical data when appointment is loaded
+  useEffect(() => {
+    if (appointment) {
+      fetchMedicalData();
+    }
+  }, [appointment]);
+
   const handleStartAppointment = () => {
     setIsStarted(true);
     setStartTime(new Date());
@@ -104,14 +194,29 @@ export const AppointmentStart: React.FC = () => {
       // Update appointment status to completed
       if (appointment) {
         await AppointmentService.updateAppointmentStatus(appointment.id, 'Completed');
+        setIsCompleted(true);
         showNotification('success', 'Appointment Completed', 'The consultation has been marked as completed');
-        navigate('/dashboard');
+        // Don't navigate away - stay on the page
       }
     } catch (error) {
       console.error('Failed to end appointment:', error);
       showNotification('error', 'Error', 'Failed to complete appointment');
     }
   };
+
+  // Add ESC key handler to navigate back to dashboard
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        navigate('/dashboard');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigate]);
 
   const addVitalSign = () => {
     const newVital: VitalSign = {
@@ -150,7 +255,7 @@ export const AppointmentStart: React.FC = () => {
         return;
       }
     }
-
+    
     setVitalSigns(prev => prev.map(vital =>
       vital.id === id ? { ...vital, [field]: value } : vital
     ));
@@ -365,6 +470,14 @@ export const AppointmentStart: React.FC = () => {
               <span className="material-icons-round">folder</span>
               <span>Patient Files</span>
             </button>
+
+            {/* Save Indicator */}
+            {savingMedicalData && (
+              <div className="ml-auto flex items-center space-x-2 px-4 py-3">
+                <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
+                <span className="text-sm text-primary-600 font-medium">Saving...</span>
+              </div>
+            )}
           </div>
 
           {/* Scrollable Content Area */}
@@ -467,6 +580,8 @@ export const AppointmentStart: React.FC = () => {
                   <textarea
                     placeholder="Enter diagnosis and findings..."
                     rows={3}
+                    value={diagnosis}
+                    onChange={(e) => setDiagnosis(e.target.value)}
                     className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                 </div>
@@ -479,6 +594,8 @@ export const AppointmentStart: React.FC = () => {
                   <textarea
                     placeholder="Enter detailed treatment plan and recommendations..."
                     rows={4}
+                    value={treatmentPlan}
+                    onChange={(e) => setTreatmentPlan(e.target.value)}
                     className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                   />
                 </div>
@@ -491,6 +608,8 @@ export const AppointmentStart: React.FC = () => {
                   <textarea
                     placeholder="Enter prescription details and medications..."
                     rows={3}
+                    value={prescription}
+                    onChange={(e) => setPrescription(e.target.value)}
                     className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                   />
                 </div>
@@ -596,13 +715,24 @@ export const AppointmentStart: React.FC = () => {
               <span className="material-icons-round mr-2">arrow_back</span>
               Back to Dashboard
             </button>
-            <button
-              onClick={handleEndAppointment}
-              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300"
-            >
-              <span className="material-icons-round mr-2">check_circle</span>
-              Complete Appointment
-            </button>
+
+            {!isCompleted ? (
+              <button
+                onClick={handleEndAppointment}
+                className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300"
+              >
+                <span className="material-icons-round mr-2">check_circle</span>
+                Complete Appointment
+              </button>
+            ) : (
+              <button
+                disabled
+                className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
+              >
+                <span className="material-icons-round mr-2">check_circle</span>
+                Appointment Completed
+              </button>
+            )}
           </div>
         )}
 

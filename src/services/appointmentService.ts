@@ -1,4 +1,5 @@
 import { Appointment, AppointmentCreate, AppointmentUpdate } from '../types/Appointment';
+import { AppointmentMedicalData, AppointmentMedicalDataUpdate } from '../types/Medical';
 import { API_CONFIG } from '../config/api';
 
 export interface TimeSlot {
@@ -79,21 +80,10 @@ export class AppointmentService {
   }
 
   static async updateAppointmentStatus(id: string, status: 'Booked' | 'Cancelled' | 'Completed' | 'No Show'): Promise<Appointment> {
-    // Mock: just return the updated appointment
-    return {
-      id,
-      patient_id: '1',
-      patient_first_name: 'John',
-      patient_last_name: 'Doe',
-      date: '2025-07-21',
-      start_time: '09:00:00',
-      end_time: '09:30:00',
-      type: 'Consultation',
-      appointment_type_name: 'General Consultation',
-      status,
-      title: 'Consultation with John Doe',
-      notes: null
-    };
+    return this.request<Appointment>(API_CONFIG.endpoints.appointments.update(id), {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
   }
 
   static async getAvailableSlots(
@@ -107,5 +97,20 @@ export class AppointmentService {
       end_time: endTime
     });
     return this.request<TimeSlot[]>(`/api/v1/appointment-types/${appointmentTypeName}/available-slots/${date}?${params.toString()}`);
+  }
+
+  static async getMedicalData(appointmentId: string): Promise<AppointmentMedicalData> {
+    return this.request<AppointmentMedicalData>(API_CONFIG.endpoints.appointments.medical.get(appointmentId));
+  }
+
+  static async updateMedicalData(appointmentId: string, medicalData: AppointmentMedicalDataUpdate): Promise<AppointmentMedicalData> {
+    return this.request<AppointmentMedicalData>(API_CONFIG.endpoints.appointments.medical.update(appointmentId), {
+      method: 'PUT',
+      body: JSON.stringify(medicalData),
+    });
+  }
+
+  static async getMedicalDataByDate(date: string): Promise<AppointmentMedicalData[]> {
+    return this.request<AppointmentMedicalData[]>(API_CONFIG.endpoints.appointments.medical.byDate(date));
   }
 }
