@@ -23,3 +23,19 @@ export interface VitalSign {
   icon: string;
   color: string;
 }
+
+export interface PatientMedicalHistoryEntry {
+  appointment_id: string;
+  date: string;
+  diagnosis?: string | null;
+  treatment_plan?: string | null;
+  prescription?: string | null;
+  vital_signs?: Record<string, any> | null;
+}
+
+export interface PatientMedicalHistory {
+  patient_id: string;
+  patient_first_name: string;
+  patient_last_name: string;
+  medical_history: PatientMedicalHistoryEntry[];
+}

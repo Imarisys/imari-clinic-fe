@@ -15,6 +15,7 @@ export const API_CONFIG = {
       create: '/api/v1/patients',
       update: (id: string) => `/api/v1/patients/${id}`,
       delete: (id: string) => `/api/v1/patients/${id}`,
+      medicalHistory: (patientId: string) => `/api/v1/patients/${patientId}/medical-history`,
     },
     appointments: {
       list: '/api/v1/appointments',

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AppointmentService } from '../services/appointmentService';
+import { PatientService } from '../services/patientService';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
-import { AppointmentMedicalData, VitalSign } from '../types/Medical';
+import { AppointmentMedicalData, VitalSign, PatientMedicalHistory } from '../types/Medical';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
@@ -52,6 +53,10 @@ export const AppointmentStart: React.FC = () => {
 
   // Show vital signs history modal
   const [showVitalHistory, setShowVitalHistory] = useState(false);
+  const [showDiagnosisHistory, setShowDiagnosisHistory] = useState(false);
+  const [showTreatmentHistory, setShowTreatmentHistory] = useState(false);
+  const [showPrescriptionHistory, setShowPrescriptionHistory] = useState(false);
+  const [patientHistory, setPatientHistory] = useState<PatientMedicalHistory | null>(null);
 
   // Mock uploaded files data
   const [uploadedFiles] = useState([
@@ -180,8 +185,22 @@ export const AppointmentStart: React.FC = () => {
   useEffect(() => {
     if (appointment) {
       fetchMedicalData();
+      fetchPatientHistory();
     }
   }, [appointment]);
+
+  // Fetch patient medical history
+  const fetchPatientHistory = async () => {
+    if (!appointment?.patient_id) return;
+
+    try {
+      const history = await PatientService.getPatientMedicalHistory(appointment.patient_id);
+      setPatientHistory(history);
+    } catch (error) {
+      console.error('Failed to fetch patient medical history:', error);
+      // Don't show error notification as history might not exist
+    }
+  };
 
   const handleStartAppointment = () => {
     setIsStarted(true);
@@ -208,7 +227,10 @@ export const AppointmentStart: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        navigate('/dashboard');
+        // Only navigate to dashboard if no modals are open
+        if (!showVitalHistory && !showDiagnosisHistory && !showTreatmentHistory && !showPrescriptionHistory && !showFollowUpModal) {
+          navigate('/dashboard');
+        }
       }
     };
 
@@ -216,7 +238,7 @@ export const AppointmentStart: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate]);
+  }, [navigate, showVitalHistory, showDiagnosisHistory, showTreatmentHistory, showPrescriptionHistory, showFollowUpModal]);
 
   const addVitalSign = () => {
     const newVital: VitalSign = {
@@ -309,6 +331,18 @@ export const AppointmentStart: React.FC = () => {
 
   const handleVitalHistoryClick = () => {
     setShowVitalHistory(true);
+  };
+
+  const handleDiagnosisHistoryClick = () => {
+    setShowDiagnosisHistory(true);
+  };
+
+  const handleTreatmentHistoryClick = () => {
+    setShowTreatmentHistory(true);
+  };
+
+  const handlePrescriptionHistoryClick = () => {
+    setShowPrescriptionHistory(true);
   };
 
   if (loading) {
@@ -573,9 +607,18 @@ export const AppointmentStart: React.FC = () => {
             {activeTab === 'consultation' && (
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                  <div className="flex items-center mb-4">
-                    <span className="material-icons-round text-blue-600 mr-2">local_hospital</span>
-                    <h4 className="font-semibold text-blue-800">Diagnosis</h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <span className="material-icons-round text-blue-600 mr-2">local_hospital</span>
+                      <h4 className="font-semibold text-blue-800">Diagnosis</h4>
+                    </div>
+                    <button
+                      onClick={handleDiagnosisHistoryClick}
+                      className="flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      <span className="material-icons-round text-sm">history</span>
+                      <span className="text-sm font-medium">History</span>
+                    </button>
                   </div>
                   <textarea
                     placeholder="Enter diagnosis and findings..."
@@ -587,9 +630,18 @@ export const AppointmentStart: React.FC = () => {
                 </div>
 
                 <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                  <div className="flex items-center mb-4">
-                    <span className="material-icons-round text-green-600 mr-2">healing</span>
-                    <h4 className="font-semibold text-green-800">Treatment Plan</h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <span className="material-icons-round text-green-600 mr-2">healing</span>
+                      <h4 className="font-semibold text-green-800">Treatment Plan</h4>
+                    </div>
+                    <button
+                      onClick={handleTreatmentHistoryClick}
+                      className="flex items-center space-x-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors"
+                    >
+                      <span className="material-icons-round text-sm">history</span>
+                      <span className="text-sm font-medium">History</span>
+                    </button>
                   </div>
                   <textarea
                     placeholder="Enter detailed treatment plan and recommendations..."
@@ -601,9 +653,18 @@ export const AppointmentStart: React.FC = () => {
                 </div>
 
                 <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                  <div className="flex items-center mb-4">
-                    <span className="material-icons-round text-purple-600 mr-2">medication</span>
-                    <h4 className="font-semibold text-purple-800">Prescription</h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <span className="material-icons-round text-purple-600 mr-2">medication</span>
+                      <h4 className="font-semibold text-purple-800">Prescription</h4>
+                    </div>
+                    <button
+                      onClick={handlePrescriptionHistoryClick}
+                      className="flex items-center space-x-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-200 transition-colors"
+                    >
+                      <span className="material-icons-round text-sm">history</span>
+                      <span className="text-sm font-medium">History</span>
+                    </button>
                   </div>
                   <textarea
                     placeholder="Enter prescription details and medications..."
@@ -776,13 +837,119 @@ export const AppointmentStart: React.FC = () => {
             <div className="space-y-4">
               <p className="text-neutral-600 mb-4">Patient vital signs history across appointments</p>
 
+              {patientHistory && patientHistory.medical_history.length > 0 ? (
+                <div className="space-y-4">
+                  {patientHistory.medical_history
+                    .filter(record => record.vital_signs && Object.keys(record.vital_signs).length > 0)
+                    .map((record, index) => (
+                    <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-semibold text-neutral-800">
+                          {new Date(record.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </h5>
+                        <span className="text-sm text-neutral-500">Appointment</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {record.vital_signs && Object.entries(record.vital_signs).map(([key, value]) => {
+                          const vitalOption = VITAL_SIGN_OPTIONS.find(option => 
+                            option.name.toLowerCase().replace(/\s+/g, '_') === key.toLowerCase()
+                          );
+                          
+                          return (
+                            <div key={key} className="flex items-center space-x-2">
+                              <span className={`material-icons-round text-${vitalOption?.color || 'gray'}-600 text-sm`}>
+                                {vitalOption?.icon || 'health_and_safety'}
+                              </span>
+                              <div>
+                                <p className="text-xs text-neutral-500">
+                                  {vitalOption?.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </p>
+                                <p className="font-medium">{value} {vitalOption?.unit || ''}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-neutral-500">
+                  <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
+                  <p>No vital signs history available</p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* Diagnosis History Modal */}
+        {showDiagnosisHistory && (
+          <Modal
+            isOpen={showDiagnosisHistory}
+            onClose={() => setShowDiagnosisHistory(false)}
+            title="Diagnosis History"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <p className="text-neutral-600 mb-4">Patient diagnosis history across appointments</p>
+
+              {patientHistory && patientHistory.medical_history.length > 0 ? (
+                <div className="space-y-4">
+                  {patientHistory.medical_history
+                    .filter(record => record.diagnosis && record.diagnosis.trim() !== '')
+                    .map((record, index) => (
+                    <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-semibold text-neutral-800">
+                          {new Date(record.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </h5>
+                        <span className="text-sm text-neutral-500">Appointment</span>
+                      </div>
+
+                      <div className="text-neutral-800">
+                        <p className="text-sm whitespace-pre-wrap">{record.diagnosis}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-neutral-500">
+                  <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
+                  <p>No diagnosis history available</p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* Treatment Plan History Modal */}
+        {showTreatmentHistory && (
+          <Modal
+            isOpen={showTreatmentHistory}
+            onClose={() => setShowTreatmentHistory(false)}
+            title="Treatment Plan History"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <p className="text-neutral-600 mb-4">Patient treatment plan history across appointments</p>
+
               {/* Mock History Data */}
               <div className="space-y-4">
                 {[
-                  { date: '2024-08-01', heartRate: '72', bloodPressure: '120/80', temperature: '36.5' },
-                  { date: '2024-07-15', heartRate: '75', bloodPressure: '118/78', temperature: '36.7' },
-                  { date: '2024-07-01', heartRate: '70', bloodPressure: '115/75', temperature: '36.4' },
-                  { date: '2024-06-20', heartRate: '73', bloodPressure: '122/82', temperature: '36.6' },
+                  { date: '2024-08-01', treatment: 'Lifestyle changes, Medication' },
+                  { date: '2024-07-15', treatment: 'Normal' },
+                  { date: '2024-07-01', treatment: 'Dietary changes' },
+                  { date: '2024-06-20', treatment: 'Normal' },
                 ].map((record, index) => (
                   <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
                     <div className="flex items-center justify-between mb-3">
@@ -796,30 +963,8 @@ export const AppointmentStart: React.FC = () => {
                       <span className="text-sm text-neutral-500">Appointment</span>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <span className="material-icons-round text-red-600 text-sm">monitor_heart</span>
-                        <div>
-                          <p className="text-xs text-neutral-500">Heart Rate</p>
-                          <p className="font-medium">{record.heartRate} bpm</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <span className="material-icons-round text-pink-600 text-sm">favorite</span>
-                        <div>
-                          <p className="text-xs text-neutral-500">Blood Pressure</p>
-                          <p className="font-medium">{record.bloodPressure} mmHg</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <span className="material-icons-round text-orange-600 text-sm">device_thermostat</span>
-                        <div>
-                          <p className="text-xs text-neutral-500">Temperature</p>
-                          <p className="font-medium">{record.temperature} °C</p>
-                        </div>
-                      </div>
+                    <div className="text-neutral-800">
+                      <p className="text-sm">{record.treatment}</p>
                     </div>
                   </div>
                 ))}
@@ -828,7 +973,54 @@ export const AppointmentStart: React.FC = () => {
               {/* Empty state if no history */}
               <div className="text-center py-8 text-neutral-500">
                 <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                <p>Complete vital signs history shown above</p>
+                <p>Complete treatment plan history shown above</p>
+              </div>
+            </div>
+          </Modal>
+        )}
+
+        {/* Prescription History Modal */}
+        {showPrescriptionHistory && (
+          <Modal
+            isOpen={showPrescriptionHistory}
+            onClose={() => setShowPrescriptionHistory(false)}
+            title="Prescription History"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <p className="text-neutral-600 mb-4">Patient prescription history across appointments</p>
+
+              {/* Mock History Data */}
+              <div className="space-y-4">
+                {[
+                  { date: '2024-08-01', prescription: 'Atenolol 50mg, Lisinopril 10mg' },
+                  { date: '2024-07-15', prescription: 'Normal' },
+                  { date: '2024-07-01', prescription: 'Amlodipine 5mg' },
+                  { date: '2024-06-20', prescription: 'Normal' },
+                ].map((record, index) => (
+                  <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-neutral-800">
+                        {new Date(record.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </h5>
+                      <span className="text-sm text-neutral-500">Appointment</span>
+                    </div>
+
+                    <div className="text-neutral-800">
+                      <p className="text-sm">{record.prescription}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Empty state if no history */}
+              <div className="text-center py-8 text-neutral-500">
+                <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
+                <p>Complete prescription history shown above</p>
               </div>
             </div>
           </Modal>

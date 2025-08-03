@@ -417,6 +417,49 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/medical-history": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Get Patient Medical History",
+        "description": "Get complete medical history for a patient including diagnosis, treatment plans, prescriptions, and vital signs from all appointments",
+        "operationId": "get_patient_medical_history_api_v1_patients__patient_id__medical_history_get",
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientMedicalHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/appointments/": {
       "post": {
         "tags": [
@@ -2073,6 +2116,103 @@
         ],
         "title": "PatientListResponse",
         "description": "Paginated response model for patient list"
+      },
+      "PatientMedicalHistory": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "patient_first_name": {
+            "type": "string",
+            "title": "Patient First Name"
+          },
+          "patient_last_name": {
+            "type": "string",
+            "title": "Patient Last Name"
+          },
+          "medical_history": {
+            "items": {
+              "$ref": "#/components/schemas/PatientMedicalHistoryEntry"
+            },
+            "type": "array",
+            "title": "Medical History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id",
+          "patient_first_name",
+          "patient_last_name",
+          "medical_history"
+        ],
+        "title": "PatientMedicalHistory",
+        "description": "Complete medical history for a patient"
+      },
+      "PatientMedicalHistoryEntry": {
+        "properties": {
+          "appointment_id": {
+            "type": "string",
+            "title": "Appointment Id"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "treatment_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Plan"
+          },
+          "prescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prescription"
+          },
+          "vital_signs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vital Signs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "appointment_id",
+          "date"
+        ],
+        "title": "PatientMedicalHistoryEntry",
+        "description": "Medical history entry for a specific appointment date"
       },
       "PatientRead": {
         "properties": {
