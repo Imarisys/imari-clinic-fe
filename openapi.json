@@ -417,6 +417,49 @@
         }
       }
     },
+    "/api/v1/patients/{patient_id}/medical-history": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Get Patient Medical History",
+        "description": "Get complete medical history for a patient including diagnosis, treatment plans, prescriptions, and vital signs from all appointments",
+        "operationId": "get_patient_medical_history_api_v1_patients__patient_id__medical_history_get",
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientMedicalHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/appointments/": {
       "post": {
         "tags": [
@@ -678,6 +721,148 @@
                     "$ref": "#/components/schemas/AppointmentRead"
                   },
                   "title": "Response Get Appointments By Patient Api V1 Appointments By Patient  Patient Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/{appointment_id}/medical": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "Get Appointment Medical Data",
+        "description": "Get medical data for a specific appointment",
+        "operationId": "get_appointment_medical_data_api_v1_appointments__appointment_id__medical_get",
+        "parameters": [
+          {
+            "name": "appointment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentMedicalDataRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "Update Appointment Medical Data",
+        "description": "Update medical data for an appointment",
+        "operationId": "update_appointment_medical_data_api_v1_appointments__appointment_id__medical_put",
+        "parameters": [
+          {
+            "name": "appointment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentMedicalDataUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentMedicalDataRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/appointments/medical/by_date/{appointment_date}": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "Get Medical Data By Date",
+        "description": "Get medical data for all appointments on a specific date",
+        "operationId": "get_medical_data_by_date_api_v1_appointments_medical_by_date__appointment_date__get",
+        "parameters": [
+          {
+            "name": "appointment_date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Appointment Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppointmentMedicalDataRead"
+                  },
+                  "title": "Response Get Medical Data By Date Api V1 Appointments Medical By Date  Appointment Date  Get"
                 }
               }
             }
@@ -1211,6 +1396,126 @@
           "end_time"
         ],
         "title": "AppointmentCreate"
+      },
+      "AppointmentMedicalDataRead": {
+        "properties": {
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "treatment_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Plan"
+          },
+          "prescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prescription"
+          },
+          "vital_signs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vital Signs"
+          },
+          "appointment_id": {
+            "type": "string",
+            "title": "Appointment Id"
+          },
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "appointment_id",
+          "patient_id",
+          "date"
+        ],
+        "title": "AppointmentMedicalDataRead"
+      },
+      "AppointmentMedicalDataUpdate": {
+        "properties": {
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "treatment_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Plan"
+          },
+          "prescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prescription"
+          },
+          "vital_signs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vital Signs"
+          }
+        },
+        "type": "object",
+        "title": "AppointmentMedicalDataUpdate"
       },
       "AppointmentRead": {
         "properties": {
@@ -1811,6 +2116,108 @@
         ],
         "title": "PatientListResponse",
         "description": "Paginated response model for patient list"
+      },
+      "PatientMedicalHistory": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "patient_first_name": {
+            "type": "string",
+            "title": "Patient First Name"
+          },
+          "patient_last_name": {
+            "type": "string",
+            "title": "Patient Last Name"
+          },
+          "medical_history": {
+            "items": {
+              "$ref": "#/components/schemas/PatientMedicalHistoryEntry"
+            },
+            "type": "array",
+            "title": "Medical History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id",
+          "patient_first_name",
+          "patient_last_name",
+          "medical_history"
+        ],
+        "title": "PatientMedicalHistory",
+        "description": "Complete medical history for a patient"
+      },
+      "PatientMedicalHistoryEntry": {
+        "properties": {
+          "appointment_id": {
+            "type": "string",
+            "title": "Appointment Id"
+          },
+          "appointment_type_name": {
+            "type": "string",
+            "title": "Appointment Type Name"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "diagnosis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnosis"
+          },
+          "treatment_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Plan"
+          },
+          "prescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prescription"
+          },
+          "vital_signs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vital Signs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "appointment_id",
+          "appointment_type_name",
+          "date"
+        ],
+        "title": "PatientMedicalHistoryEntry",
+        "description": "Medical history entry for a specific appointment date"
       },
       "PatientRead": {
         "properties": {

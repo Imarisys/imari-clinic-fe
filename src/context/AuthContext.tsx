@@ -19,17 +19,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user: null,
     token: null,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in on app start
-    const isAuthenticated = authService.isAuthenticated();
-    const user = authService.getCurrentUser();
+    const checkAuthState = () => {
+      const isAuthenticated = authService.isAuthenticated();
+      const user = authService.getCurrentUser();
 
-    setAuthState({
-      isAuthenticated,
-      user,
-      token: null, // We're not using tokens in this implementation
-    });
+      setAuthState({
+        isAuthenticated,
+        user,
+        token: null, // We're not using tokens in this implementation
+      });
+      setIsLoading(false);
+    };
+
+    // Small delay to ensure localStorage is ready
+    setTimeout(checkAuthState, 0);
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -53,6 +60,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       token: null,
     });
   };
+
+  // Don't render anything while checking auth state
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+    </div>;
+  }
 
   return (
     <AuthContext.Provider value={{ ...authState, login, logout }}>

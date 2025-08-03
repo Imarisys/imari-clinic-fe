@@ -1,5 +1,6 @@
 import { API_CONFIG, buildApiUrl } from '../config/api';
 import { Patient, PatientCreate, PatientUpdate, PatientRead, PatientListResponse, PatientSummary, PatientWithAppointments } from '../types/Patient';
+import { PatientMedicalHistory } from '../types/Medical';
 
 // Helper function to extract error message from response
 const extractErrorMessage = async (response: Response): Promise<string> => {
@@ -290,6 +291,31 @@ export class PatientService {
         throw error;
       }
       throw new Error('Network error occurred while fetching patient with appointments');
+    }
+  }
+
+  // Get patient medical history
+  static async getPatientMedicalHistory(patientId: string): Promise<PatientMedicalHistory> {
+    try {
+      const url = buildApiUrl(API_CONFIG.endpoints.patients.medicalHistory(patientId));
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error occurred while fetching patient medical history');
     }
   }
 }

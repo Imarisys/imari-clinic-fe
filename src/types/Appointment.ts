@@ -10,6 +10,7 @@ export interface Appointment {
     start_time: string; // Time format with microseconds
     end_time: string; // Time format with microseconds
     type: AppointmentType;
+    appointment_type_name: string; // Added for API mapping
     status: AppointmentStatus;
     title: string;
     notes: string | null;
