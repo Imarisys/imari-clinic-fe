@@ -67,6 +67,15 @@ export const AppointmentStart: React.FC = () => {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [fileViewMode, setFileViewMode] = useState<'grid' | 'list'>('grid');
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    file: PatientFileRead | null;
+    imageUrl: string | null;
+  }>({
+    isOpen: false,
+    file: null,
+    imageUrl: null
+  });
 
   // Timer for appointment duration
   useEffect(() => {
@@ -281,6 +290,12 @@ export const AppointmentStart: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Close preview modal first if open
+        if (previewModal.isOpen) {
+          setPreviewModal({ isOpen: false, file: null, imageUrl: null });
+          return;
+        }
+
         // Only navigate to dashboard if no modals are open
         if (!showVitalHistory && !showDiagnosisHistory && !showTreatmentHistory && !showPrescriptionHistory && !showFollowUpModal) {
           navigate('/dashboard');
@@ -292,7 +307,7 @@ export const AppointmentStart: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate, showVitalHistory, showDiagnosisHistory, showTreatmentHistory, showPrescriptionHistory, showFollowUpModal]);
+  }, [navigate, showVitalHistory, showDiagnosisHistory, showTreatmentHistory, showPrescriptionHistory, showFollowUpModal, previewModal.isOpen]);
 
   const addVitalSign = () => {
     const newVital: VitalSign = {
@@ -363,9 +378,44 @@ export const AppointmentStart: React.FC = () => {
   };
 
   // Function to handle file preview
-  const handleFilePreview = (file: PatientFileRead) => {
+  const handleFilePreview = async (file: PatientFileRead) => {
     if (!appointment?.patient_id) return;
-    PatientFileService.previewFile(appointment.patient_id, file.id);
+
+    if (PatientFileService.isImageFile(file)) {
+      // For images, show full-size image in modal popup
+      try {
+        const fullImageUrl = await PatientFileService.getFileDownloadUrl(appointment.patient_id, file.id);
+        if (fullImageUrl) {
+          setPreviewModal({
+            isOpen: true,
+            file: file,
+            imageUrl: fullImageUrl
+          });
+        } else {
+          showNotification('error', 'Error', 'Failed to load image preview');
+        }
+      } catch (error) {
+        console.error('Failed to load image preview:', error);
+        showNotification('error', 'Error', 'Failed to load image preview');
+      }
+    } else {
+      // For non-images, get the full file URL and open in new window
+      try {
+        const fileUrl = await PatientFileService.getFileDownloadUrl(appointment.patient_id, file.id);
+        if (fileUrl) {
+          window.open(fileUrl, '_blank', 'noopener,noreferrer');
+        } else {
+          // Fallback to preview URL if download URL fails
+          const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+          window.open(previewUrl, '_blank', 'noopener,noreferrer');
+        }
+      } catch (error) {
+        console.error('Failed to open file:', error);
+        // Fallback to preview URL
+        const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+        window.open(previewUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
   };
 
   // Function to handle file download
@@ -880,9 +930,6 @@ export const AppointmentStart: React.FC = () => {
                                 {file.filename}
                               </p>
                               <p className="text-xs text-neutral-500 font-medium">
-                                {PatientFileService.formatFileSize(file.file_size)}
-                              </p>
-                              <p className="text-xs text-neutral-400">
                                 {new Date(file.upload_date).toLocaleDateString()}
                               </p>
                               {file.description && (
@@ -893,13 +940,15 @@ export const AppointmentStart: React.FC = () => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center space-x-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="flex items-center space-x-2 mt-3 transition-opacity duration-200">
                               <button
                                 onClick={() => handleFilePreview(file)}
                                 className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                title="Preview file"
+                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
                               >
-                                <span className="material-icons-round text-base">visibility</span>
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
                               </button>
                               <button
                                 onClick={() => handleFileDownload(file)}
@@ -954,7 +1003,7 @@ export const AppointmentStart: React.FC = () => {
                               <p className="font-semibold text-neutral-800 truncate leading-tight">{file.filename}</p>
                               <div className="flex items-center space-x-2 mt-1">
                                 <p className="text-sm text-neutral-500 font-medium">
-                                  {file.file_type.toUpperCase()} • {PatientFileService.formatFileSize(file.file_size)}
+                                  {file.file_type.toUpperCase()}
                                 </p>
                               </div>
                               {file.description && (
@@ -1313,6 +1362,31 @@ export const AppointmentStart: React.FC = () => {
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
                   <p>No prescription history available</p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* File Preview Modal */}
+        {previewModal.isOpen && previewModal.file && (
+          <Modal
+            isOpen={previewModal.isOpen}
+            onClose={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+            title="File Preview"
+            size="lg"
+          >
+            <div className="flex items-center justify-center">
+              {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
+                <img
+                  src={previewModal.imageUrl}
+                  alt={previewModal.file.filename}
+                  className="max-w-full max-h-96 object-contain rounded-lg"
+                />
+              ) : (
+                <div className="text-center">
+                  <span className="material-icons-round text-6xl text-neutral-300 mb-4">image_not_supported</span>
+                  <p className="text-neutral-600">No preview available for this file type</p>
                 </div>
               )}
             </div>
