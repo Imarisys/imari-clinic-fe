@@ -268,7 +268,6 @@ export const AppointmentStart: React.FC = () => {
   const handleStartAppointment = () => {
     setIsStarted(true);
     setStartTime(new Date());
-    showNotification('success', 'Appointment Started', 'You can now begin the consultation');
   };
 
   const handleEndAppointment = async () => {
@@ -551,21 +550,62 @@ export const AppointmentStart: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-right">
-              {isStarted ? (
-                <div className="bg-white/20 rounded-xl p-4 backdrop-blur-sm">
-                  <p className="text-primary-100 text-sm mb-1">Session Duration</p>
-                  <p className="text-3xl font-mono font-bold">{getElapsedTime()}</p>
-                </div>
-              ) : (
-                <button
-                  onClick={handleStartAppointment}
-                  className="bg-white text-primary-600 px-8 py-3 rounded-xl font-semibold hover:bg-primary-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                >
-                  <span className="material-icons-round mr-2 align-middle">play_arrow</span>
-                  Start Appointment
-                </button>
-              )}
+            <div className="flex items-center space-x-4">
+              {/* Back to Dashboard Button */}
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="bg-white/20 text-white px-4 py-2 rounded-xl font-medium hover:bg-white/30 transition-all duration-300 backdrop-blur-sm flex items-center space-x-2"
+                title="Back to Dashboard"
+              >
+                <span className="material-icons-round text-lg">arrow_back</span>
+                <span className="hidden sm:block">Dashboard</span>
+              </button>
+
+              {/* Timer and Action Area */}
+              <div className="text-right">
+                {isStarted ? (
+                  <div className="flex items-center space-x-4">
+                    {/* Complete Appointment Button */}
+                    {!isCompleted ? (
+                      <button
+                        onClick={handleEndAppointment}
+                        className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2"
+                      >
+                        <span className="material-icons-round">check_circle</span>
+                        <span className="hidden lg:block">Complete</span>
+                      </button>
+                    ) : (
+                      <div className="bg-gray-400 text-white px-6 py-3 rounded-xl font-semibold cursor-not-allowed flex items-center space-x-2">
+                        <span className="material-icons-round">check_circle</span>
+                        <span className="hidden lg:block">Completed</span>
+                      </div>
+                    )}
+
+                    {/* Session Timer */}
+                    <div className="bg-white/20 rounded-xl p-3 backdrop-blur-sm">
+                      <p className="text-primary-100 text-xs mb-1">Session Duration</p>
+                      <p className="text-2xl font-mono font-bold">{getElapsedTime()}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-4">
+                    {/* Placeholder to maintain consistent height */}
+                    <div className="invisible bg-green-500 text-white px-6 py-3 rounded-xl font-semibold flex items-center space-x-2">
+                      <span className="material-icons-round">check_circle</span>
+                      <span className="hidden lg:block">Complete</span>
+                    </div>
+
+                    {/* Start Appointment Button */}
+                    <button
+                      onClick={handleStartAppointment}
+                      className="bg-white text-primary-600 px-8 py-3 rounded-xl font-semibold hover:bg-primary-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    >
+                      <span className="material-icons-round mr-2 align-middle">play_arrow</span>
+                      Start Appointment
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1049,37 +1089,6 @@ export const AppointmentStart: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-center space-x-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="btn-secondary px-8 py-3"
-          >
-            <span className="material-icons-round mr-2">arrow_back</span>
-            Back to Dashboard
-          </button>
-
-          {isStarted && !isCompleted && (
-            <button
-              onClick={handleEndAppointment}
-              className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300"
-            >
-              <span className="material-icons-round mr-2">check_circle</span>
-              Complete Appointment
-            </button>
-          )}
-
-          {isStarted && isCompleted && (
-            <button
-              disabled
-              className="bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold cursor-not-allowed"
-            >
-              <span className="material-icons-round mr-2">check_circle</span>
-              Appointment Completed
-            </button>
-          )}
         </div>
 
         {/* Follow-up Appointment Modal */}
