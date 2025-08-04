@@ -847,177 +847,262 @@ export const Patients: React.FC = () => {
             )}
           </div>
 
-          {/* Appointments List */}
-          <div className="card">
-            <h3 className="text-xl font-bold text-neutral-800 mb-4">Appointment History</h3>
-            {appointmentsLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </div>
-                ))}
+          {/* Appointments Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Upcoming Appointments */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-neutral-800">Upcoming Appointments</h3>
+                <div className="flex items-center space-x-2">
+                  <span className="material-icons-round text-blue-500">event</span>
+                  <span className="text-sm text-blue-600 font-medium">
+                    {patientAppointments.filter(apt => new Date(apt.date) >= new Date() && apt.status !== 'Cancelled').length} scheduled
+                  </span>
+                </div>
               </div>
-            ) : patientAppointments.length === 0 ? (
-              <div className="text-center py-8">
-                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
-                </svg>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h4>
-                <p className="text-gray-500">This patient hasn't had any appointments yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {patientAppointments
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((appointment) => {
-                    const getStatusColor = (status: string) => {
-                      switch (status) {
-                        case 'Completed':
-                          return 'bg-green-100 text-green-800';
-                        case 'Booked':
-                          return 'bg-blue-100 text-blue-800';
-                        case 'Cancelled':
-                          return 'bg-red-100 text-red-800';
-                        case 'No Show':
-                          return 'bg-orange-100 text-orange-800';
-                        case 'In Progress':
-                          return 'bg-purple-100 text-purple-800';
-                        default:
-                          return 'bg-gray-100 text-gray-800';
-                      }
-                    };
+              {appointmentsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h4>
+                  <p className="text-gray-500">Schedule a new appointment to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {patientAppointments
+                    .filter(apt => new Date(apt.date) >= new Date())
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map((appointment) => {
+                      const getStatusColor = (status: string) => {
+                        switch (status) {
+                          case 'Completed':
+                            return 'bg-green-100 text-green-800';
+                          case 'Booked':
+                            return 'bg-blue-100 text-blue-800';
+                          case 'Cancelled':
+                            return 'bg-red-100 text-red-800';
+                          case 'No Show':
+                            return 'bg-orange-100 text-orange-800';
+                          case 'In Progress':
+                            return 'bg-purple-100 text-purple-800';
+                          default:
+                            return 'bg-gray-100 text-gray-800';
+                        }
+                      };
 
-                    const getTypeColor = (type: string) => {
-                      switch (type) {
-                        case 'Consultation':
-                          return 'bg-indigo-100 text-indigo-800';
-                        case 'Follow Up':
-                          return 'bg-emerald-100 text-emerald-800';
-                        case 'Emergency':
-                          return 'bg-red-100 text-red-800';
-                        case 'Routine Check':
-                          return 'bg-amber-100 text-amber-800';
-                        default:
-                          return 'bg-gray-100 text-gray-800';
-                      }
-                    };
+                      const formatDate = (dateString: string) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                      };
 
-                    const formatDate = (dateString: string) => {
-                      return new Date(dateString).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      });
-                    };
+                      const formatTime = (timeString: string) => {
+                        const time = timeString.split('.')[0]; // Remove microseconds
+                        const [hours, minutes] = time.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes} ${ampm}`;
+                      };
 
-                    const formatTime = (timeString: string) => {
-                      const time = timeString.split('.')[0]; // Remove microseconds
-                      const [hours, minutes] = time.split(':');
-                      const hour = parseInt(hours);
-                      const ampm = hour >= 12 ? 'PM' : 'AM';
-                      const displayHour = hour % 12 || 12;
-                      return `${displayHour}:${minutes} ${ampm}`;
-                    };
-
-                    return (
-                      <div
-                        key={appointment.id}
-                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            {appointment.appointment_type_name ? (
-                              <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                            ) : null}
-                            {appointment.title ? (
-                              <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                            ) : null}
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                              {appointment.appointment_type_name && (
+                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                              )}
+                              {appointment.title && (
+                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                              )}
+                            </div>
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                              {appointment.status}
+                            </span>
                           </div>
-                          <div className="flex items-center justify-center h-full">
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>{appointment.status}</span>
+
+                          <div className="flex items-center justify-between text-sm text-gray-600">
+                            <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-blue-500">calendar_today</span>
+                                <span>{formatDate(appointment.date)}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-blue-500">schedule</span>
+                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                              </div>
+                            </div>
                           </div>
+
+                          {appointment.notes && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">Notes:</span> {appointment.notes}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        
-                        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                          <div className="flex items-center space-x-6">
-                            <div className="flex items-center space-x-2">
-                              <span className="material-icons-round text-base">calendar_today</span>
-                              <span>{formatDate(appointment.date)}</span>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Past Appointments */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-neutral-800">Past Appointments</h3>
+                <div className="flex items-center space-x-2">
+                  <span className="material-icons-round text-gray-500">history</span>
+                  <span className="text-sm text-gray-600 font-medium">
+                    {patientAppointments.filter(apt => new Date(apt.date) < new Date()).length} completed
+                  </span>
+                </div>
+              </div>
+              {appointmentsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No past appointments</h4>
+                  <p className="text-gray-500">Appointment history will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {patientAppointments
+                    .filter(apt => new Date(apt.date) < new Date())
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((appointment) => {
+                      const getStatusColor = (status: string) => {
+                        switch (status) {
+                          case 'Completed':
+                            return 'bg-green-100 text-green-800';
+                          case 'Booked':
+                            return 'bg-blue-100 text-blue-800';
+                          case 'Cancelled':
+                            return 'bg-red-100 text-red-800';
+                          case 'No Show':
+                            return 'bg-orange-100 text-orange-800';
+                          case 'In Progress':
+                            return 'bg-purple-100 text-purple-800';
+                          default:
+                            return 'bg-gray-100 text-gray-800';
+                        }
+                      };
+
+                      const formatDate = (dateString: string) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                      };
+
+                      const formatTime = (timeString: string) => {
+                        const time = timeString.split('.')[0]; // Remove microseconds
+                        const [hours, minutes] = time.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes} ${ampm}`;
+                      };
+
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                              {appointment.appointment_type_name && (
+                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                              )}
+                              {appointment.title && (
+                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                              )}
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="material-icons-round text-base">schedule</span>
-                              <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                            </div>
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                              {appointment.status}
+                            </span>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center space-x-2">
-                            {/* Show Consultation Details only for completed appointments */}
-                            {appointment.status === 'Completed' && (
+                          <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                            <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-gray-500">calendar_today</span>
+                                <span>{formatDate(appointment.date)}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-gray-500">schedule</span>
+                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons for Past Appointments */}
+                            <div className="flex items-center space-x-2">
+                              {appointment.status === 'Completed' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('View consultation details:', appointment.id);
+                                  }}
+                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title="View Details"
+                                >
+                                  <span className="material-icons-round text-sm mr-1">description</span>
+                                  Details
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // TODO: Handle consultation details
-                                  console.log('View consultation details:', appointment.id);
+                                  console.log('Edit appointment:', appointment.id);
                                 }}
-                                className="px-6 py-2 bg-success-500 hover:bg-success-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                                title="Consultation Details"
+                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                title="Edit"
                               >
-                                <div className="relative z-10 flex items-center justify-center">
-                                  <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">description</span>
-                                  <span className="relative z-10">Consultation Details</span>
-                                </div>
+                                <span className="material-icons-round text-sm">edit</span>
                               </button>
-                            )}
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle delete appointment
-                                console.log('Delete appointment:', appointment.id);
-                              }}
-                              className="px-6 py-2 bg-error-500 hover:bg-error-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                              title="Delete"
-                            >
-                              <div className="relative z-10 flex items-center justify-center">
-                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">delete</span>
-                                <span className="relative z-10">Delete</span>
-                              </div>
-                            </button>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle edit appointment
-                                console.log('Edit appointment:', appointment.id);
-                              }}
-                              className="px-6 py-2 bg-primary-500 hover:bg-primary-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                              title="Edit"
-                            >
-                              <div className="relative z-10 flex items-center justify-center">
-                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">edit</span>
-                                <span className="relative z-10">Edit</span>
-                              </div>
-                            </button>
+                            </div>
                           </div>
+
+                          {appointment.notes && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">Notes:</span> {appointment.notes}
+                              </p>
+                            </div>
+                          )}
                         </div>
-
-                        {/* Remove the old action buttons section */}
-
-                        {appointment.notes && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">Notes:</span> {appointment.notes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AppointmentService } from '../services/appointmentService';
 import { PatientService } from '../services/patientService';
+import { PatientFileService } from '../services/patientFileService';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { AppointmentMedicalData, VitalSign, PatientMedicalHistory } from '../types/Medical';
+import { PatientFileRead, FileUploadData } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
@@ -59,14 +61,10 @@ export const AppointmentStart: React.FC = () => {
   const [patientHistory, setPatientHistory] = useState<PatientMedicalHistory | null>(null);
   const [expandedHistoryItems, setExpandedHistoryItems] = useState<Set<string>>(new Set());
 
-  // Mock uploaded files data
-  const [uploadedFiles] = useState([
-    { id: '1', name: 'X-Ray_Chest.jpg', type: 'image', size: '2.3 MB', uploadDate: '2024-08-01', url: '/api/files/xray1.jpg' },
-    { id: '2', name: 'Blood_Test_Results.pdf', type: 'pdf', size: '156 KB', uploadDate: '2024-08-01', url: '/api/files/blood_test.pdf' },
-    { id: '3', name: 'MRI_Scan.dcm', type: 'dicom', size: '45.2 MB', uploadDate: '2024-07-28', url: '/api/files/mri_scan.dcm' },
-    { id: '4', name: 'ECG_Reading.pdf', type: 'pdf', size: '234 KB', uploadDate: '2024-07-25', url: '/api/files/ecg.pdf' },
-    { id: '5', name: 'Ultrasound.mp4', type: 'video', size: '12.8 MB', uploadDate: '2024-07-20', url: '/api/files/ultrasound.mp4' }
-  ]);
+  // Replace mock uploaded files with real patient files
+  const [patientFiles, setPatientFiles] = useState<PatientFileRead[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [fileViewMode, setFileViewMode] = useState<'grid' | 'list'>('grid');
 
   // Timer for appointment duration
@@ -203,6 +201,29 @@ export const AppointmentStart: React.FC = () => {
     }
   };
 
+  // New function to fetch patient files
+  const fetchPatientFiles = async () => {
+    if (!appointment?.patient_id) return;
+
+    try {
+      setLoadingFiles(true);
+      const response = await PatientFileService.getPatientFiles(appointment.patient_id);
+      setPatientFiles(response.files);
+    } catch (error) {
+      console.error('Failed to fetch patient files:', error);
+      showNotification('error', 'Error', 'Failed to load patient files');
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Fetch patient files when appointment is loaded
+  useEffect(() => {
+    if (appointment?.patient_id) {
+      fetchPatientFiles();
+    }
+  }, [appointment?.patient_id]);
+
   const handleStartAppointment = () => {
     setIsStarted(true);
     setStartTime(new Date());
@@ -288,9 +309,61 @@ export const AppointmentStart: React.FC = () => {
     setVitalSigns(prev => prev.filter(vital => vital.id !== id));
   };
 
-  const handleUploadFile = () => {
-    // TODO: Implement file upload functionality
-    showNotification('info', 'File Upload', 'File upload functionality coming soon');
+  // Function to handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !appointment?.patient_id) return;
+
+    try {
+      setUploadingFile(true);
+      const fileData: FileUploadData = { file };
+      await PatientFileService.uploadPatientFile(appointment.patient_id, fileData);
+      showNotification('success', 'Success', 'File uploaded successfully');
+      fetchPatientFiles(); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      showNotification('error', 'Error', 'Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+      // Reset the input
+      event.target.value = '';
+    }
+  };
+
+  // Function to handle file preview
+  const handleFilePreview = (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+    PatientFileService.previewFile(appointment.patient_id, file.id);
+  };
+
+  // Function to handle file download
+  const handleFileDownload = async (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+
+    try {
+      await PatientFileService.downloadFile(appointment.patient_id, file.id, file.filename);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      showNotification('error', 'Error', 'Failed to download file');
+    }
+  };
+
+  // Function to handle file deletion
+  const handleFileDelete = async (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${file.filename}?`)) {
+      return;
+    }
+
+    try {
+      await PatientFileService.deletePatientFile(appointment.patient_id, file.id);
+      showNotification('success', 'Success', 'File deleted successfully');
+      fetchPatientFiles(); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      showNotification('error', 'Error', 'Failed to delete file');
+    }
   };
 
   const handleGeneratePrescription = () => {
@@ -461,14 +534,6 @@ export const AppointmentStart: React.FC = () => {
 
             {/* Quick Action Buttons */}
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handleUploadFile}
-                disabled={!isStarted}
-                className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
-              >
-                <span className="material-icons-round text-sm">upload_file</span>
-                <span className="text-sm font-medium">Upload File</span>
-              </button>
 
               <button
                 onClick={handleFollowUpClick}
@@ -713,8 +778,24 @@ export const AppointmentStart: React.FC = () => {
               <div className="space-y-4">
                 <div className="bg-neutral-50 rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-neutral-800">Uploaded Documents</h4>
+                    <h4 className="text-lg font-semibold text-neutral-800">Patient Files</h4>
                     <div className="flex items-center space-x-2">
+                      {/* File Upload Button */}
+                      <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
+                        <span className="material-icons-round text-sm">upload_file</span>
+                        <span className="text-sm font-medium">
+                          {uploadingFile ? 'Uploading...' : 'Upload File'}
+                        </span>
+                        <input
+                          type="file"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                          className="hidden"
+                          accept="*/*"
+                        />
+                      </label>
+
+                      {/* View Mode Toggle */}
                       <button
                         onClick={() => setFileViewMode(fileViewMode === 'grid' ? 'list' : 'grid')}
                         className="flex items-center space-x-2 bg-white text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors border border-neutral-200"
@@ -727,25 +808,80 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                   </div>
 
-                  {fileViewMode === 'grid' ? (
+                  {loadingFiles ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-neutral-600">Loading files...</p>
+                    </div>
+                  ) : fileViewMode === 'grid' ? (
                     /* Grid View */
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {uploadedFiles.map((file) => (
+                      {patientFiles.map((file) => (
                         <div key={file.id} className="bg-white rounded-lg p-4 border border-neutral-200 hover:border-neutral-300 transition-all hover:shadow-md group">
                           <div className="flex flex-col items-center space-y-3">
-                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200 transition-colors">
-                              <span className="material-icons-round text-blue-600 text-xl">
-                                {file.type === 'image' ? 'image' :
-                                 file.type === 'pdf' ? 'picture_as_pdf' :
-                                 file.type === 'video' ? 'play_circle' : 'description'}
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-16 h-16 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200 transition-colors relative overflow-hidden">
+                              {PatientFileService.isImageFile(file) ? (
+                                <img
+                                  src={PatientFileService.getThumbnailUrl(appointment!.patient_id, file.id)}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-lg"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                className={`material-icons-round text-blue-600 text-xl ${PatientFileService.isImageFile(file) ? 'hidden' : ''}`}
+                              >
+                                {PatientFileService.getFileIcon(file)}
                               </span>
                             </div>
-                            <div className="text-center">
-                              <p className="text-sm font-medium text-neutral-800 truncate w-full" title={file.name}>
-                                {file.name}
+
+                            {/* File Info */}
+                            <div className="text-center w-full">
+                              <p className="text-sm font-medium text-neutral-800 truncate w-full" title={file.filename}>
+                                {file.filename}
                               </p>
-                              <p className="text-xs text-neutral-500 mt-1">{file.size}</p>
-                              <p className="text-xs text-neutral-400">{new Date(file.uploadDate).toLocaleDateString()}</p>
+                              <p className="text-xs text-neutral-500 mt-1">
+                                {PatientFileService.formatFileSize(file.file_size)}
+                              </p>
+                              <p className="text-xs text-neutral-400">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              {file.description && (
+                                <p className="text-xs text-neutral-600 mt-1 italic truncate" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors"
+                                title="Preview file"
+                              >
+                                <span className="material-icons-round text-sm">visibility</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-100 transition-colors"
+                                title="Download file"
+                              >
+                                <span className="material-icons-round text-sm">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Delete file"
+                              >
+                                <span className="material-icons-round text-sm">delete</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -754,29 +890,78 @@ export const AppointmentStart: React.FC = () => {
                   ) : (
                     /* List View */
                     <div className="space-y-2">
-                      {uploadedFiles.map((file) => (
+                      {patientFiles.map((file) => (
                         <div key={file.id} className="bg-white rounded-lg p-4 border border-neutral-200 hover:border-neutral-300 transition-colors">
                           <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-                              <span className="material-icons-round text-blue-600">
-                                {file.type === 'image' ? 'image' :
-                                 file.type === 'pdf' ? 'picture_as_pdf' :
-                                 file.type === 'video' ? 'play_circle' : 'description'}
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 relative overflow-hidden flex-shrink-0">
+                              {PatientFileService.isImageFile(file) ? (
+                                <img
+                                  src={PatientFileService.getThumbnailUrl(appointment!.patient_id, file.id)}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-lg"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <span
+                                className={`material-icons-round text-blue-600 ${PatientFileService.isImageFile(file) ? 'hidden' : ''}`}
+                              >
+                                {PatientFileService.getFileIcon(file)}
                               </span>
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-neutral-800">{file.name}</p>
-                              <p className="text-sm text-neutral-500">{file.type.toUpperCase()} • {file.size}</p>
+
+                            {/* File Details */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-neutral-800 truncate">{file.filename}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-neutral-500">
+                                  {file.file_type.toUpperCase()} • {PatientFileService.formatFileSize(file.file_size)}
+                                </p>
+                              </div>
+                              {file.description && (
+                                <p className="text-sm text-neutral-600 mt-1 italic truncate" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-neutral-600">{new Date(file.uploadDate).toLocaleDateString()}</p>
+
+                            {/* Upload Date */}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm text-neutral-600">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-neutral-400">
+                                {new Date(file.upload_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <button className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors">
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors"
+                                title="Preview file"
+                              >
                                 <span className="material-icons-round text-sm">visibility</span>
                               </button>
-                              <button className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-100 transition-colors">
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-100 transition-colors"
+                                title="Download file"
+                              >
                                 <span className="material-icons-round text-sm">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors"
+                                title="Delete file"
+                              >
+                                <span className="material-icons-round text-sm">delete</span>
                               </button>
                             </div>
                           </div>
@@ -785,10 +970,11 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                   )}
 
-                  {uploadedFiles.length === 0 && (
+                  {!loadingFiles && patientFiles.length === 0 && (
                     <div className="text-center py-8 text-neutral-500">
                       <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">folder_open</span>
                       <p>No files uploaded yet</p>
+                      <p className="text-sm mt-2">Upload files to view them here</p>
                     </div>
                   )}
                 </div>
