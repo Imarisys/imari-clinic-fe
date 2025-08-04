@@ -382,39 +382,22 @@ export const AppointmentStart: React.FC = () => {
     if (!appointment?.patient_id) return;
 
     if (PatientFileService.isImageFile(file)) {
-      // For images, show full-size image in modal popup
+      // For images, show full-size image in modal popup using preview URL
       try {
-        const fullImageUrl = await PatientFileService.getFileDownloadUrl(appointment.patient_id, file.id);
-        if (fullImageUrl) {
-          setPreviewModal({
-            isOpen: true,
-            file: file,
-            imageUrl: fullImageUrl
-          });
-        } else {
-          showNotification('error', 'Error', 'Failed to load image preview');
-        }
+        const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+        setPreviewModal({
+          isOpen: true,
+          file: file,
+          imageUrl: previewUrl
+        });
       } catch (error) {
         console.error('Failed to load image preview:', error);
         showNotification('error', 'Error', 'Failed to load image preview');
       }
     } else {
-      // For non-images, get the full file URL and open in new window
-      try {
-        const fileUrl = await PatientFileService.getFileDownloadUrl(appointment.patient_id, file.id);
-        if (fileUrl) {
-          window.open(fileUrl, '_blank', 'noopener,noreferrer');
-        } else {
-          // Fallback to preview URL if download URL fails
-          const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
-          window.open(previewUrl, '_blank', 'noopener,noreferrer');
-        }
-      } catch (error) {
-        console.error('Failed to open file:', error);
-        // Fallback to preview URL
-        const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
-        window.open(previewUrl, '_blank', 'noopener,noreferrer');
-      }
+      // For non-images, open preview URL in new window
+      const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -1028,9 +1011,11 @@ export const AppointmentStart: React.FC = () => {
                               <button
                                 onClick={() => handleFilePreview(file)}
                                 className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                title="Preview file"
+                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
                               >
-                                <span className="material-icons-round text-base">visibility</span>
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
                               </button>
                               <button
                                 onClick={() => handleFileDownload(file)}
@@ -1374,14 +1359,14 @@ export const AppointmentStart: React.FC = () => {
             isOpen={previewModal.isOpen}
             onClose={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
             title="File Preview"
-            size="lg"
+            size="xl"
           >
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center h-full">
               {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
                 <img
                   src={previewModal.imageUrl}
                   alt={previewModal.file.filename}
-                  className="max-w-full max-h-96 object-contain rounded-lg"
+                  className="max-w-full max-h-full object-contain rounded-lg"
                 />
               ) : (
                 <div className="text-center">
