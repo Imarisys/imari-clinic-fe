@@ -505,7 +505,7 @@ export const AppointmentStart: React.FC = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout forceCollapsed={isStarted}>
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
             <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -518,7 +518,7 @@ export const AppointmentStart: React.FC = () => {
 
   if (!appointment) {
     return (
-      <DashboardLayout>
+      <DashboardLayout forceCollapsed={isStarted}>
         <div className="text-center py-12">
           <span className="material-icons-round text-6xl text-neutral-300 mb-4">error_outline</span>
           <h2 className="text-2xl font-bold text-neutral-800 mb-2">Appointment Not Found</h2>
@@ -532,7 +532,7 @@ export const AppointmentStart: React.FC = () => {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout forceCollapsed={isStarted}>
       <div className="space-y-6">
         {/* Header with Patient Info and Timer */}
         <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl p-6 shadow-xl">
