@@ -71,6 +71,23 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
     }
   }, [isEditing, appointment]);
 
+  // Add ESC key functionality
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [onClose]);
+
   const appointmentTypes: AppointmentType[] = ['Consultation', 'Follow Up', 'Emergency', 'Routine Check'];
   const appointmentStatuses: AppointmentStatus[] = ['Booked', 'Completed', 'No Show'];
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Appointment, AppointmentUpdate } from '../../types/Appointment';
 import { Patient } from '../../types/Patient';
 
@@ -26,6 +26,23 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
   const [startTime, setStartTime] = useState(newStartTime);
   const [endTime, setEndTime] = useState(newEndTime);
   const [date, setDate] = useState(newDate);
+
+  // Add ESC key functionality
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [onCancel]);
 
   const handleConfirm = async () => {
     const updateData: AppointmentUpdate = {

@@ -4,20 +4,22 @@ import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
 import { PatientForm } from '../components/patients/PatientForm';
-import { PatientDetail } from '../components/patients/PatientDetail';
 import { PatientHistory } from '../components/patients/PatientHistory';
 import { PatientSearch, PatientSearchFilters } from '../components/patients/PatientSearch';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
+import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
+import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { useNotification } from '../context/NotificationContext';
+import { SettingsService } from '../services/settingsService';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
 
@@ -53,6 +55,12 @@ export const Patients: React.FC = () => {
   const [appointmentLoading, setAppointmentLoading] = useState(false);
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [appointmentTypesLoading, setAppointmentTypesLoading] = useState(false);
+
+  // Working hours from settings
+  const [workingHours, setWorkingHours] = useState({
+    startTime: '08:00',
+    endTime: '17:00'
+  });
 
   const { showNotification } = useNotification();
   const location = useLocation();
@@ -153,6 +161,28 @@ export const Patients: React.FC = () => {
   useEffect(() => {
     loadPatients(1);
     loadPatientSummary();
+
+    // Load settings for working hours
+    const loadSettings = async () => {
+      try {
+        const settings = await SettingsService.getSettings();
+        console.log('Patients - Settings loaded:', settings);
+        console.log('Patients - appointments_start_time:', settings.appointments_start_time);
+        console.log('Patients - appointments_end_time:', settings.appointments_end_time);
+
+        const newWorkingHours = {
+          startTime: settings.appointments_start_time || '08:00',
+          endTime: settings.appointments_end_time || '17:00'
+        };
+
+        console.log('Patients - Setting working hours to:', newWorkingHours);
+        setWorkingHours(newWorkingHours);
+      } catch (error) {
+        console.error('Patients - Failed to fetch settings:', error);
+      }
+    };
+
+    loadSettings();
   }, []);
 
   // Reload patients when itemsPerPage changes
@@ -817,177 +847,262 @@ export const Patients: React.FC = () => {
             )}
           </div>
 
-          {/* Appointments List */}
-          <div className="card">
-            <h3 className="text-xl font-bold text-neutral-800 mb-4">Appointment History</h3>
-            {appointmentsLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </div>
-                ))}
+          {/* Appointments Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Upcoming Appointments */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-neutral-800">Upcoming Appointments</h3>
+                <div className="flex items-center space-x-2">
+                  <span className="material-icons-round text-blue-500">event</span>
+                  <span className="text-sm text-blue-600 font-medium">
+                    {patientAppointments.filter(apt => new Date(apt.date) >= new Date() && apt.status !== 'Cancelled').length} scheduled
+                  </span>
+                </div>
               </div>
-            ) : patientAppointments.length === 0 ? (
-              <div className="text-center py-8">
-                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
-                </svg>
-                <h4 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h4>
-                <p className="text-gray-500">This patient hasn't had any appointments yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {patientAppointments
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((appointment) => {
-                    const getStatusColor = (status: string) => {
-                      switch (status) {
-                        case 'Completed':
-                          return 'bg-green-100 text-green-800';
-                        case 'Booked':
-                          return 'bg-blue-100 text-blue-800';
-                        case 'Cancelled':
-                          return 'bg-red-100 text-red-800';
-                        case 'No Show':
-                          return 'bg-orange-100 text-orange-800';
-                        case 'In Progress':
-                          return 'bg-purple-100 text-purple-800';
-                        default:
-                          return 'bg-gray-100 text-gray-800';
-                      }
-                    };
+              {appointmentsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h4>
+                  <p className="text-gray-500">Schedule a new appointment to get started.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {patientAppointments
+                    .filter(apt => new Date(apt.date) >= new Date())
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .map((appointment) => {
+                      const getStatusColor = (status: string) => {
+                        switch (status) {
+                          case 'Completed':
+                            return 'bg-green-100 text-green-800';
+                          case 'Booked':
+                            return 'bg-blue-100 text-blue-800';
+                          case 'Cancelled':
+                            return 'bg-red-100 text-red-800';
+                          case 'No Show':
+                            return 'bg-orange-100 text-orange-800';
+                          case 'In Progress':
+                            return 'bg-purple-100 text-purple-800';
+                          default:
+                            return 'bg-gray-100 text-gray-800';
+                        }
+                      };
 
-                    const getTypeColor = (type: string) => {
-                      switch (type) {
-                        case 'Consultation':
-                          return 'bg-indigo-100 text-indigo-800';
-                        case 'Follow Up':
-                          return 'bg-emerald-100 text-emerald-800';
-                        case 'Emergency':
-                          return 'bg-red-100 text-red-800';
-                        case 'Routine Check':
-                          return 'bg-amber-100 text-amber-800';
-                        default:
-                          return 'bg-gray-100 text-gray-800';
-                      }
-                    };
+                      const formatDate = (dateString: string) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                      };
 
-                    const formatDate = (dateString: string) => {
-                      return new Date(dateString).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      });
-                    };
+                      const formatTime = (timeString: string) => {
+                        const time = timeString.split('.')[0]; // Remove microseconds
+                        const [hours, minutes] = time.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes} ${ampm}`;
+                      };
 
-                    const formatTime = (timeString: string) => {
-                      const time = timeString.split('.')[0]; // Remove microseconds
-                      const [hours, minutes] = time.split(':');
-                      const hour = parseInt(hours);
-                      const ampm = hour >= 12 ? 'PM' : 'AM';
-                      const displayHour = hour % 12 || 12;
-                      return `${displayHour}:${minutes} ${ampm}`;
-                    };
-
-                    return (
-                      <div
-                        key={appointment.id}
-                        className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            {appointment.appointment_type_name ? (
-                              <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                            ) : null}
-                            {appointment.title ? (
-                              <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                            ) : null}
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                              {appointment.appointment_type_name && (
+                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                              )}
+                              {appointment.title && (
+                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                              )}
+                            </div>
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                              {appointment.status}
+                            </span>
                           </div>
-                          <div className="flex items-center justify-center h-full">
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>{appointment.status}</span>
+
+                          <div className="flex items-center justify-between text-sm text-gray-600">
+                            <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-blue-500">calendar_today</span>
+                                <span>{formatDate(appointment.date)}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-blue-500">schedule</span>
+                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                              </div>
+                            </div>
                           </div>
+
+                          {appointment.notes && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">Notes:</span> {appointment.notes}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        
-                        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                          <div className="flex items-center space-x-6">
-                            <div className="flex items-center space-x-2">
-                              <span className="material-icons-round text-base">calendar_today</span>
-                              <span>{formatDate(appointment.date)}</span>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Past Appointments */}
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-neutral-800">Past Appointments</h3>
+                <div className="flex items-center space-x-2">
+                  <span className="material-icons-round text-gray-500">history</span>
+                  <span className="text-sm text-gray-600 font-medium">
+                    {patientAppointments.filter(apt => new Date(apt.date) < new Date()).length} completed
+                  </span>
+                </div>
+              </div>
+              {appointmentsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
+                <div className="text-center py-8">
+                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No past appointments</h4>
+                  <p className="text-gray-500">Appointment history will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {patientAppointments
+                    .filter(apt => new Date(apt.date) < new Date())
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((appointment) => {
+                      const getStatusColor = (status: string) => {
+                        switch (status) {
+                          case 'Completed':
+                            return 'bg-green-100 text-green-800';
+                          case 'Booked':
+                            return 'bg-blue-100 text-blue-800';
+                          case 'Cancelled':
+                            return 'bg-red-100 text-red-800';
+                          case 'No Show':
+                            return 'bg-orange-100 text-orange-800';
+                          case 'In Progress':
+                            return 'bg-purple-100 text-purple-800';
+                          default:
+                            return 'bg-gray-100 text-gray-800';
+                        }
+                      };
+
+                      const formatDate = (dateString: string) => {
+                        return new Date(dateString).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                      };
+
+                      const formatTime = (timeString: string) => {
+                        const time = timeString.split('.')[0]; // Remove microseconds
+                        const [hours, minutes] = time.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const displayHour = hour % 12 || 12;
+                        return `${displayHour}:${minutes} ${ampm}`;
+                      };
+
+                      return (
+                        <div
+                          key={appointment.id}
+                          className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                              {appointment.appointment_type_name && (
+                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                              )}
+                              {appointment.title && (
+                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                              )}
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="material-icons-round text-base">schedule</span>
-                              <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                            </div>
+                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                              {appointment.status}
+                            </span>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex items-center space-x-2">
-                            {/* Show Consultation Details only for completed appointments */}
-                            {appointment.status === 'Completed' && (
+                          <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                            <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-gray-500">calendar_today</span>
+                                <span>{formatDate(appointment.date)}</span>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className="material-icons-round text-base text-gray-500">schedule</span>
+                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons for Past Appointments */}
+                            <div className="flex items-center space-x-2">
+                              {appointment.status === 'Completed' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('View consultation details:', appointment.id);
+                                  }}
+                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title="View Details"
+                                >
+                                  <span className="material-icons-round text-sm mr-1">description</span>
+                                  Details
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  // TODO: Handle consultation details
-                                  console.log('View consultation details:', appointment.id);
+                                  console.log('Edit appointment:', appointment.id);
                                 }}
-                                className="px-6 py-2 bg-success-500 hover:bg-success-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                                title="Consultation Details"
+                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                title="Edit"
                               >
-                                <div className="relative z-10 flex items-center justify-center">
-                                  <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">description</span>
-                                  <span className="relative z-10">Consultation Details</span>
-                                </div>
+                                <span className="material-icons-round text-sm">edit</span>
                               </button>
-                            )}
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle delete appointment
-                                console.log('Delete appointment:', appointment.id);
-                              }}
-                              className="px-6 py-2 bg-error-500 hover:bg-error-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                              title="Delete"
-                            >
-                              <div className="relative z-10 flex items-center justify-center">
-                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">delete</span>
-                                <span className="relative z-10">Delete</span>
-                              </div>
-                            </button>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle edit appointment
-                                console.log('Edit appointment:', appointment.id);
-                              }}
-                              className="px-6 py-2 bg-primary-500 hover:bg-primary-600 hover:scale-105 active:scale-95 text-white rounded-xl shadow-medium transition-all duration-300"
-                              title="Edit"
-                            >
-                              <div className="relative z-10 flex items-center justify-center">
-                                <span className="material-icons-round transition-transform duration-300 hover:scale-110 mr-2 text-xl">edit</span>
-                                <span className="relative z-10">Edit</span>
-                              </div>
-                            </button>
+                            </div>
                           </div>
+
+                          {appointment.notes && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">Notes:</span> {appointment.notes}
+                              </p>
+                            </div>
+                          )}
                         </div>
-
-                        {/* Remove the old action buttons section */}
-
-                        {appointment.notes && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-sm text-gray-700">
-                              <span className="font-medium">Notes:</span> {appointment.notes}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1006,49 +1121,23 @@ export const Patients: React.FC = () => {
 
         {/* Appointment Booking Modal */}
         {showAppointmentModal && selectedPatientForBooking && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-            <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                Schedule Appointment for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
-              </h3>
-
-              {/* Appointment Form */}
-              <form onSubmit={async (e) => {
-                e.preventDefault();
+          <Modal
+            isOpen={showAppointmentModal}
+            onClose={() => setShowAppointmentModal(false)}
+            title="Schedule Appointment"
+            size="xl"
+          >
+            <AppointmentBookingForm
+              patient={selectedPatientForBooking}
+              onSubmit={async (appointmentData: AppointmentCreate) => {
                 setAppointmentLoading(true);
-
                 try {
-                  const formData = new FormData(e.currentTarget);
-                  const appointmentType = formData.get('appointmentType') as string;
-                  const date = formData.get('date') as string;
-                  const time = formData.get('time') as string;
-                  const duration = parseInt(formData.get('duration') as string) || 30;
-                  const notes = formData.get('notes') as string;
-
-                  // Calculate end time
-                  const [hours, minutes] = time.split(':');
-                  const startTime = `${hours}:${minutes}:00.000000`;
-                  const endHour = parseInt(hours);
-                  const endMinute = parseInt(minutes) + duration;
-                  const finalEndHour = endHour + Math.floor(endMinute / 60);
-                  const finalEndMinute = endMinute % 60;
-                  const endTime = `${finalEndHour.toString().padStart(2, '0')}:${finalEndMinute.toString().padStart(2, '0')}:00.000000`;
-
-                  const appointmentData: AppointmentCreate = {
-                    patient_id: selectedPatientForBooking.id,
-                    date: date,
-                    start_time: startTime,
-                    end_time: endTime,
-                    appointment_type_name: appointmentType,
-                    title: `${appointmentType} for ${selectedPatientForBooking.first_name} ${selectedPatientForBooking.last_name}`,
-                    notes: notes || null,
-                    status: 'Booked'
-                  };
-
                   const newAppointment = await AppointmentService.createAppointment(appointmentData);
 
                   // Refresh patient appointments
-                  loadPatientAppointments(selectedPatientForBooking.id);
+                  if (selectedPatientForBooking) {
+                    await loadPatientAppointments(selectedPatientForBooking.id);
+                  }
 
                   showNotification('success', 'Appointment Scheduled', 'The appointment has been scheduled successfully');
                   setShowAppointmentModal(false);
@@ -1059,103 +1148,15 @@ export const Patients: React.FC = () => {
                 } finally {
                   setAppointmentLoading(false);
                 }
-              }} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Type</label>
-                  <select
-                    name="appointmentType"
-                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
-                    required
-                  >
-                    <option value="">
-                      {appointmentTypesLoading ? 'Loading appointment types...' : 'Select appointment type'}
-                    </option>
-                    {appointmentTypes.map((type) => (
-                      <option key={type.name} value={type.name}>
-                        {type.name} ({type.duration_minutes} min)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    name="date"
-                    type="date"
-                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <input
-                    name="time"
-                    type="time"
-                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
-                  <input
-                    name="duration"
-                    type="number"
-                    min="1"
-                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
-                    defaultValue={30}
-                    onChange={(e) => {
-                      // Auto-set duration based on selected appointment type
-                      const form = e.target.form;
-                      const appointmentTypeSelect = form?.querySelector('select[name="appointmentType"]') as HTMLSelectElement;
-                      if (appointmentTypeSelect?.value) {
-                        const selectedType = appointmentTypes.find(type => type.name === appointmentTypeSelect.value);
-                        if (selectedType && e.target.value === '30') {
-                          e.target.value = selectedType.duration_minutes.toString();
-                        }
-                      }
-                    }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                  <textarea
-                    name="notes"
-                    className="block w-full p-2 text-sm border rounded-md focus:ring focus:ring-primary-200 focus:outline-none"
-                    rows={3}
-                    placeholder="Optional notes for the appointment"
-                  ></textarea>
-                </div>
-
-                {/* Actions */}
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setShowAppointmentModal(false);
-                      setSelectedPatientForBooking(null);
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full sm:w-auto"
-                    loading={appointmentLoading}
-                  >
-                    Schedule Appointment
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
+              }}
+              onCancel={() => {
+                setShowAppointmentModal(false);
+                setSelectedPatientForBooking(null);
+              }}
+              isLoading={appointmentLoading}
+              workingHours={workingHours}
+            />
+          </Modal>
         )}
       </DashboardLayout>
     );

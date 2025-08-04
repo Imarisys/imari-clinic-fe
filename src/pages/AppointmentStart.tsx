@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { AppointmentService } from '../services/appointmentService';
 import { PatientService } from '../services/patientService';
+import { PatientFileService } from '../services/patientFileService';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { AppointmentMedicalData, VitalSign, PatientMedicalHistory } from '../types/Medical';
+import { PatientFileRead, FileUploadData } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
@@ -59,15 +61,21 @@ export const AppointmentStart: React.FC = () => {
   const [patientHistory, setPatientHistory] = useState<PatientMedicalHistory | null>(null);
   const [expandedHistoryItems, setExpandedHistoryItems] = useState<Set<string>>(new Set());
 
-  // Mock uploaded files data
-  const [uploadedFiles] = useState([
-    { id: '1', name: 'X-Ray_Chest.jpg', type: 'image', size: '2.3 MB', uploadDate: '2024-08-01', url: '/api/files/xray1.jpg' },
-    { id: '2', name: 'Blood_Test_Results.pdf', type: 'pdf', size: '156 KB', uploadDate: '2024-08-01', url: '/api/files/blood_test.pdf' },
-    { id: '3', name: 'MRI_Scan.dcm', type: 'dicom', size: '45.2 MB', uploadDate: '2024-07-28', url: '/api/files/mri_scan.dcm' },
-    { id: '4', name: 'ECG_Reading.pdf', type: 'pdf', size: '234 KB', uploadDate: '2024-07-25', url: '/api/files/ecg.pdf' },
-    { id: '5', name: 'Ultrasound.mp4', type: 'video', size: '12.8 MB', uploadDate: '2024-07-20', url: '/api/files/ultrasound.mp4' }
-  ]);
+  // Replace mock uploaded files with real patient files
+  const [patientFiles, setPatientFiles] = useState<PatientFileRead[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [fileViewMode, setFileViewMode] = useState<'grid' | 'list'>('grid');
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    file: PatientFileRead | null;
+    imageUrl: string | null;
+  }>({
+    isOpen: false,
+    file: null,
+    imageUrl: null
+  });
 
   // Timer for appointment duration
   useEffect(() => {
@@ -203,6 +211,60 @@ export const AppointmentStart: React.FC = () => {
     }
   };
 
+  // New function to fetch patient files
+  const fetchPatientFiles = async () => {
+    if (!appointment?.patient_id) return;
+
+    try {
+      setLoadingFiles(true);
+      const response = await PatientFileService.getPatientFiles(appointment.patient_id);
+      setPatientFiles(response.files);
+
+      // Fetch thumbnails for image files
+      fetchThumbnails(response.files, appointment.patient_id);
+    } catch (error) {
+      console.error('Failed to fetch patient files:', error);
+      showNotification('error', 'Error', 'Failed to load patient files');
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Function to fetch thumbnails for image files
+  const fetchThumbnails = async (files: PatientFileRead[], patientId: string) => {
+    const imageFiles = files.filter(file => PatientFileService.isImageFile(file));
+
+    // Fetch thumbnails in parallel for all image files
+    const thumbnailPromises = imageFiles.map(async (file) => {
+      try {
+        const thumbnailUrl = await PatientFileService.getThumbnailBlob(patientId, file.id);
+        return { fileId: file.id, thumbnailUrl };
+      } catch (error) {
+        console.error(`Failed to fetch thumbnail for file ${file.id}:`, error);
+        return { fileId: file.id, thumbnailUrl: null };
+      }
+    });
+
+    const thumbnailResults = await Promise.all(thumbnailPromises);
+
+    // Update thumbnail URLs state
+    const newThumbnailUrls: Record<string, string> = {};
+    thumbnailResults.forEach(({ fileId, thumbnailUrl }) => {
+      if (thumbnailUrl) {
+        newThumbnailUrls[fileId] = thumbnailUrl;
+      }
+    });
+
+    setThumbnailUrls(newThumbnailUrls);
+  };
+
+  // Fetch patient files when appointment is loaded
+  useEffect(() => {
+    if (appointment?.patient_id) {
+      fetchPatientFiles();
+    }
+  }, [appointment?.patient_id]);
+
   const handleStartAppointment = () => {
     setIsStarted(true);
     setStartTime(new Date());
@@ -228,6 +290,12 @@ export const AppointmentStart: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Close preview modal first if open
+        if (previewModal.isOpen) {
+          setPreviewModal({ isOpen: false, file: null, imageUrl: null });
+          return;
+        }
+
         // Only navigate to dashboard if no modals are open
         if (!showVitalHistory && !showDiagnosisHistory && !showTreatmentHistory && !showPrescriptionHistory && !showFollowUpModal) {
           navigate('/dashboard');
@@ -239,7 +307,7 @@ export const AppointmentStart: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigate, showVitalHistory, showDiagnosisHistory, showTreatmentHistory, showPrescriptionHistory, showFollowUpModal]);
+  }, [navigate, showVitalHistory, showDiagnosisHistory, showTreatmentHistory, showPrescriptionHistory, showFollowUpModal, previewModal.isOpen]);
 
   const addVitalSign = () => {
     const newVital: VitalSign = {
@@ -288,9 +356,79 @@ export const AppointmentStart: React.FC = () => {
     setVitalSigns(prev => prev.filter(vital => vital.id !== id));
   };
 
-  const handleUploadFile = () => {
-    // TODO: Implement file upload functionality
-    showNotification('info', 'File Upload', 'File upload functionality coming soon');
+  // Function to handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !appointment?.patient_id) return;
+
+    try {
+      setUploadingFile(true);
+      const fileData: FileUploadData = { file };
+      await PatientFileService.uploadPatientFile(appointment.patient_id, fileData);
+      showNotification('success', 'Success', 'File uploaded successfully');
+      fetchPatientFiles(); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      showNotification('error', 'Error', 'Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+      // Reset the input
+      event.target.value = '';
+    }
+  };
+
+  // Function to handle file preview
+  const handleFilePreview = async (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+
+    if (PatientFileService.isImageFile(file)) {
+      // For images, show full-size image in modal popup using preview URL
+      try {
+        const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+        setPreviewModal({
+          isOpen: true,
+          file: file,
+          imageUrl: previewUrl
+        });
+      } catch (error) {
+        console.error('Failed to load image preview:', error);
+        showNotification('error', 'Error', 'Failed to load image preview');
+      }
+    } else {
+      // For non-images, open preview URL in new window
+      const previewUrl = PatientFileService.getPreviewUrl(appointment.patient_id, file.id);
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Function to handle file download
+  const handleFileDownload = async (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+
+    try {
+      await PatientFileService.downloadFile(appointment.patient_id, file.id, file.filename);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      showNotification('error', 'Error', 'Failed to download file');
+    }
+  };
+
+  // Function to handle file deletion
+  const handleFileDelete = async (file: PatientFileRead) => {
+    if (!appointment?.patient_id) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${file.filename}?`)) {
+      return;
+    }
+
+    try {
+      await PatientFileService.deletePatientFile(appointment.patient_id, file.id);
+      showNotification('success', 'Success', 'File deleted successfully');
+      fetchPatientFiles(); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      showNotification('error', 'Error', 'Failed to delete file');
+    }
   };
 
   const handleGeneratePrescription = () => {
@@ -461,14 +599,6 @@ export const AppointmentStart: React.FC = () => {
 
             {/* Quick Action Buttons */}
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handleUploadFile}
-                disabled={!isStarted}
-                className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
-              >
-                <span className="material-icons-round text-sm">upload_file</span>
-                <span className="text-sm font-medium">Upload File</span>
-              </button>
 
               <button
                 onClick={handleFollowUpClick}
@@ -713,8 +843,24 @@ export const AppointmentStart: React.FC = () => {
               <div className="space-y-4">
                 <div className="bg-neutral-50 rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-neutral-800">Uploaded Documents</h4>
+                    <h4 className="text-lg font-semibold text-neutral-800">Patient Files</h4>
                     <div className="flex items-center space-x-2">
+                      {/* File Upload Button */}
+                      <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
+                        <span className="material-icons-round text-sm">upload_file</span>
+                        <span className="text-sm font-medium">
+                          {uploadingFile ? 'Uploading...' : 'Upload File'}
+                        </span>
+                        <input
+                          type="file"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                          className="hidden"
+                          accept="*/*"
+                        />
+                      </label>
+
+                      {/* View Mode Toggle */}
                       <button
                         onClick={() => setFileViewMode(fileViewMode === 'grid' ? 'list' : 'grid')}
                         className="flex items-center space-x-2 bg-white text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors border border-neutral-200"
@@ -727,25 +873,80 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                   </div>
 
-                  {fileViewMode === 'grid' ? (
+                  {loadingFiles ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-neutral-600">Loading files...</p>
+                    </div>
+                  ) : fileViewMode === 'grid' ? (
                     /* Grid View */
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {uploadedFiles.map((file) => (
-                        <div key={file.id} className="bg-white rounded-lg p-4 border border-neutral-200 hover:border-neutral-300 transition-all hover:shadow-md group">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                      {patientFiles.map((file) => (
+                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-lg group cursor-pointer">
                           <div className="flex flex-col items-center space-y-3">
-                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200 transition-colors">
-                              <span className="material-icons-round text-blue-600 text-xl">
-                                {file.type === 'image' ? 'image' :
-                                 file.type === 'pdf' ? 'picture_as_pdf' :
-                                 file.type === 'video' ? 'play_circle' : 'description'}
-                              </span>
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-20 h-20 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                <img
+                                  src={thumbnailUrls[file.id]}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-2xl">${PatientFileService.getFileIcon(file)}</span>`;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="material-icons-round text-blue-600 text-2xl group-hover:text-primary-600 transition-colors">
+                                  {PatientFileService.getFileIcon(file)}
+                                </span>
+                              )}
                             </div>
-                            <div className="text-center">
-                              <p className="text-sm font-medium text-neutral-800 truncate w-full" title={file.name}>
-                                {file.name}
+
+                            {/* File Info */}
+                            <div className="text-center w-full space-y-1">
+                              <p className="text-sm font-semibold text-neutral-800 truncate w-full leading-tight" title={file.filename}>
+                                {file.filename}
                               </p>
-                              <p className="text-xs text-neutral-500 mt-1">{file.size}</p>
-                              <p className="text-xs text-neutral-400">{new Date(file.uploadDate).toLocaleDateString()}</p>
+                              <p className="text-xs text-neutral-500 font-medium">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              {file.description && (
+                                <p className="text-xs text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 mt-3 transition-opacity duration-200">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                              >
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                title="Download file"
+                              >
+                                <span className="material-icons-round text-base">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                title="Delete file"
+                              >
+                                <span className="material-icons-round text-base">delete</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -753,30 +954,82 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                   ) : (
                     /* List View */
-                    <div className="space-y-2">
-                      {uploadedFiles.map((file) => (
-                        <div key={file.id} className="bg-white rounded-lg p-4 border border-neutral-200 hover:border-neutral-300 transition-colors">
+                    <div className="space-y-3">
+                      {patientFiles.map((file) => (
+                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-md group">
                           <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
-                              <span className="material-icons-round text-blue-600">
-                                {file.type === 'image' ? 'image' :
-                                 file.type === 'pdf' ? 'picture_as_pdf' :
-                                 file.type === 'video' ? 'play_circle' : 'description'}
-                              </span>
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden flex-shrink-0 border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                <img
+                                  src={thumbnailUrls[file.id]}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">${PatientFileService.getFileIcon(file)}</span>`;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">
+                                  {PatientFileService.getFileIcon(file)}
+                                </span>
+                              )}
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-neutral-800">{file.name}</p>
-                              <p className="text-sm text-neutral-500">{file.type.toUpperCase()} • {file.size}</p>
+
+                            {/* File Details */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-neutral-800 truncate leading-tight">{file.filename}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-neutral-500 font-medium">
+                                  {file.file_type.toUpperCase()}
+                                </p>
+                              </div>
+                              {file.description && (
+                                <p className="text-sm text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-neutral-600">{new Date(file.uploadDate).toLocaleDateString()}</p>
+
+                            {/* Upload Date */}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm text-neutral-600 font-medium">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-neutral-400">
+                                {new Date(file.upload_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <button className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                <span className="material-icons-round text-sm">visibility</span>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 flex-shrink-0 opacity-100 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                              >
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
                               </button>
-                              <button className="w-8 h-8 bg-green-50 text-green-600 rounded-lg flex items-center justify-center hover:bg-green-100 transition-colors">
-                                <span className="material-icons-round text-sm">download</span>
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                title="Download file"
+                              >
+                                <span className="material-icons-round text-base">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                title="Delete file"
+                              >
+                                <span className="material-icons-round text-base">delete</span>
                               </button>
                             </div>
                           </div>
@@ -785,10 +1038,11 @@ export const AppointmentStart: React.FC = () => {
                     </div>
                   )}
 
-                  {uploadedFiles.length === 0 && (
+                  {!loadingFiles && patientFiles.length === 0 && (
                     <div className="text-center py-8 text-neutral-500">
                       <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">folder_open</span>
                       <p>No files uploaded yet</p>
+                      <p className="text-sm mt-2">Upload files to view them here</p>
                     </div>
                   )}
                 </div>
@@ -1093,6 +1347,31 @@ export const AppointmentStart: React.FC = () => {
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
                   <p>No prescription history available</p>
+                </div>
+              )}
+            </div>
+          </Modal>
+        )}
+
+        {/* File Preview Modal */}
+        {previewModal.isOpen && previewModal.file && (
+          <Modal
+            isOpen={previewModal.isOpen}
+            onClose={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+            title="File Preview"
+            size="xl"
+          >
+            <div className="flex items-center justify-center h-full">
+              {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
+                <img
+                  src={previewModal.imageUrl}
+                  alt={previewModal.file.filename}
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              ) : (
+                <div className="text-center">
+                  <span className="material-icons-round text-6xl text-neutral-300 mb-4">image_not_supported</span>
+                  <p className="text-neutral-600">No preview available for this file type</p>
                 </div>
               )}
             </div>
