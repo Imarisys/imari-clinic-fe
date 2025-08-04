@@ -60,6 +60,27 @@ export class PatientFileService {
   }
 
   /**
+   * Fetch thumbnail data for an image file
+   */
+  static async getThumbnailBlob(patientId: string, fileId: string): Promise<string | null> {
+    try {
+      const response = await fetch(buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/thumbnail`), {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error('Failed to fetch thumbnail:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get preview URL for a file (opens in browser)
    */
   static getPreviewUrl(patientId: string, fileId: string): string {
@@ -163,20 +184,29 @@ export class PatientFileService {
    * Get file type icon based on file type and mime type
    */
   static getFileIcon(file: PatientFileRead): string {
+    // Check file_type first, then fall back to mime_type analysis
     switch (file.file_type) {
       case 'image':
         return 'image';
       case 'document':
         if (file.mime_type.includes('pdf')) return 'picture_as_pdf';
-        if (file.mime_type.includes('word')) return 'description';
-        if (file.mime_type.includes('excel') || file.mime_type.includes('spreadsheet')) return 'table_chart';
+        if (file.mime_type.includes('word') || file.mime_type.includes('msword') || file.mime_type.includes('wordprocessingml')) return 'description';
+        if (file.mime_type.includes('excel') || file.mime_type.includes('spreadsheet') || file.mime_type.includes('sheet')) return 'table_chart';
         if (file.mime_type.includes('powerpoint') || file.mime_type.includes('presentation')) return 'slideshow';
         return 'description';
       case 'video':
-        return 'play_circle';
+        return 'play_circle_outline';
       case 'audio':
         return 'audiotrack';
+      case 'other':
       default:
+        // Fall back to mime type analysis for unknown types
+        if (file.mime_type.startsWith('image/')) return 'image';
+        if (file.mime_type.includes('pdf')) return 'picture_as_pdf';
+        if (file.mime_type.startsWith('video/')) return 'play_circle_outline';
+        if (file.mime_type.startsWith('audio/')) return 'audiotrack';
+        if (file.mime_type.includes('text')) return 'text_snippet';
+        if (file.mime_type.includes('zip') || file.mime_type.includes('rar') || file.mime_type.includes('archive')) return 'folder_zip';
         return 'insert_drive_file';
     }
   }
@@ -198,6 +228,7 @@ export class PatientFileService {
    * Check if file is an image and can have thumbnail
    */
   static isImageFile(file: PatientFileRead): boolean {
-    return file.file_type === 'image' && file.mime_type.startsWith('image/');
+    // Check both file_type and mime_type to be sure
+    return file.file_type === 'image' || file.mime_type.startsWith('image/');
   }
 }
