@@ -1353,29 +1353,69 @@ export const AppointmentStart: React.FC = () => {
           </Modal>
         )}
 
-        {/* File Preview Modal */}
+        {/* File Preview Modal - Custom Full-Screen Modal */}
         {previewModal.isOpen && previewModal.file && (
-          <Modal
-            isOpen={previewModal.isOpen}
-            onClose={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
-            title="File Preview"
-            size="xl"
-          >
-            <div className="flex items-center justify-center h-full">
-              {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
-                <img
-                  src={previewModal.imageUrl}
-                  alt={previewModal.file.filename}
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                />
-              ) : (
-                <div className="text-center">
-                  <span className="material-icons-round text-6xl text-neutral-300 mb-4">image_not_supported</span>
-                  <p className="text-neutral-600">No preview available for this file type</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95">
+            {/* Full-screen backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-95 transition-opacity duration-300"
+              onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+            />
+
+            {/* Maximized modal content with margins */}
+            <div className="relative w-[95vw] h-[95vh] flex flex-col bg-black bg-opacity-80 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-black bg-opacity-70 text-white relative z-10 flex-shrink-0">
+                <div className="flex items-center space-x-3">
+                  <span className="material-icons-round text-white text-2xl">image</span>
+                  <h2 className="text-xl font-semibold truncate max-w-md">{previewModal.file.filename}</h2>
                 </div>
-              )}
+                <div className="flex items-center space-x-2">
+                  {/* Download button */}
+                  <button
+                    onClick={() => previewModal.file && handleFileDownload(previewModal.file)}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title="Download file"
+                  >
+                    <span className="material-icons-round">download</span>
+                    <span className="text-sm font-medium hidden sm:block">Download</span>
+                  </button>
+                  {/* Close button */}
+                  <button
+                    onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title="Close preview"
+                  >
+                    <span className="material-icons-round">close</span>
+                    <span className="text-sm font-medium hidden sm:block">Close</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Image container - takes up remaining space */}
+              <div className="flex-1 flex items-center justify-center p-6 relative min-h-0">
+                {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
+                  <img
+                    src={previewModal.imageUrl}
+                    alt={previewModal.file.filename}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    style={{ maxHeight: 'calc(95vh - 160px)', maxWidth: 'calc(95vw - 48px)' }}
+                  />
+                ) : (
+                  <div className="text-center text-white">
+                    <span className="material-icons-round text-8xl text-white mb-6 block opacity-70">image_not_supported</span>
+                    <p className="text-2xl mb-2">No preview available for this file type</p>
+                    <p className="text-lg opacity-70 mt-4">Click download to view the file</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="px-6 py-4 bg-black bg-opacity-70 text-white text-center relative z-10 flex-shrink-0">
+                <p className="text-sm opacity-70">Click anywhere outside the modal or press ESC to close • Use download button to save the file</p>
+              </div>
             </div>
-          </Modal>
+          </div>
         )}
       </div>
     </DashboardLayout>
