@@ -86,6 +86,18 @@ export class AppointmentService {
     });
   }
 
+  static async startAppointment(id: string): Promise<Appointment> {
+    return this.request<Appointment>(`${API_CONFIG.endpoints.appointments.progress(id)}?action=start`, {
+      method: 'PUT',
+    });
+  }
+
+  static async endAppointment(id: string): Promise<Appointment> {
+    return this.request<Appointment>(`${API_CONFIG.endpoints.appointments.progress(id)}?action=end`, {
+      method: 'PUT',
+    });
+  }
+
   static async getAvailableSlots(
     appointmentTypeName: string,
     date: string,

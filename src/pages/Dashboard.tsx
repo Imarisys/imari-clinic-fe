@@ -501,6 +501,15 @@ export const Dashboard: React.FC = () => {
                               <span>Start</span>
                             </button>
                           )}
+                          {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && (
+                            <button
+                              onClick={() => navigate(`/appointment/${appointment.id}/start`)}
+                              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                            >
+                              <span className="material-icons-round text-sm">play_circle</span>
+                              <span>Resume</span>
+                            </button>
+                          )}
                           {appointment.status === 'Completed' && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}

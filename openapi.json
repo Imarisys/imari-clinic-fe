@@ -1345,6 +1345,61 @@
         }
       }
     },
+    "/api/v1/appointments/{appointment_id}/progress": {
+      "put": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "Manage Appointment Progress",
+        "description": "Start or end an appointment\n\n- **start**: Changes status to IN_PROGRESS and records actual start time\n- **end**: Changes status to COMPLETED and records actual end time",
+        "operationId": "manage_appointment_progress_api_v1_appointments__appointment_id__progress_put",
+        "parameters": [
+          {
+            "name": "appointment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Appointment Id"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(start|end)$",
+              "description": "Action to perform: 'start' or 'end'",
+              "title": "Action"
+            },
+            "description": "Action to perform: 'start' or 'end'"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/appointment-types": {
       "get": {
         "tags": [
@@ -2022,6 +2077,30 @@
           "patient_last_name": {
             "type": "string",
             "title": "Patient Last Name"
+          },
+          "actual_start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Start Time"
+          },
+          "actual_end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual End Time"
           }
         },
         "type": "object",
@@ -2041,6 +2120,7 @@
         "type": "string",
         "enum": [
           "Booked",
+          "In Progress",
           "Cancelled",
           "Completed",
           "No Show"
@@ -2584,6 +2664,18 @@
               }
             ],
             "title": "Zip Code"
+          },
+          "preconditions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preconditions"
           }
         },
         "type": "object",
@@ -2978,6 +3070,18 @@
             ],
             "title": "Zip Code"
           },
+          "preconditions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preconditions"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -3082,6 +3186,18 @@
               }
             ],
             "title": "Zip Code"
+          },
+          "preconditions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preconditions"
           },
           "id": {
             "type": "string",

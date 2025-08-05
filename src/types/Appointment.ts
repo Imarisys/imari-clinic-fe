@@ -1,5 +1,5 @@
 // Appointment status and type enums matching OpenAPI schema
-export type AppointmentStatus = 'Booked' | 'Cancelled' | 'Completed' | 'No Show' | 'In Progress';
+export type AppointmentStatus = 'Booked' | 'Cancelled' | 'Completed' | 'No Show' | 'In Progress' | 'IN_PROGRESS';
 export type AppointmentType = 'Consultation' | 'Follow Up' | 'Emergency' | 'Routine Check';
 
 // Base Appointment interface matching API schema
@@ -16,6 +16,8 @@ export interface Appointment {
     notes: string | null;
     patient_first_name: string;
     patient_last_name: string;
+    actual_start_time: string | null; // ISO datetime string
+    actual_end_time: string | null; // ISO datetime string
 }
 
 // For creating new appointments (without id, patient names)

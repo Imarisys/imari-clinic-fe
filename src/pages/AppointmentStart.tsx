@@ -79,13 +79,13 @@ export const AppointmentStart: React.FC = () => {
 
   // Timer for appointment duration
   useEffect(() => {
-    if (isStarted) {
+    if ((isStarted || (appointment?.status === 'IN_PROGRESS' || appointment?.status === 'In Progress')) && !isCompleted && appointment?.status !== 'Completed') {
       const interval = setInterval(() => {
         setCurrentTime(new Date());
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [isStarted]);
+  }, [isStarted, appointment?.status, isCompleted]);
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -95,6 +95,22 @@ export const AppointmentStart: React.FC = () => {
         setLoading(true);
         const appointmentData = await AppointmentService.getAppointment(appointmentId);
         setAppointment(appointmentData);
+
+        // Check if appointment is already in progress
+        if (appointmentData.status === 'IN_PROGRESS' || appointmentData.status === 'In Progress') {
+          setIsStarted(true);
+          if (appointmentData.actual_start_time) {
+            setStartTime(new Date(appointmentData.actual_start_time));
+          }
+        }
+
+        // Check if appointment is completed
+        if (appointmentData.status === 'Completed') {
+          setIsCompleted(true);
+          if (appointmentData.actual_start_time) {
+            setStartTime(new Date(appointmentData.actual_start_time));
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch appointment:', error);
         showNotification('error', 'Error', 'Failed to load appointment details');
@@ -265,16 +281,31 @@ export const AppointmentStart: React.FC = () => {
     }
   }, [appointment?.patient_id]);
 
-  const handleStartAppointment = () => {
-    setIsStarted(true);
-    setStartTime(new Date());
+  const handleStartAppointment = async () => {
+    try {
+      if (appointment) {
+        // Use the progress endpoint to start the appointment
+        const updatedAppointment = await AppointmentService.startAppointment(appointment.id);
+        setAppointment(updatedAppointment);
+        setIsStarted(true);
+        setStartTime(new Date(updatedAppointment.actual_start_time || new Date()));
+        showNotification('success', 'Appointment Started', 'The consultation has been started');
+      }
+    } catch (error) {
+      console.error('Failed to start appointment:', error);
+      showNotification('error', 'Error', 'Failed to start appointment');
+      // Fallback to local state if API call fails
+      setIsStarted(true);
+      setStartTime(new Date());
+    }
   };
 
   const handleEndAppointment = async () => {
     try {
-      // Update appointment status to completed
+      // Use the progress endpoint to end the appointment
       if (appointment) {
-        await AppointmentService.updateAppointmentStatus(appointment.id, 'Completed');
+        const updatedAppointment = await AppointmentService.endAppointment(appointment.id);
+        setAppointment(updatedAppointment);
         setIsCompleted(true);
         showNotification('success', 'Appointment Completed', 'The consultation has been marked as completed');
         // Don't navigate away - stay on the page
@@ -437,7 +468,7 @@ export const AppointmentStart: React.FC = () => {
 
   const getElapsedTime = () => {
     if (!startTime) return '00:00:00';
-    const diff = currentTime.getTime() - startTime.getTime();
+    const diff = Math.max(1000, currentTime.getTime() - startTime.getTime()); // Ensure minimum 1 second
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -532,562 +563,587 @@ export const AppointmentStart: React.FC = () => {
 
   return (
     <DashboardLayout forceCollapsed={isStarted}>
-      <div className="space-y-6">
-        {/* Header with Patient Info and Timer */}
-        <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl p-6 shadow-xl">
+      <div className="space-y-4">
+        {/* Compact Header with Patient Info */}
+        <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl p-4 shadow-lg">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <span className="material-icons-round text-3xl">person</span>
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                <span className="material-icons-round text-xl">person</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold">
+                <h1 className="text-xl font-bold">
                   {appointment.patient_first_name} {appointment.patient_last_name}
                 </h1>
-                <p className="text-primary-200 text-sm">
-                  Scheduled: {new Date(appointment.date).toLocaleDateString()}
+                <p className="text-primary-200 text-xs">
+                  {new Date(appointment.date).toLocaleDateString()}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Back to Dashboard Button */}
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="bg-white/20 text-white px-4 py-2 rounded-xl font-medium hover:bg-white/30 transition-all duration-300 backdrop-blur-sm flex items-center space-x-2"
-                title="Back to Dashboard"
-              >
-                <span className="material-icons-round text-lg">arrow_back</span>
-                <span className="hidden sm:block">Dashboard</span>
-              </button>
-
-              {/* Timer and Action Area */}
-              <div className="text-right">
-                {isStarted ? (
-                  <div className="flex items-center space-x-4">
-                    {/* Complete Appointment Button */}
-                    {!isCompleted ? (
-                      <button
-                        onClick={handleEndAppointment}
-                        className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center space-x-2"
-                      >
-                        <span className="material-icons-round">check_circle</span>
-                        <span className="hidden lg:block">Complete</span>
-                      </button>
-                    ) : (
-                      <div className="bg-gray-400 text-white px-6 py-3 rounded-xl font-semibold cursor-not-allowed flex items-center space-x-2">
-                        <span className="material-icons-round">check_circle</span>
-                        <span className="hidden lg:block">Completed</span>
-                      </div>
-                    )}
-
-                    {/* Session Timer */}
-                    <div className="bg-white/20 rounded-xl p-3 backdrop-blur-sm">
-                      <p className="text-primary-100 text-xs mb-1">Session Duration</p>
-                      <p className="text-2xl font-mono font-bold">{getElapsedTime()}</p>
-                    </div>
+            {/* Timer and Actions - Moved from the right side */}
+            <div className="flex items-center space-x-3">
+              {(isStarted || appointment?.status === 'IN_PROGRESS' || appointment?.status === 'In Progress') && appointment?.status !== 'Completed' ? (
+                <>
+                  {/* Session Timer */}
+                  <div className="bg-white/15 rounded-lg px-3 py-2 backdrop-blur-sm">
+                    <p className="text-primary-100 text-xs">Duration</p>
+                    <p className="text-lg font-mono font-bold">{getElapsedTime()}</p>
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-4">
-                    {/* Placeholder to maintain consistent height */}
-                    <div className="invisible bg-green-500 text-white px-6 py-3 rounded-xl font-semibold flex items-center space-x-2">
-                      <span className="material-icons-round">check_circle</span>
-                      <span className="hidden lg:block">Complete</span>
-                    </div>
 
-                    {/* Start Appointment Button */}
+                  {/* Complete Button */}
+                  {!isCompleted ? (
                     <button
-                      onClick={handleStartAppointment}
-                      className="bg-white text-primary-600 px-8 py-3 rounded-xl font-semibold hover:bg-primary-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                      onClick={handleEndAppointment}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-1"
                     >
-                      <span className="material-icons-round mr-2 align-middle">play_arrow</span>
-                      Start Appointment
+                      <span className="material-icons-round text-sm">check_circle</span>
+                      <span className="text-sm">Complete</span>
                     </button>
+                  ) : (
+                    <div className="bg-gray-400 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1">
+                      <span className="material-icons-round text-sm">check_circle</span>
+                      <span className="text-sm">Completed</span>
+                    </div>
+                  )}
+                </>
+              ) : appointment?.status === 'Completed' ? (
+                <div className="flex items-center space-x-3">
+                  {/* Completed Timer Display */}
+                  <div className="bg-white/15 rounded-lg px-3 py-2 backdrop-blur-sm">
+                    <p className="text-primary-100 text-xs">Final Duration</p>
+                    <p className="text-lg font-mono font-bold">{getElapsedTime()}</p>
                   </div>
-                )}
-              </div>
+
+                  {/* Completed Status */}
+                  <div className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1">
+                    <span className="material-icons-round text-sm">check_circle</span>
+                    <span className="text-sm">Completed</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleStartAppointment}
+                  className="bg-white text-primary-600 px-6 py-2 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300"
+                >
+                  <span className="material-icons-round mr-1 text-sm align-middle">play_arrow</span>
+                  Start
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Top Bar with Appointment Overview */}
-        <div className="bg-white rounded-2xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="material-icons-round text-blue-600">schedule</span>
+        {/* Redesigned Top Bar with Appointment Details */}
+        <div className="bg-white rounded-xl shadow-sm border border-neutral-200">
+          <div className="flex items-center justify-between p-4">
+            {/* Left side: Compact appointment details */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <span className="material-icons-round text-blue-600 text-sm">schedule</span>
                 </div>
-                <div>
-                  <p className="text-sm text-neutral-600">Appointment Time</p>
-                  <p className="font-semibold text-neutral-800">
+                <div className="min-w-0">
+                  <p className="text-xs text-neutral-500 font-medium">Time</p>
+                  <p className="text-sm font-semibold text-neutral-800 truncate">
                     {formatTimeHHMM(appointment.start_time)} - {formatTimeHHMM(appointment.end_time)}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="material-icons-round text-green-600">medical_services</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
+                  <span className="material-icons-round text-green-600 text-sm">medical_services</span>
                 </div>
-                <div>
-                  <p className="text-sm text-neutral-600">Appointment Type</p>
-                  <p className="font-semibold text-neutral-800">{appointment.appointment_type_name}</p>
+                <div className="min-w-0">
+                  <p className="text-xs text-neutral-500 font-medium">Type</p>
+                  <p className="text-sm font-semibold text-neutral-800 truncate max-w-32" title={appointment.appointment_type_name}>
+                    {appointment.appointment_type_name}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Quick Action Buttons */}
-            <div className="flex items-center space-x-3">
-
+            {/* Right side: Actions and Return button */}
+            <div className="flex items-center space-x-2">
               <button
                 onClick={handleFollowUpClick}
                 disabled={!isStarted}
-                className="flex items-center space-x-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
               >
                 <span className="material-icons-round text-sm">event</span>
-                <span className="text-sm font-medium">Follow Up</span>
+                <span className="font-medium">Follow Up</span>
               </button>
 
+              {/* Generate Prescription Button */}
               <button
                 onClick={handleGeneratePrescription}
                 disabled={!isStarted}
-                className="flex items-center space-x-2 bg-green-50 text-green-600 px-4 py-2 rounded-lg hover:bg-green-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
               >
-                <span className="material-icons-round text-sm">prescription</span>
-                <span className="text-sm font-medium">Generate Prescription</span>
+                <span className="material-icons-round text-sm">medication</span>
+                <span className="font-medium">Generate Rx</span>
+              </button>
+
+              {/* Upload File Button */}
+              <label className="flex items-center space-x-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer text-sm">
+                <span className="material-icons-round text-sm">upload_file</span>
+                <span className="font-medium">
+                  {uploadingFile ? 'Uploading...' : 'Upload'}
+                </span>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  disabled={uploadingFile}
+                  className="hidden"
+                  accept="*/*"
+                />
+              </label>
+
+              {/* Return to Dashboard - Better positioned */}
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex items-center space-x-1 bg-neutral-100 text-neutral-700 px-3 py-1.5 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium"
+                title="Return to Dashboard"
+              >
+                <span className="material-icons-round text-sm">arrow_back</span>
+                <span>Dashboard</span>
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Tab Navigation */}
-          <div className="flex border-b border-neutral-200 mb-6">
-            <button
-              onClick={() => setActiveTab('consultation')}
-              className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
-                activeTab === 'consultation'
-                  ? 'text-primary-600 border-primary-500'
-                  : 'text-neutral-600 border-transparent hover:text-neutral-800'
-              }`}
-            >
-              <span className="material-icons-round">medical_services</span>
-              <span>Consultation</span>
-            </button>
+        {/* Main Content Area */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
+            {/* Tab Navigation */}
+            <div className="flex border-b border-neutral-200 mb-6">
+              <button
+                onClick={() => setActiveTab('consultation')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'consultation'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">medical_services</span>
+                <span>Consultation</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab('vitals')}
-              className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
-                activeTab === 'vitals'
-                  ? 'text-primary-600 border-primary-500'
-                  : 'text-neutral-600 border-transparent hover:text-neutral-800'
-              }`}
-            >
-              <span className="material-icons-round">favorite</span>
-              <span>Vital Signs</span>
-            </button>
+              <button
+                onClick={() => setActiveTab('vitals')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'vitals'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">favorite</span>
+                <span>Vital Signs</span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab('files')}
-              className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
-                activeTab === 'files'
-                  ? 'text-primary-600 border-primary-500'
-                  : 'text-neutral-600 border-transparent hover:text-neutral-800'
-              }`}
-            >
-              <span className="material-icons-round">folder</span>
-              <span>Patient Files</span>
-            </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'files'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">folder</span>
+                <span>Patient Files</span>
+              </button>
 
-            {/* Save Indicator */}
-            {savingMedicalData && (
-              <div className="ml-auto flex items-center space-x-2 px-4 py-3">
-                <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
-                <span className="text-sm text-primary-600 font-medium">Saving...</span>
-              </div>
-            )}
-          </div>
+              {/* Save Indicator */}
+              {savingMedicalData && (
+                <div className="ml-auto flex items-center space-x-2 px-4 py-3">
+                  <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
+                  <span className="text-sm text-primary-600 font-medium">Saving...</span>
+                </div>
+              )}
+            </div>
 
-          {/* Scrollable Content Area */}
-          <div className="max-h-96 overflow-y-auto pr-2">
-            {/* Vital Signs Tab */}
-            {activeTab === 'vitals' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 rounded-xl p-4" data-vital-signs-section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-semibold text-neutral-800">Patient Vitals</h4>
-                    <div className="flex items-center space-x-2">
+            {/* Scrollable Content Area */}
+            <div>
+              {/* Vital Signs Tab */}
+              {activeTab === 'vitals' && (
+                <div className="space-y-4">
+                  <div className="bg-neutral-50 rounded-xl p-4" data-vital-signs-section>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-lg font-semibold text-neutral-800">Patient Vitals</h4>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={handleVitalHistoryClick}
+                          className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                        >
+                          <span className="material-icons-round text-sm">history</span>
+                          <span className="text-sm font-medium">History</span>
+                        </button>
+                        <button
+                          onClick={addVitalSign}
+                          disabled={!isStarted}
+                          className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                        >
+                          <span className="material-icons-round text-sm">add</span>
+                          <span className="text-sm font-medium">Add</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {vitalSigns.map((vital) => (
+                        <div key={vital.id} className="flex items-center space-x-3 bg-white rounded-lg p-3 border border-neutral-200 hover:border-neutral-300 transition-colors">
+                          <div className="flex items-center space-x-3 flex-1">
+                            <span className={`material-icons-round text-${vital.color}-600`}>{vital.icon}</span>
+
+                            {vital.name ? (
+                              <span className="font-medium text-neutral-800 min-w-0 w-36">{vital.name}</span>
+                            ) : (
+                              <div className="relative w-36">
+                                <select
+                                  value={vital.name}
+                                  onChange={(e) => updateVitalSign(vital.id, 'name', e.target.value)}
+                                  disabled={!isStarted}
+                                  className="appearance-none w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8 disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                                >
+                                  <option value="">Select vital sign</option>
+                                  {VITAL_SIGN_OPTIONS.map((option, index) => (
+                                    <option key={index} value={option.name}>
+                                      {option.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                  <span className="material-icons-round text-neutral-400 text-sm">arrow_drop_down</span>
+                                </span>
+                              </div>
+                            )}
+
+                            <input
+                              type="text"
+                              value={vital.value}
+                              onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
+                              placeholder="Value"
+                              disabled={!isStarted}
+                              className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                            />
+
+                            {vital.unit ? (
+                              <span className="text-sm text-neutral-600 font-medium w-12">{vital.unit}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder="Unit"
+                                value={vital.unit}
+                                onChange={(e) => updateVitalSign(vital.id, 'unit', e.target.value)}
+                                disabled={!isStarted}
+                                className="w-12 px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                              />
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => removeVitalSign(vital.id)}
+                            disabled={!isStarted}
+                            className="w-7 h-7 bg-red-50 text-red-600 rounded flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0 disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
+                            title="Remove vital sign"
+                          >
+                            <span className="material-icons-round text-sm">remove</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Consultation Tab */}
+              {activeTab === 'consultation' && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <span className="material-icons-round text-blue-600 mr-2">local_hospital</span>
+                        <h4 className="font-semibold text-blue-800">Diagnosis</h4>
+                      </div>
                       <button
-                        onClick={handleVitalHistoryClick}
-                        className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                        onClick={handleDiagnosisHistoryClick}
+                        className="flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
                       >
                         <span className="material-icons-round text-sm">history</span>
                         <span className="text-sm font-medium">History</span>
                       </button>
-                      <button
-                        onClick={addVitalSign}
-                        disabled={!isStarted}
-                        className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
-                      >
-                        <span className="material-icons-round text-sm">add</span>
-                        <span className="text-sm font-medium">Add</span>
-                      </button>
                     </div>
+                    <textarea
+                      placeholder="Enter diagnosis and findings..."
+                      rows={3}
+                      value={diagnosis}
+                      onChange={(e) => setDiagnosis(e.target.value)}
+                      disabled={!isStarted}
+                      className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    {vitalSigns.map((vital) => (
-                      <div key={vital.id} className="flex items-center space-x-3 bg-white rounded-lg p-3 border border-neutral-200 hover:border-neutral-300 transition-colors">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <span className={`material-icons-round text-${vital.color}-600`}>{vital.icon}</span>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <span className="material-icons-round text-green-600 mr-2">healing</span>
+                        <h4 className="font-semibold text-green-800">Treatment Plan</h4>
+                      </div>
+                      <button
+                        onClick={handleTreatmentHistoryClick}
+                        className="flex items-center space-x-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors"
+                      >
+                        <span className="material-icons-round text-sm">history</span>
+                        <span className="text-sm font-medium">History</span>
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Enter detailed treatment plan and recommendations..."
+                      rows={4}
+                      value={treatmentPlan}
+                      onChange={(e) => setTreatmentPlan(e.target.value)}
+                      disabled={!isStarted}
+                      className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                    />
+                  </div>
 
-                          {vital.name ? (
-                            <span className="font-medium text-neutral-800 min-w-0 w-36">{vital.name}</span>
-                          ) : (
-                            <div className="relative w-36">
-                              <select
-                                value={vital.name}
-                                onChange={(e) => updateVitalSign(vital.id, 'name', e.target.value)}
-                                disabled={!isStarted}
-                                className="appearance-none w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8 disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                              >
-                                <option value="">Select vital sign</option>
-                                {VITAL_SIGN_OPTIONS.map((option, index) => (
-                                  <option key={index} value={option.name}>
-                                    {option.name}
-                                  </option>
-                                ))}
-                              </select>
-                              <span className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                <span className="material-icons-round text-neutral-400 text-sm">arrow_drop_down</span>
-                              </span>
-                            </div>
-                          )}
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <span className="material-icons-round text-purple-600 mr-2">medication</span>
+                        <h4 className="font-semibold text-purple-800">Prescription</h4>
+                      </div>
+                      <button
+                        onClick={handlePrescriptionHistoryClick}
+                        className="flex items-center space-x-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-200 transition-colors"
+                      >
+                        <span className="material-icons-round text-sm">history</span>
+                        <span className="text-sm font-medium">History</span>
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="Enter prescription details and medications..."
+                      rows={3}
+                      value={prescription}
+                      onChange={(e) => setPrescription(e.target.value)}
+                      disabled={!isStarted}
+                      className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              )}
 
+              {/* Patient Files Tab */}
+              {activeTab === 'files' && (
+                <div className="space-y-4">
+                  <div className="bg-neutral-50 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold text-neutral-800">Patient Files</h4>
+                      <div className="flex items-center space-x-2">
+                        {/* File Upload Button */}
+                        <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
+                          <span className="material-icons-round text-sm">upload_file</span>
+                          <span className="text-sm font-medium">
+                            {uploadingFile ? 'Uploading...' : 'Upload File'}
+                          </span>
                           <input
-                            type="text"
-                            value={vital.value}
-                            onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
-                            placeholder="Value"
-                            disabled={!isStarted}
-                            className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
+                            type="file"
+                            onChange={handleFileUpload}
+                            disabled={uploadingFile}
+                            className="hidden"
+                            accept="*/*"
                           />
+                        </label>
 
-                          {vital.unit ? (
-                            <span className="text-sm text-neutral-600 font-medium w-12">{vital.unit}</span>
-                          ) : (
-                            <input
-                              type="text"
-                              placeholder="Unit"
-                              value={vital.unit}
-                              onChange={(e) => updateVitalSign(vital.id, 'unit', e.target.value)}
-                              disabled={!isStarted}
-                              className="w-12 px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                            />
-                          )}
-                        </div>
-
+                        {/* View Mode Toggle */}
                         <button
-                          onClick={() => removeVitalSign(vital.id)}
-                          disabled={!isStarted}
-                          className="w-7 h-7 bg-red-50 text-red-600 rounded flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0 disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
-                          title="Remove vital sign"
+                          onClick={() => setFileViewMode(fileViewMode === 'grid' ? 'list' : 'grid')}
+                          className="flex items-center space-x-2 bg-white text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors border border-neutral-200"
                         >
-                          <span className="material-icons-round text-sm">remove</span>
+                          <span className="material-icons-round text-sm">
+                            {fileViewMode === 'grid' ? 'view_list' : 'grid_view'}
+                          </span>
+                          <span className="text-sm font-medium">{fileViewMode === 'grid' ? 'List' : 'Grid'}</span>
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Consultation Tab */}
-            {activeTab === 'consultation' && (
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <span className="material-icons-round text-blue-600 mr-2">local_hospital</span>
-                      <h4 className="font-semibold text-blue-800">Diagnosis</h4>
                     </div>
-                    <button
-                      onClick={handleDiagnosisHistoryClick}
-                      className="flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
-                    >
-                      <span className="material-icons-round text-sm">history</span>
-                      <span className="text-sm font-medium">History</span>
-                    </button>
-                  </div>
-                  <textarea
-                    placeholder="Enter diagnosis and findings..."
-                    rows={3}
-                    value={diagnosis}
-                    onChange={(e) => setDiagnosis(e.target.value)}
-                    disabled={!isStarted}
-                    className="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                  />
-                </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <span className="material-icons-round text-green-600 mr-2">healing</span>
-                      <h4 className="font-semibold text-green-800">Treatment Plan</h4>
-                    </div>
-                    <button
-                      onClick={handleTreatmentHistoryClick}
-                      className="flex items-center space-x-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors"
-                    >
-                      <span className="material-icons-round text-sm">history</span>
-                      <span className="text-sm font-medium">History</span>
-                    </button>
-                  </div>
-                  <textarea
-                    placeholder="Enter detailed treatment plan and recommendations..."
-                    rows={4}
-                    value={treatmentPlan}
-                    onChange={(e) => setTreatmentPlan(e.target.value)}
-                    disabled={!isStarted}
-                    className="w-full px-4 py-3 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                  />
-                </div>
+                    {loadingFiles ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <p className="text-neutral-600">Loading files...</p>
+                      </div>
+                    ) : fileViewMode === 'grid' ? (
+                      /* Grid View */
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                        {patientFiles.map((file) => (
+                          <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-lg group cursor-pointer">
+                            <div className="flex flex-col items-center space-y-3">
+                              {/* File Icon/Thumbnail */}
+                              <div className="w-20 h-20 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                                {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                  <img
+                                    src={thumbnailUrls[file.id]}
+                                    alt={file.filename}
+                                    className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                    onError={(e) => {
+                                      // Fallback to icon if thumbnail fails
+                                      const target = e.target as HTMLImageElement;
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<span class="material-icons-round text-blue-600 text-2xl">${PatientFileService.getFileIcon(file)}</span>`;
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="material-icons-round text-blue-600 text-2xl group-hover:text-primary-600 transition-colors">
+                                    {PatientFileService.getFileIcon(file)}
+                                  </span>
+                                )}
+                              </div>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <span className="material-icons-round text-purple-600 mr-2">medication</span>
-                      <h4 className="font-semibold text-purple-800">Prescription</h4>
-                    </div>
-                    <button
-                      onClick={handlePrescriptionHistoryClick}
-                      className="flex items-center space-x-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-200 transition-colors"
-                    >
-                      <span className="material-icons-round text-sm">history</span>
-                      <span className="text-sm font-medium">History</span>
-                    </button>
-                  </div>
-                  <textarea
-                    placeholder="Enter prescription details and medications..."
-                    rows={3}
-                    value={prescription}
-                    onChange={(e) => setPrescription(e.target.value)}
-                    disabled={!isStarted}
-                    className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Patient Files Tab */}
-            {activeTab === 'files' && (
-              <div className="space-y-4">
-                <div className="bg-neutral-50 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-neutral-800">Patient Files</h4>
-                    <div className="flex items-center space-x-2">
-                      {/* File Upload Button */}
-                      <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
-                        <span className="material-icons-round text-sm">upload_file</span>
-                        <span className="text-sm font-medium">
-                          {uploadingFile ? 'Uploading...' : 'Upload File'}
-                        </span>
-                        <input
-                          type="file"
-                          onChange={handleFileUpload}
-                          disabled={uploadingFile}
-                          className="hidden"
-                          accept="*/*"
-                        />
-                      </label>
-
-                      {/* View Mode Toggle */}
-                      <button
-                        onClick={() => setFileViewMode(fileViewMode === 'grid' ? 'list' : 'grid')}
-                        className="flex items-center space-x-2 bg-white text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors border border-neutral-200"
-                      >
-                        <span className="material-icons-round text-sm">
-                          {fileViewMode === 'grid' ? 'view_list' : 'grid_view'}
-                        </span>
-                        <span className="text-sm font-medium">{fileViewMode === 'grid' ? 'List' : 'Grid'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {loadingFiles ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-neutral-600">Loading files...</p>
-                    </div>
-                  ) : fileViewMode === 'grid' ? (
-                    /* Grid View */
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                      {patientFiles.map((file) => (
-                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-lg group cursor-pointer">
-                          <div className="flex flex-col items-center space-y-3">
-                            {/* File Icon/Thumbnail */}
-                            <div className="w-20 h-20 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden border border-blue-100 group-hover:border-primary-200 shadow-sm">
-                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
-                                <img
-                                  src={thumbnailUrls[file.id]}
-                                  alt={file.filename}
-                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
-                                  onError={(e) => {
-                                    // Fallback to icon if thumbnail fails
-                                    const target = e.target as HTMLImageElement;
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-2xl">${PatientFileService.getFileIcon(file)}</span>`;
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <span className="material-icons-round text-blue-600 text-2xl group-hover:text-primary-600 transition-colors">
-                                  {PatientFileService.getFileIcon(file)}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* File Info */}
-                            <div className="text-center w-full space-y-1">
-                              <p className="text-sm font-semibold text-neutral-800 truncate w-full leading-tight" title={file.filename}>
-                                {file.filename}
-                              </p>
-                              <p className="text-xs text-neutral-500 font-medium">
-                                {new Date(file.upload_date).toLocaleDateString()}
-                              </p>
-                              {file.description && (
-                                <p className="text-xs text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
-                                  {file.description}
+                              {/* File Info */}
+                              <div className="text-center w-full space-y-1">
+                                <p className="text-sm font-semibold text-neutral-800 truncate w-full leading-tight" title={file.filename}>
+                                  {file.filename}
                                 </p>
-                              )}
-                            </div>
+                                <p className="text-xs text-neutral-500 font-medium">
+                                  {new Date(file.upload_date).toLocaleDateString()}
+                                </p>
+                                {file.description && (
+                                  <p className="text-xs text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                    {file.description}
+                                  </p>
+                                )}
+                              </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex items-center space-x-2 mt-3 transition-opacity duration-200">
-                              <button
-                                onClick={() => handleFilePreview(file)}
-                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
-                              >
-                                <span className="material-icons-round text-base">
-                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => handleFileDownload(file)}
-                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
-                                title="Download file"
-                              >
-                                <span className="material-icons-round text-base">download</span>
-                              </button>
-                              <button
-                                onClick={() => handleFileDelete(file)}
-                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
-                                title="Delete file"
-                              >
-                                <span className="material-icons-round text-base">delete</span>
-                              </button>
+                              {/* Action Buttons */}
+                              <div className="flex items-center space-x-2 mt-3 transition-opacity duration-200">
+                                <button
+                                  onClick={() => handleFilePreview(file)}
+                                  className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                  title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                                >
+                                  <span className="material-icons-round text-base">
+                                    {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => handleFileDownload(file)}
+                                  className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                  title="Download file"
+                                >
+                                  <span className="material-icons-round text-base">download</span>
+                                </button>
+                                <button
+                                  onClick={() => handleFileDelete(file)}
+                                  className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                  title="Delete file"
+                                >
+                                  <span className="material-icons-round text-base">delete</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    /* List View */
-                    <div className="space-y-3">
-                      {patientFiles.map((file) => (
-                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-md group">
-                          <div className="flex items-center space-x-4">
-                            {/* File Icon/Thumbnail */}
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden flex-shrink-0 border border-blue-100 group-hover:border-primary-200 shadow-sm">
-                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
-                                <img
-                                  src={thumbnailUrls[file.id]}
-                                  alt={file.filename}
-                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
-                                  onError={(e) => {
-                                    // Fallback to icon if thumbnail fails
-                                    const target = e.target as HTMLImageElement;
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">${PatientFileService.getFileIcon(file)}</span>`;
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <span className="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">
-                                  {PatientFileService.getFileIcon(file)}
-                                </span>
-                              )}
-                            </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* List View */
+                      <div className="space-y-3">
+                        {patientFiles.map((file) => (
+                          <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-md group">
+                            <div className="flex items-center space-x-4">
+                              {/* File Icon/Thumbnail */}
+                              <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden flex-shrink-0 border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                                {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                  <img
+                                    src={thumbnailUrls[file.id]}
+                                    alt={file.filename}
+                                    className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                    onError={(e) => {
+                                      // Fallback to icon if thumbnail fails
+                                      const target = e.target as HTMLImageElement;
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<span class="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">${PatientFileService.getFileIcon(file)}</span>`;
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">
+                                    {PatientFileService.getFileIcon(file)}
+                                  </span>
+                                )}
+                              </div>
 
-                            {/* File Details */}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-neutral-800 truncate leading-tight">{file.filename}</p>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <p className="text-sm text-neutral-500 font-medium">
-                                  {file.file_type.toUpperCase()}
+                              {/* File Details */}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-neutral-800 truncate leading-tight">{file.filename}</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <p className="text-sm text-neutral-500 font-medium">
+                                    {file.file_type.toUpperCase()}
+                                  </p>
+                                </div>
+                                {file.description && (
+                                  <p className="text-sm text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                    {file.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Upload Date */}
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm text-neutral-600 font-medium">
+                                  {new Date(file.upload_date).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-neutral-400">
+                                  {new Date(file.upload_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                               </div>
-                              {file.description && (
-                                <p className="text-sm text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
-                                  {file.description}
-                                </p>
-                              )}
-                            </div>
 
-                            {/* Upload Date */}
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-sm text-neutral-600 font-medium">
-                                {new Date(file.upload_date).toLocaleDateString()}
-                              </p>
-                              <p className="text-xs text-neutral-400">
-                                {new Date(file.upload_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex items-center space-x-2 flex-shrink-0 opacity-100 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => handleFilePreview(file)}
-                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
-                              >
-                                <span className="material-icons-round text-base">
-                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => handleFileDownload(file)}
-                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
-                                title="Download file"
-                              >
-                                <span className="material-icons-round text-base">download</span>
-                              </button>
-                              <button
-                                onClick={() => handleFileDelete(file)}
-                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
-                                title="Delete file"
-                              >
-                                <span className="material-icons-round text-base">delete</span>
-                              </button>
+                              {/* Action Buttons */}
+                              <div className="flex items-center space-x-2 flex-shrink-0 opacity-100 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleFilePreview(file)}
+                                  className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                  title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                                >
+                                  <span className="material-icons-round text-base">
+                                    {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                  </span>
+                                </button>
+                                <button
+                                  onClick={() => handleFileDownload(file)}
+                                  className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                  title="Download file"
+                                >
+                                  <span className="material-icons-round text-base">download</span>
+                                </button>
+                                <button
+                                  onClick={() => handleFileDelete(file)}
+                                  className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                  title="Delete file"
+                                >
+                                  <span className="material-icons-round text-base">delete</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                  {!loadingFiles && patientFiles.length === 0 && (
-                    <div className="text-center py-8 text-neutral-500">
-                      <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">folder_open</span>
-                      <p>No files uploaded yet</p>
-                      <p className="text-sm mt-2">Upload files to view them here</p>
-                    </div>
-                  )}
+                    {!loadingFiles && patientFiles.length === 0 && (
+                      <div className="text-center py-8 text-neutral-500">
+                        <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">folder_open</span>
+                        <p>No files uploaded for this patient</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
