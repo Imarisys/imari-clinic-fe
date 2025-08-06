@@ -10,6 +10,7 @@ import { PatientFileRead, FileUploadData } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
+import { DentalChart } from '../components/dental/DentalChart';
 
 // Predefined vital signs with their units and styling
 const VITAL_SIGN_OPTIONS = [
@@ -949,18 +950,11 @@ export const AppointmentStart: React.FC = () => {
               {/* Dental Tab - New Tab for Dental Information */}
               {activeTab === 'dental' && (
                 <div className="space-y-4">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-4">
-                        <span className="material-icons-round text-yellow-600 text-6xl">sentiment_very_satisfied</span>
-                      </div>
-                      <h4 className="text-2xl font-semibold text-yellow-800 mb-2">Dental Information</h4>
-                      <p className="text-yellow-700 text-lg font-medium mb-4">Coming Soon</p>
-                      <p className="text-yellow-600 text-sm max-w-md mx-auto">
-                        Comprehensive dental charting, treatment planning, and oral health tracking features will be available here.
-                      </p>
-                    </div>
-                  </div>
+                  <DentalChart
+                    patientId={appointment?.patient_id}
+                    appointmentId={appointmentId}
+                    readonly={!isStarted}
+                  />
                 </div>
               )}
 
