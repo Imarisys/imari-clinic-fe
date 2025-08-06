@@ -39,7 +39,7 @@ export const AppointmentStart: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [isCreatingFollowUp, setIsCreatingFollowUp] = useState(false);
-  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files'>('consultation');
+  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files' | 'dental'>('consultation');
 
   // Medical data fields
   const [diagnosis, setDiagnosis] = useState('');
@@ -743,6 +743,18 @@ export const AppointmentStart: React.FC = () => {
               </button>
 
               <button
+                onClick={() => setActiveTab('dental')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'dental'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">sentiment_very_satisfied</span>
+                <span>Dental</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('files')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
                   activeTab === 'files'
@@ -930,6 +942,24 @@ export const AppointmentStart: React.FC = () => {
                       disabled={!isStarted}
                       className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                     />
+                  </div>
+                </div>
+              )}
+
+              {/* Dental Tab - New Tab for Dental Information */}
+              {activeTab === 'dental' && (
+                <div className="space-y-4">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-4">
+                        <span className="material-icons-round text-yellow-600 text-6xl">sentiment_very_satisfied</span>
+                      </div>
+                      <h4 className="text-2xl font-semibold text-yellow-800 mb-2">Dental Information</h4>
+                      <p className="text-yellow-700 text-lg font-medium mb-4">Coming Soon</p>
+                      <p className="text-yellow-600 text-sm max-w-md mx-auto">
+                        Comprehensive dental charting, treatment planning, and oral health tracking features will be available here.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
