@@ -55,7 +55,11 @@ interface ToothData {
   condition: string;
   treatment?: string;
   notes?: string;
-  surfaces?: string[]; // For specific surfaces affected
+  surfaces?: Record<string, string>; // Surface name to condition mapping
+}
+
+interface ToothSurfaceData {
+  [toothNumber: number]: Record<string, string>; // tooth -> surface -> condition
 }
 
 interface DentalChartProps {
@@ -78,6 +82,33 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   const [selectedTreatment, setSelectedTreatment] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [viewMode, setViewMode] = useState<'chart' | 'list'>('chart');
+  const [toothSurfaces, setToothSurfaces] = useState<ToothSurfaceData>({});
+
+  const getToothSurfaceColor = (toothNumber: number, surface: string): string => {
+    const surfaceCondition = toothSurfaces[toothNumber]?.[surface];
+    if (!surfaceCondition || surfaceCondition === 'healthy') return 'transparent';
+
+    const condition = DENTAL_CONDITIONS.find(c => c.id === surfaceCondition);
+    return condition?.color || 'transparent';
+  };
+
+  const handleSurfaceClick = (toothNumber: number, surface: string) => {
+    if (readonly) return;
+
+    const currentCondition = toothSurfaces[toothNumber]?.[surface] || 'healthy';
+    // Cycle through conditions: healthy -> caries -> filling -> healthy
+    const nextCondition = currentCondition === 'healthy' ? 'caries'
+                         : currentCondition === 'caries' ? 'filling'
+                         : 'healthy';
+
+    setToothSurfaces(prev => ({
+      ...prev,
+      [toothNumber]: {
+        ...prev[toothNumber],
+        [surface]: nextCondition
+      }
+    }));
+  };
 
   const handleToothClick = (toothNumber: number) => {
     if (readonly) return;
@@ -135,16 +166,17 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         {/* FDI Number */}
         <div className="text-sm font-bold text-gray-700 mb-2">{number}</div>
 
-        {/* Tooth Image */}
+        {/* Tooth Image with Overlays */}
         <div
           className={`relative cursor-pointer transition-all duration-200 ${
             isSelected ? 'scale-110 ring-4 ring-blue-500 ring-opacity-50' : 'hover:scale-105'
           } ${!readonly ? 'cursor-pointer' : 'cursor-default'}`}
           onClick={() => handleToothClick(number)}
           style={{
-            filter: toothData ? `drop-shadow(0 0 12px ${getToothColor(number)})` : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
           }}
         >
+          {/* Base tooth image */}
           <img
             src={`/${toothType}.png`}
             alt={`Tooth ${number}`}
@@ -152,12 +184,130 @@ export const DentalChart: React.FC<DentalChartProps> = ({
               isUpperJaw ? 'rotate-180' : ''
             }`}
             style={{
-              backgroundColor: getToothColor(number),
               borderRadius: '8px',
               padding: '4px',
               border: '2px solid #e5e7eb'
             }}
           />
+
+          {/* Tooth Surface Overlays */}
+          <div className="absolute inset-0 w-16 h-16" style={{ padding: '4px' }}>
+            {/* Upper Half - Split into 3 parts for lower jaw, or lower part for upper jaw */}
+            {!isUpperJaw ? (
+              // Lower jaw - divide upper half into 3 parts
+              <div className="flex h-8 w-full">
+                {/* Upper Left */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'upperLeft'),
+                    opacity: getToothSurfaceColor(number, 'upperLeft') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'upperLeft');
+                  }}
+                />
+                {/* Upper Center */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'upperCenter'),
+                    opacity: getToothSurfaceColor(number, 'upperCenter') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'upperCenter');
+                  }}
+                />
+                {/* Upper Right */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'upperRight'),
+                    opacity: getToothSurfaceColor(number, 'upperRight') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'upperRight');
+                  }}
+                />
+              </div>
+            ) : (
+              // Upper jaw - single lower part (becomes upper when rotated)
+              <div className="h-8 w-full mt-8">
+                <div
+                  className="w-full h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'lower'),
+                    opacity: getToothSurfaceColor(number, 'lower') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'lower');
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Lower Half */}
+            {isUpperJaw ? (
+              // Upper jaw - divide lower half into 3 parts (becomes upper when rotated)
+              <div className="flex h-8 w-full">
+                {/* Lower Left */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'lowerLeft'),
+                    opacity: getToothSurfaceColor(number, 'lowerLeft') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'lowerLeft');
+                  }}
+                />
+                {/* Lower Center */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'lowerCenter'),
+                    opacity: getToothSurfaceColor(number, 'lowerCenter') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'lowerCenter');
+                  }}
+                />
+                {/* Lower Right */}
+                <div
+                  className="w-1/3 h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'lowerRight'),
+                    opacity: getToothSurfaceColor(number, 'lowerRight') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'lowerRight');
+                  }}
+                />
+              </div>
+            ) : (
+              // Lower jaw - single upper part
+              <div className="h-8 w-full">
+                <div
+                  className="w-full h-full transition-all duration-200 hover:opacity-80 cursor-pointer border border-white border-opacity-30"
+                  style={{
+                    backgroundColor: getToothSurfaceColor(number, 'upper'),
+                    opacity: getToothSurfaceColor(number, 'upper') !== 'transparent' ? 0.7 : 0
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSurfaceClick(number, 'upper');
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Condition indicator */}
           {toothData && (
