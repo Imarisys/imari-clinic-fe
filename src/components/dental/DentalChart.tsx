@@ -83,6 +83,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [viewMode, setViewMode] = useState<'chart' | 'list'>('chart');
   const [toothSurfaces, setToothSurfaces] = useState<ToothSurfaceData>({});
+  const [activeCondition, setActiveCondition] = useState<string>('healthy');
 
   const getToothSurfaceColor = (toothNumber: number, surface: string): string => {
     const surfaceCondition = toothSurfaces[toothNumber]?.[surface];
@@ -95,17 +96,12 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   const handleSurfaceClick = (toothNumber: number, surface: string) => {
     if (readonly) return;
 
-    const currentCondition = toothSurfaces[toothNumber]?.[surface] || 'healthy';
-    // Cycle through conditions: healthy -> caries -> filling -> healthy
-    const nextCondition = currentCondition === 'healthy' ? 'caries'
-                         : currentCondition === 'caries' ? 'filling'
-                         : 'healthy';
-
+    // Apply the currently selected condition to the clicked surface
     setToothSurfaces(prev => ({
       ...prev,
       [toothNumber]: {
         ...prev[toothNumber],
-        [surface]: nextCondition
+        [surface]: activeCondition
       }
     }));
   };
@@ -389,37 +385,109 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       </div>
 
       {viewMode === 'chart' ? (
-        <div className="space-y-8">
-          {/* Upper Teeth */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <div className="flex justify-center mb-2">
-              <div className="flex space-x-3">
-                {FDI_NUMBERS.upperRight.map(number => (
-                  <ToothComponent key={number} number={number} quadrant="upperRight" />
-                ))}
+        <div className="flex gap-6">
+          {/* Left Side - Dental Chart */}
+          <div className="flex-1 space-y-8">
+            {/* Upper Teeth */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <div className="flex justify-center mb-2">
+                <div className="flex space-x-3">
+                  {FDI_NUMBERS.upperRight.map(number => (
+                    <ToothComponent key={number} number={number} quadrant="upperRight" />
+                  ))}
+                </div>
+                <div className="mx-6 border-l-2 border-gray-300"></div>
+                <div className="flex space-x-3">
+                  {FDI_NUMBERS.upperLeft.map(number => (
+                    <ToothComponent key={number} number={number} quadrant="upperLeft" />
+                  ))}
+                </div>
               </div>
-              <div className="mx-6 border-l-2 border-gray-300"></div>
-              <div className="flex space-x-3">
-                {FDI_NUMBERS.upperLeft.map(number => (
-                  <ToothComponent key={number} number={number} quadrant="upperLeft" />
-                ))}
+            </div>
+
+            {/* Lower Teeth */}
+            <div className="bg-gray-50 rounded-lg p-6">
+              <div className="flex justify-center mb-2">
+                <div className="flex space-x-3">
+                  {FDI_NUMBERS.lowerRight.map(number => (
+                    <ToothComponent key={number} number={number} quadrant="lowerRight" />
+                  ))}
+                </div>
+                <div className="mx-6 border-l-2 border-gray-300"></div>
+                <div className="flex space-x-3">
+                  {FDI_NUMBERS.lowerLeft.map(number => (
+                    <ToothComponent key={number} number={number} quadrant="lowerLeft" />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Lower Teeth */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <div className="flex justify-center mb-2">
-              <div className="flex space-x-3">
-                {FDI_NUMBERS.lowerRight.map(number => (
-                  <ToothComponent key={number} number={number} quadrant="lowerRight" />
-                ))}
+          {/* Right Side - Condition Selector */}
+          <div className="w-80 bg-gray-50 rounded-lg p-4">
+            <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <span className="material-icons-round text-blue-600 mr-2">palette</span>
+              Select Condition
+            </h4>
+
+            {/* Active Condition Display */}
+            <div className="mb-4 p-3 bg-white rounded-lg border-2 border-blue-200">
+              <div className="flex items-center space-x-3">
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-white shadow-md"
+                  style={{ backgroundColor: DENTAL_CONDITIONS.find(c => c.id === activeCondition)?.color }}
+                />
+                <div>
+                  <div className="text-sm font-semibold text-gray-800">
+                    {DENTAL_CONDITIONS.find(c => c.id === activeCondition)?.name}
+                  </div>
+                  <div className="text-xs text-gray-600">Currently selected</div>
+                </div>
               </div>
-              <div className="mx-6 border-l-2 border-gray-300"></div>
-              <div className="flex space-x-3">
-                {FDI_NUMBERS.lowerLeft.map(number => (
-                  <ToothComponent key={number} number={number} quadrant="lowerLeft" />
-                ))}
+            </div>
+
+            {/* Condition Buttons */}
+            <div className="space-y-2">
+              {DENTAL_CONDITIONS.map(condition => (
+                <button
+                  key={condition.id}
+                  onClick={() => setActiveCondition(condition.id)}
+                  disabled={readonly}
+                  className={`w-full flex items-center space-x-3 p-3 rounded-lg text-left transition-all duration-200 ${
+                    activeCondition === condition.id
+                      ? 'bg-blue-100 border-2 border-blue-300 shadow-md'
+                      : 'bg-white border-2 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div
+                    className="w-5 h-5 rounded-full border-2 border-white shadow-sm flex-shrink-0"
+                    style={{ backgroundColor: condition.color }}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-800">{condition.name}</div>
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      Click tooth surfaces to apply
+                    </div>
+                  </div>
+                  <span className={`material-icons-round text-sm ${
+                    activeCondition === condition.id ? 'text-blue-600' : 'text-gray-400'
+                  }`}>
+                    {condition.icon}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Instructions */}
+            <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-start space-x-2">
+                <span className="material-icons-round text-blue-600 text-sm mt-0.5">info</span>
+                <div className="text-xs text-blue-800">
+                  <div className="font-semibold mb-1">How to use:</div>
+                  <div>1. Select a condition above</div>
+                  <div>2. Click on tooth surfaces to apply the condition</div>
+                  <div>3. Colors will appear on affected areas</div>
+                </div>
               </div>
             </div>
           </div>
