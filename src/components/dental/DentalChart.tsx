@@ -24,6 +24,29 @@ const getToothType = (number: number): string => {
   }
 };
 
+// Function to get the appropriate tooth image based on tooth type and implant status
+const getToothImage = (toothType: string, hasImplant: boolean): string => {
+  if (hasImplant) {
+    // Return implant-specific images
+    switch (toothType) {
+      case 'Incisor':
+        return '/incisor_implant.png';
+      case 'Canine':
+        return '/canine_implant.png';
+      case 'premolar':
+        return '/premolar_implant.png';
+      case 'Molar':
+      case 'Molar_3root':
+        return '/molar_implant.png';
+      default:
+        return '/molar_implant.png';
+    }
+  } else {
+    // Return regular tooth images
+    return `/${toothType}.png`;
+  }
+};
+
 // Dental conditions
 const DENTAL_CONDITIONS = [
   { id: 'caries', name: 'Caries', color: '#F59E0B', icon: 'warning' },
@@ -216,7 +239,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             <>
               {/* Base tooth image */}
               <img
-                src={`/${toothType}.png`}
+                src={getToothImage(toothType, hasImplant)}
                 alt={`Tooth ${number}`}
                 className={`${toothSize.width} ${toothSize.height} object-contain transition-transform duration-200 ${
                   isUpperJaw ? 'rotate-180' : ''
@@ -227,30 +250,6 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                   border: '2px solid #e5e7eb'
                 }}
               />
-
-              {/* Implant Overlay */}
-              {hasImplant && (
-                <div
-                  className={`absolute inset-0 flex justify-center ${
-                    isUpperJaw ? 'items-start' : 'items-end'
-                  }`}
-                  style={{ padding: '2px' }}
-                >
-                  <img
-                    src="/implant.png"
-                    alt="Implant"
-                    className={`object-contain transition-transform duration-200 ${
-                      isUpperJaw ? 'rotate-180' : ''
-                    }`}
-                    style={{
-                      width: '70%',
-                      height: '40%',
-                      maxWidth: '45px',
-                      maxHeight: '25px'
-                    }}
-                  />
-                </div>
-              )}
 
               {/* Tooth Surface Overlays - Adaptive to tooth size */}
               <div className="absolute inset-0" style={{ padding: '2px' }}>
@@ -398,6 +397,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         )}
       </div>
     );
+
   };
 
   return (
