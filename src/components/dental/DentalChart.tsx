@@ -251,131 +251,179 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 }}
               />
 
-              {/* Tooth Surface Overlays - Adaptive to tooth size */}
-              <div className="absolute inset-0" style={{ padding: '2px' }}>
-                {/* Upper Half - Split into 3 parts for lower jaw, or lower part for upper jaw */}
-                {!isUpperJaw ? (
-                  // Lower jaw - divide upper half into 3 parts
-                  <div className="flex h-8 w-full">
-                    {/* Upper Left */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'upperLeft'),
-                        opacity: getToothSurfaceColor(number, 'upperLeft') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'upperLeft');
-                      }}
-                      title="Upper Left Surface - Click to change condition"
-                    />
-                    {/* Upper Center */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'upperCenter'),
-                        opacity: getToothSurfaceColor(number, 'upperCenter') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'upperCenter');
-                      }}
-                      title="Upper Center Surface - Click to change condition"
-                    />
-                    {/* Upper Right */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'upperRight'),
-                        opacity: getToothSurfaceColor(number, 'upperRight') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'upperRight');
-                      }}
-                      title="Upper Right Surface - Click to change condition"
-                    />
-                  </div>
-                ) : (
-                  // Upper jaw - single lower part (becomes upper when rotated)
-                  <div className="h-8 w-full mt-8">
-                    <div
-                      className="w-full h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'lower'),
-                        opacity: getToothSurfaceColor(number, 'lower') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'lower');
-                      }}
-                      title="Lower Surface - Click to change condition"
-                    />
-                  </div>
-                )}
+              {/* Tooth Surface Overlays - Properly contained within tooth boundaries */}
+              <div className="absolute inset-0" style={{ padding: '2px', borderRadius: '8px', overflow: 'hidden' }}>
+                {/* Upper Half - Properly positioned within tooth boundaries */}
+                <div className={`flex w-full ${isUpperJaw ? 'absolute bottom-2 h-6' : 'absolute top-2 h-6'}`}>
+                  {/* Surface areas - reverse order for upper jaw to account for rotation */}
+                  {isUpperJaw ? (
+                    <>
+                      {/* Upper jaw - reversed order due to 180° rotation */}
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperRight'),
+                          opacity: getToothSurfaceColor(number, 'upperRight') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperRight');
+                        }}
+                        title="Upper Right Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperCenter'),
+                          opacity: getToothSurfaceColor(number, 'upperCenter') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperCenter');
+                        }}
+                        title="Upper Center Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperLeft'),
+                          opacity: getToothSurfaceColor(number, 'upperLeft') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperLeft');
+                        }}
+                        title="Upper Left Surface - Click to change condition"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* Lower jaw - normal order */}
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperLeft'),
+                          opacity: getToothSurfaceColor(number, 'upperLeft') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperLeft');
+                        }}
+                        title="Upper Left Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperCenter'),
+                          opacity: getToothSurfaceColor(number, 'upperCenter') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperCenter');
+                        }}
+                        title="Upper Center Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'upperRight'),
+                          opacity: getToothSurfaceColor(number, 'upperRight') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'upperRight');
+                        }}
+                        title="Upper Right Surface - Click to change condition"
+                      />
+                    </>
+                  )}
+                </div>
 
-                {/* Lower Half */}
-                {isUpperJaw ? (
-                  // Upper jaw - divide lower half into 3 parts (becomes upper when rotated)
-                  <div className="flex h-8 w-full">
-                    {/* Lower Left */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'lowerLeft'),
-                        opacity: getToothSurfaceColor(number, 'lowerLeft') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'lowerLeft');
-                      }}
-                      title="Lower Left Surface - Click to change condition"
-                    />
-                    {/* Lower Center */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'lowerCenter'),
-                        opacity: getToothSurfaceColor(number, 'lowerCenter') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'lowerCenter');
-                      }}
-                      title="Lower Center Surface - Click to change condition"
-                    />
-                    {/* Lower Right */}
-                    <div
-                      className="w-1/3 h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'lowerRight'),
-                        opacity: getToothSurfaceColor(number, 'lowerRight') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'lowerRight');
-                      }}
-                      title="Lower Right Surface - Click to change condition"
-                    />
-                  </div>
-                ) : (
-                  // Lower jaw - single upper part
-                  <div className="h-8 w-full">
-                    <div
-                      className="w-full h-full cursor-pointer"
-                      style={{
-                        backgroundColor: getToothSurfaceColor(number, 'upper'),
-                        opacity: getToothSurfaceColor(number, 'upper') !== 'transparent' ? 0.6 : 0
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSurfaceClick(number, 'upper');
-                      }}
-                      title="Upper Surface - Click to change condition"
-                    />
-                  </div>
-                )}
+                {/* Lower Half - Properly positioned within tooth boundaries */}
+                <div className={`flex w-full ${isUpperJaw ? 'absolute top-2 h-6' : 'absolute bottom-2 h-6'}`}>
+                  {/* Surface areas - reverse order for upper jaw to account for rotation */}
+                  {isUpperJaw ? (
+                    <>
+                      {/* Upper jaw - reversed order due to 180° rotation */}
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerRight'),
+                          opacity: getToothSurfaceColor(number, 'lowerRight') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerRight');
+                        }}
+                        title="Lower Right Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerCenter'),
+                          opacity: getToothSurfaceColor(number, 'lowerCenter') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerCenter');
+                        }}
+                        title="Lower Center Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerLeft'),
+                          opacity: getToothSurfaceColor(number, 'lowerLeft') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerLeft');
+                        }}
+                        title="Lower Left Surface - Click to change condition"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* Lower jaw - normal order */}
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerLeft'),
+                          opacity: getToothSurfaceColor(number, 'lowerLeft') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerLeft');
+                        }}
+                        title="Lower Left Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerCenter'),
+                          opacity: getToothSurfaceColor(number, 'lowerCenter') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerCenter');
+                        }}
+                        title="Lower Center Surface - Click to change condition"
+                      />
+                      <div
+                        className="w-1/3 h-full cursor-pointer"
+                        style={{
+                          backgroundColor: getToothSurfaceColor(number, 'lowerRight'),
+                          opacity: getToothSurfaceColor(number, 'lowerRight') !== 'transparent' ? 0.6 : 0
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSurfaceClick(number, 'lowerRight');
+                        }}
+                        title="Lower Right Surface - Click to change condition"
+                      />
+                    </>
+                  )}
+                </div>
               </div>
             </>
           )}
