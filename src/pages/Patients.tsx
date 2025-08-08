@@ -77,19 +77,21 @@ export const Patients: React.FC = () => {
   const { showNotification } = useNotification();
   const location = useLocation();
 
-  // Escape key listener for detail view
+  // ESC key listener for edit mode
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && viewMode === 'detail') {
-        setViewMode('grid');
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && viewMode === 'edit') {
+        setViewMode('detail');
       }
     };
 
-    if (viewMode === 'detail') {
-      window.addEventListener('keydown', handleEsc);
-      return () => window.removeEventListener('keydown', handleEsc);
-    }
+    document.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
   }, [viewMode]);
+
 
   // Reset to grid view when navigating to patients page
   useEffect(() => {
@@ -695,6 +697,7 @@ export const Patients: React.FC = () => {
             onCancel={() => setViewMode('detail')}
             isEditing={true}
             isLoading={isLoading}
+            fullWidth={true}
           />
         </div>
       </DashboardLayout>
@@ -926,24 +929,57 @@ export const Patients: React.FC = () => {
                         return (
                           <div
                             key={appointment.id}
-                            className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
+                            className={`p-3 rounded-xl bg-white border-2 hover:shadow-md transition-all duration-200 ${
+                              appointment.status === 'Completed' ? 'border-green-200' :
+                              appointment.status === 'Booked' ? 'border-blue-200' :
+                              appointment.status === 'Cancelled' ? 'border-red-200' :
+                              appointment.status === 'No Show' ? 'border-orange-200' :
+                              appointment.status === 'In Progress' ? 'border-purple-200' :
+                              'border-gray-200'
+                            }`}
                           >
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-2">
                               <div className="flex-1">
                                 {appointment.appointment_type_name && (
-                                  <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                  <span className="block mb-1 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
                                 )}
                                 {appointment.title && (
                                   <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
                                 )}
                               </div>
-                              <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                                {appointment.status}
-                              </span>
+
+                              {/* Action Buttons for Upcoming Appointments */}
+                              <div className="flex items-center space-x-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Edit appointment:', appointment.id);
+                                    // TODO: Implement edit appointment functionality
+                                  }}
+                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title="Edit Appointment"
+                                >
+                                  <span className="material-icons-round text-sm mr-1">edit</span>
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Delete appointment:', appointment.id);
+                                    // TODO: Implement delete appointment functionality
+                                  }}
+                                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title="Delete Appointment"
+                                >
+                                  <span className="material-icons-round text-sm mr-1">delete</span>
+                                  Delete
+                                </button>
+                              </div>
                             </div>
 
+                            {/* Date, Time and Status in one line */}
                             <div className="flex items-center justify-between text-sm text-gray-600">
-                              <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                   <span className="material-icons-round text-base text-blue-500">calendar_today</span>
                                   <span>{formatDate(appointment.date)}</span>
@@ -952,11 +988,14 @@ export const Patients: React.FC = () => {
                                   <span className="material-icons-round text-base text-blue-500">schedule</span>
                                   <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
                                 </div>
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                  {appointment.status}
+                                </span>
                               </div>
                             </div>
 
                             {appointment.notes && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="mt-2 pt-2 border-t border-gray-200">
                                 <p className="text-sm text-gray-700">
                                   <span className="font-medium">Notes:</span> {appointment.notes}
                                 </p>
@@ -1030,32 +1069,23 @@ export const Patients: React.FC = () => {
                         return (
                           <div
                             key={appointment.id}
-                            className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
+                            className={`p-3 rounded-xl bg-white border-2 hover:shadow-md transition-all duration-200 ${
+                              appointment.status === 'Completed' ? 'border-green-200' :
+                              appointment.status === 'Booked' ? 'border-blue-200' :
+                              appointment.status === 'Cancelled' ? 'border-red-200' :
+                              appointment.status === 'No Show' ? 'border-orange-200' :
+                              appointment.status === 'In Progress' ? 'border-purple-200' :
+                              'border-gray-200'
+                            }`}
                           >
-                            <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center justify-between mb-2">
                               <div className="flex-1">
                                 {appointment.appointment_type_name && (
-                                  <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                  <span className="block mb-1 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
                                 )}
                                 {appointment.title && (
                                   <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
                                 )}
-                              </div>
-                              <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                                {appointment.status}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                              <div className="flex items-center space-x-6">
-                                <div className="flex items-center space-x-2">
-                                  <span className="material-icons-round text-base text-gray-500">calendar_today</span>
-                                  <span>{formatDate(appointment.date)}</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <span className="material-icons-round text-base text-gray-500">schedule</span>
-                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                                </div>
                               </div>
 
                               {/* Action Buttons for Past Appointments */}
@@ -1081,13 +1111,31 @@ export const Patients: React.FC = () => {
                                   className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title="Edit"
                                 >
-                                  <span className="material-icons-round text-sm">edit</span>
+                                  <span className="material-icons-round text-sm mr-1">edit</span>
+                                  Edit
                                 </button>
                               </div>
                             </div>
 
+                            {/* Date, Time and Status in one line */}
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">calendar_today</span>
+                                  <span>{formatDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">schedule</span>
+                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                                </div>
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                  {appointment.status}
+                                </span>
+                              </div>
+                            </div>
+
                             {appointment.notes && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
+                              <div className="mt-2 pt-2 border-t border-gray-200">
                                 <p className="text-sm text-gray-700">
                                   <span className="font-medium">Notes:</span> {appointment.notes}
                                 </p>

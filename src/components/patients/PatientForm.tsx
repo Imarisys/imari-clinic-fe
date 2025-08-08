@@ -4,7 +4,6 @@ import { useNotification } from '../../context/NotificationContext';
 import { Patient, PatientCreate, PatientUpdate } from '../../types/Patient';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
-import { PatientPreconditions } from './PatientPreconditions';
 
 interface PatientFormProps {
   patient?: Patient | null;
@@ -141,8 +140,8 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   return (
-    <div className={`card ${fullWidth ? 'max-w-full' : 'max-w-4xl'} mx-auto`}>
-      <div className="mb-6">
+    <div className={`${fullWidth ? 'w-full' : 'card max-w-4xl mx-auto'}`}>
+      <div className={`${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''} mb-6`}>
         <h2 className="text-2xl font-bold text-primary-600 mb-2">
           {isEditing ? 'Edit Patient' : 'Add New Patient'}
         </h2>
@@ -151,9 +150,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className={`space-y-6 ${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''}`}>
         {/* Personal Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <Input
             label="First Name"
             value={formData.first_name}
@@ -173,7 +172,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <Input
             label="Phone Number"
             type="tel"
@@ -235,7 +234,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               placeholder="123 Main Street"
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <Input
                 label="City"
                 value={formData.city}
@@ -258,20 +257,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               />
             </div>
           </div>
-        </div>
-
-        {/* Medical Preconditions */}
-        <div className="border-t border-neutral-200 pt-6">
-          {patient?.id ? (
-            <PatientPreconditions
-              patientId={patient.id}
-              isEditable={true}
-            />
-          ) : (
-            <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-600">
-              <p>Save the patient first to manage medical preconditions</p>
-            </div>
-          )}
         </div>
 
         {/* Form Actions */}
