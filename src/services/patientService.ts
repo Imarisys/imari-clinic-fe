@@ -222,7 +222,7 @@ export class PatientService {
     try {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.update(patientId));
       const response = await fetch(url, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },

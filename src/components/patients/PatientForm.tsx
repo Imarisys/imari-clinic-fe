@@ -262,13 +262,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
         {/* Medical Preconditions */}
         <div className="border-t border-neutral-200 pt-6">
-          <PatientPreconditions
-            preconditions={formData.preconditions}
-            patientId={patient?.id}
-            onChange={(preconditions) => setFormData(prev => ({ ...prev, preconditions }))}
-            isEditable={true}
-            isLoading={isLoading}
-          />
+          {patient?.id ? (
+            <PatientPreconditions
+              patientId={patient.id}
+              isEditable={true}
+            />
+          ) : (
+            <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-600">
+              <p>Save the patient first to manage medical preconditions</p>
+            </div>
+          )}
         </div>
 
         {/* Form Actions */}

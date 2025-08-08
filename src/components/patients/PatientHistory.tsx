@@ -242,11 +242,8 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
             {/* Medical Preconditions Card */}
             <div className="mt-6">
               <PatientPreconditions
-                preconditions={patientData.preconditions}
                 patientId={patientData.id}
-                onUpdate={handlePreconditionsUpdate}
                 isEditable={true}
-                isLoading={isLoading}
               />
             </div>
           </div>

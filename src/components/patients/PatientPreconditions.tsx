@@ -1,126 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Modal } from '../common/Modal';
 import { ConfirmationDialog } from '../common/ConfirmationDialog';
-import { PatientService } from '../../services/patientService';
-
-interface Precondition {
-  id: string;
-  name: string;
-  notes?: string;
-  dateAdded: string;
-}
+import { PreconditionService, Precondition } from '../../services/preconditionService';
+import { useNotification } from '../../hooks/useNotification';
 
 interface PatientPreconditionsProps {
-  preconditions: any;
-  patientId?: string; // Add patientId prop for API calls
-  onUpdate?: (preconditions: any) => Promise<void>;
-  onChange?: (preconditions: any) => void; // For form usage
+  patientId: string;
   isEditable?: boolean;
-  isLoading?: boolean;
 }
 
 export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
-  preconditions,
   patientId,
-  onUpdate,
-  onChange,
-  isEditable = true,
-  isLoading = false
+  isEditable = true
 }) => {
+  const [preconditions, setPreconditions] = useState<Precondition[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [preconditionToDelete, setPreconditionToDelete] = useState<string | null>(null);
+  const [preconditionToEdit, setPreconditionToEdit] = useState<Precondition | null>(null);
   const [selectedPreconditions, setSelectedPreconditions] = useState<string[]>([]);
   const [customCondition, setCustomCondition] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Today as default
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const { showNotification } = useNotification();
 
-  // Predefined list of common medical preconditions
+  // Predefined list of common medical preconditions with icons
   const commonPreconditions = [
-    { name: 'Diabetes Type 1' },
-    { name: 'Diabetes Type 2' },
-    { name: 'Hypertension' },
-    { name: 'Heart Disease' },
-    { name: 'Asthma' },
-    { name: 'COPD' },
-    { name: 'Allergies' },
-    { name: 'Arthritis' },
-    { name: 'Depression' },
-    { name: 'Anxiety' },
-    { name: 'Kidney Disease' },
-    { name: 'Liver Disease' },
-    { name: 'Thyroid Disease' },
-    { name: 'Osteoporosis' },
-    { name: 'High Cholesterol' },
-    { name: 'Migraine' },
-    { name: 'Epilepsy' },
-    { name: 'Cancer History' },
-    { name: 'Blood Clotting Disorder' },
-    { name: 'Autoimmune Disease' }
+    { name: 'Diabetes Type 1', icon: '🩸' },
+    { name: 'Diabetes Type 2', icon: '🩸' },
+    { name: 'Hypertension', icon: '💓' },
+    { name: 'Heart Disease', icon: '❤️' },
+    { name: 'Asthma', icon: '🫁' },
+    { name: 'COPD', icon: '🫁' },
+    { name: 'Allergies', icon: '🤧' },
+    { name: 'Arthritis', icon: '🦴' },
+    { name: 'Depression', icon: '🧠' },
+    { name: 'Anxiety', icon: '😰' },
+    { name: 'Kidney Disease', icon: '🫘' },
+    { name: 'Liver Disease', icon: '🫖' },
+    { name: 'Thyroid Disease', icon: '🦋' },
+    { name: 'Osteoporosis', icon: '🦴' },
+    { name: 'High Cholesterol', icon: '🧈' },
+    { name: 'Migraine', icon: '🤕' },
+    { name: 'Epilepsy', icon: '⚡' },
+    { name: 'Cancer History', icon: '🎗️' },
+    { name: 'Blood Clotting Disorder', icon: '🩸' },
+    { name: 'Autoimmune Disease', icon: '🛡️' }
   ];
 
-  // Parse preconditions from JSON if it's a string, or use as array if it's already parsed
-  const parsedPreconditions: Precondition[] = React.useMemo(() => {
-    if (!preconditions) return [];
+  // Load preconditions when component mounts or patientId changes
+  useEffect(() => {
+    if (patientId) {
+      loadPreconditions();
+    }
+  }, [patientId]);
 
+  const loadPreconditions = async () => {
+    if (!patientId) return;
+
+    setIsLoading(true);
     try {
-      if (typeof preconditions === 'string') {
-        const parsed = JSON.parse(preconditions);
-        return Array.isArray(parsed) ? parsed : [];
-      }
-      if (Array.isArray(preconditions)) {
-        return preconditions;
-      }
-      return [];
-    } catch {
-      return [];
+      const response = await PreconditionService.getPatientPreconditions(patientId);
+      setPreconditions(response.data);
+    } catch (error) {
+      console.error('Failed to load preconditions:', error);
+      showNotification('error', 'Error', 'Failed to load medical preconditions');
+    } finally {
+      setIsLoading(false);
     }
-  }, [preconditions]);
+  };
 
-  const handleAddPreconditions = async () => {
-    const conditionsToAdd: string[] = [];
+  const handleAddPrecondition = async () => {
+    // Get the condition name - either from selected common condition or custom input
+    const conditionName = selectedPreconditions.length > 0
+      ? selectedPreconditions[0] // Take the first selected condition
+      : customCondition.trim();
 
-    // Add selected common preconditions
-    conditionsToAdd.push(...selectedPreconditions);
-
-    // Add custom condition if entered
-    if (customCondition.trim()) {
-      conditionsToAdd.push(customCondition.trim());
-    }
-
-    if (conditionsToAdd.length === 0) {
+    if (!conditionName) {
+      showNotification('warning', 'Warning', 'Please select or enter a condition name');
       return;
     }
 
     setIsUpdating(true);
 
     try {
-      const newPreconditions: Precondition[] = conditionsToAdd.map(name => ({
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name,
-        notes: notes.trim() || undefined,
-        dateAdded: selectedDate ? new Date(selectedDate).toISOString() : new Date().toISOString()
-      }));
+      // Create single precondition via API
+      const createdPrecondition = await PreconditionService.createPrecondition({
+        patient_id: patientId,
+        name: conditionName,
+        date: selectedDate,
+        note: notes.trim() || undefined
+      });
 
-      const updatedPreconditions = [...parsedPreconditions, ...newPreconditions];
-
-      // If patientId is provided, make API call
-      if (patientId) {
-        await PatientService.updatePatient(patientId, {
-          preconditions: updatedPreconditions
-        });
-      }
-
-      // Call parent update handlers
-      if (onUpdate) {
-        await onUpdate(updatedPreconditions);
-      }
-      if (onChange) {
-        onChange(updatedPreconditions);
-      }
+      // Update local state
+      setPreconditions(prev => [...prev, createdPrecondition]);
 
       // Reset form
       setSelectedPreconditions([]);
@@ -128,40 +106,65 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       setNotes('');
       setSelectedDate(new Date().toISOString().split('T')[0]);
       setShowAddModal(false);
+
+      showNotification('success', 'Success', 'Medical condition added successfully');
     } catch (error) {
-      console.error('Failed to update patient preconditions:', error);
-      throw error; // Re-throw to let parent components handle the error
+      console.error('Failed to add precondition:', error);
+      showNotification('error', 'Error', 'Failed to add medical condition');
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleDeletePrecondition = async (id: string) => {
+  const handleEditPrecondition = async () => {
+    if (!preconditionToEdit) return;
+
     setIsUpdating(true);
-
     try {
-      const updatedPreconditions = parsedPreconditions.filter(p => p.id !== id);
+      const updated = await PreconditionService.updatePrecondition(preconditionToEdit.id, {
+        name: customCondition || preconditionToEdit.name,
+        date: selectedDate,
+        note: notes.trim() || undefined
+      });
 
-      // If patientId is provided, make API call
-      if (patientId) {
-        await PatientService.updatePatient(patientId, {
-          preconditions: updatedPreconditions
-        });
-      }
+      // Update local state
+      setPreconditions(prev =>
+        prev.map(p => p.id === preconditionToEdit.id ? updated : p)
+      );
 
-      // Call parent update handlers
-      if (onUpdate) {
-        await onUpdate(updatedPreconditions);
-      }
-      if (onChange) {
-        onChange(updatedPreconditions);
-      }
+      // Reset form
+      setCustomCondition('');
+      setNotes('');
+      setSelectedDate(new Date().toISOString().split('T')[0]);
+      setPreconditionToEdit(null);
+      setShowEditModal(false);
+
+      showNotification('success', 'Success', 'Medical condition updated successfully');
+    } catch (error) {
+      console.error('Failed to update precondition:', error);
+      showNotification('error', 'Error', 'Failed to update medical condition');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeletePrecondition = async () => {
+    if (!preconditionToDelete) return;
+
+    setIsUpdating(true);
+    try {
+      await PreconditionService.deletePrecondition(preconditionToDelete);
+
+      // Update local state
+      setPreconditions(prev => prev.filter(p => p.id !== preconditionToDelete));
 
       setShowDeleteConfirm(false);
       setPreconditionToDelete(null);
+
+      showNotification('success', 'Success', 'Medical condition deleted successfully');
     } catch (error) {
-      console.error('Failed to delete patient precondition:', error);
-      throw error; // Re-throw to let parent components handle the error
+      console.error('Failed to delete precondition:', error);
+      showNotification('error', 'Error', 'Failed to delete medical condition');
     } finally {
       setIsUpdating(false);
     }
@@ -172,26 +175,49 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
     setShowDeleteConfirm(true);
   };
 
+  const openEditModal = (precondition: Precondition) => {
+    setPreconditionToEdit(precondition);
+    setCustomCondition(precondition.name);
+    setNotes(precondition.note || '');
+    setSelectedDate(precondition.date);
+    setShowEditModal(true);
+  };
+
   const togglePrecondition = (conditionName: string) => {
-    setSelectedPreconditions(prev =>
-      prev.includes(conditionName)
-        ? prev.filter(name => name !== conditionName)
-        : [...prev, conditionName]
-    );
+    // Set the custom condition field with the selected precondition name
+    setCustomCondition(conditionName);
+    // Clear any previous selections since we're using it as a picker now
+    setSelectedPreconditions([]);
+  };
+
+  const resetAddForm = () => {
+    setSelectedPreconditions([]);
+    setCustomCondition('');
+    setNotes('');
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const resetEditForm = () => {
+    setCustomCondition('');
+    setNotes('');
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setPreconditionToEdit(null);
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <span className="text-xl">🩺</span>
           <h3 className="text-lg font-semibold text-gray-900">
             Medical Preconditions
           </h3>
         </div>
         {isEditable && (
           <Button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              resetAddForm();
+              setShowAddModal(true);
+            }}
             size="sm"
             disabled={isLoading || isUpdating}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -202,7 +228,12 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
         )}
       </div>
 
-      {parsedPreconditions.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-500">
+          <div className="text-2xl mb-2">⏳</div>
+          <p className="text-sm">Loading medical preconditions...</p>
+        </div>
+      ) : preconditions.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-2">📋</div>
           <p className="text-sm">
@@ -211,40 +242,44 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
         </div>
       ) : (
         <div className="max-h-64 overflow-y-auto space-y-2">
-          {parsedPreconditions.map((precondition) => (
+          {preconditions.map((precondition) => (
             <div
               key={precondition.id}
-              className="border rounded-lg p-3 transition-all duration-200 hover:shadow-sm bg-gray-50 hover:bg-gray-100"
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-lg">⚕️</span>
-                    <h4 className="font-medium text-gray-900 text-sm">{precondition.name}</h4>
-                  </div>
-
-                  <div className="flex items-center space-x-3 text-xs text-gray-500">
-                    <span>{new Date(precondition.dateAdded).toLocaleDateString()}</span>
-                  </div>
-
-                  {precondition.notes && (
-                    <div className="mt-1 p-2 bg-white bg-opacity-70 rounded text-xs">
-                      <span className="font-medium">Notes:</span> {precondition.notes}
-                    </div>
-                  )}
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-900">
+                    {precondition.name}
+                  </span>
+                  <span className="text-sm text-gray-500 font-medium">
+                    {new Date(precondition.date).toLocaleDateString()}
+                  </span>
                 </div>
-
-                {isEditable && (
-                  <button
-                    onClick={() => confirmDelete(precondition.id)}
-                    className="ml-2 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                    disabled={isLoading}
-                    title="Delete precondition"
-                  >
-                    <span className="material-icons-round text-base">delete</span>
-                  </button>
+                {precondition.note && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    {precondition.note}
+                  </p>
                 )}
               </div>
+              {isEditable && (
+                <div className="flex items-center space-x-2 ml-4">
+                  <button
+                    onClick={() => openEditModal(precondition)}
+                    disabled={isUpdating}
+                    className="p-2 text-neutral-400 hover:text-blue-600 transition-colors duration-300 disabled:opacity-50"
+                  >
+                    <span className="material-icons-round text-lg">edit</span>
+                  </button>
+                  <button
+                    onClick={() => confirmDelete(precondition.id)}
+                    disabled={isUpdating}
+                    className="p-2 text-neutral-400 hover:text-red-600 transition-colors duration-300 disabled:opacity-50"
+                  >
+                    <span className="material-icons-round text-lg">delete</span>
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -255,162 +290,174 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
         isOpen={showAddModal}
         onClose={() => {
           setShowAddModal(false);
-          setSelectedPreconditions([]);
-          setCustomCondition('');
-          setNotes('');
+          resetAddForm();
         }}
         title="Add Medical Preconditions"
-        size="xl"
+        size="lg"
       >
         <div className="space-y-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <span className="text-xl">➕</span>
-            <h3 className="text-lg font-semibold">Add Medical Preconditions</h3>
-            <div className="text-sm text-gray-500">
-              (Select multiple conditions or add a custom one)
-            </div>
+          {/* Date Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date Diagnosed
+            </label>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full"
+            />
           </div>
 
-          {/* Show selected count */}
-          {(selectedPreconditions.length > 0 || customCondition.trim()) && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="text-sm font-medium text-blue-800">
-                Selected conditions ({selectedPreconditions.length + (customCondition.trim() ? 1 : 0)}):
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedPreconditions.map((condition) => (
-                  <span key={condition} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    ⚕️ {condition}
-                    <button
-                      onClick={() => togglePrecondition(condition)}
-                      className="ml-1 text-blue-600 hover:text-blue-800"
-                    >
-                      ×
-                    </button>
-                  </span>
+          {/* Precondition Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Precondition
+            </label>
+            <Input
+              value={customCondition}
+              onChange={(e) => setCustomCondition(e.target.value)}
+              placeholder="Enter medical condition name..."
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select from suggestions below or type a custom condition
+            </p>
+          </div>
+
+          {/* Common Preconditions */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Select Common Conditions
+            </label>
+            <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
+              <div className="space-y-1">
+                {commonPreconditions.map((condition) => (
+                  <div
+                    key={condition.name}
+                    onClick={() => togglePrecondition(condition.name)}
+                    className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-3 rounded-lg transition-colors duration-200 border border-transparent hover:border-blue-200"
+                  >
+                    <span className="text-lg">{condition.icon}</span>
+                    <span className="text-sm text-gray-700 font-medium">
+                      {condition.name}
+                    </span>
+                  </div>
                 ))}
-                {customCondition.trim() && (
-                  <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                    📝 {customCondition}
-                    <button
-                      onClick={() => setCustomCondition('')}
-                      className="ml-1 text-green-600 hover:text-green-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column - Custom Condition */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-900">Custom Condition</h4>
-
-              <Input
-                label="Condition Name"
-                value={customCondition}
-                onChange={(e) => setCustomCondition(e.target.value)}
-                placeholder="Enter a custom condition..."
-              />
-
-              <Input
-                label="Date Diagnosed"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notes (applies to all selected conditions)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional information..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Right Column - Common Preconditions */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-semibold text-gray-900">Common Preconditions</h4>
-
-              <div className="max-h-80 overflow-y-auto border rounded-lg bg-gray-50">
-                <div className="grid grid-cols-1 gap-1 p-2">
-                  {commonPreconditions.map((precondition, index) => {
-                    const isSelected = selectedPreconditions.includes(precondition.name);
-                    const existingCondition = parsedPreconditions.find(p => p.name === precondition.name);
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => !existingCondition && togglePrecondition(precondition.name)}
-                        disabled={!!existingCondition}
-                        className={`
-                          flex items-center justify-between p-3 rounded-lg transition-all duration-200 text-left
-                          ${existingCondition 
-                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
-                            : isSelected 
-                              ? 'bg-blue-100 border-2 border-blue-300 text-blue-800' 
-                              : 'bg-white hover:bg-blue-50 border border-gray-200'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg">⚕️</span>
-                          <span className="text-sm font-medium">{precondition.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {existingCondition && (
-                            <span className="text-xs text-gray-500">Already added</span>
-                          )}
-                          {isSelected && !existingCondition && (
-                            <span className="text-blue-600 text-lg">✓</span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              {selectedPreconditions.length + (customCondition.trim() ? 1 : 0)} condition(s) selected
-            </div>
-            <div className="flex space-x-3">
-              <Button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setSelectedPreconditions([]);
-                  setCustomCondition('');
-                  setNotes('');
-                }}
-                variant="secondary"
-                disabled={isUpdating}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddPreconditions}
-                disabled={(selectedPreconditions.length === 0 && !customCondition.trim()) || isUpdating}
-                loading={isUpdating}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isUpdating
-                  ? 'Updating...'
-                  : `Add ${selectedPreconditions.length + (customCondition.trim() ? 1 : 0)} Condition(s)`
-                }
-              </Button>
-            </div>
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes about the condition..."
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowAddModal(false);
+                resetAddForm();
+              }}
+              variant="secondary"
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddPrecondition}
+              disabled={isUpdating || (selectedPreconditions.length === 0 && !customCondition.trim())}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isUpdating ? 'Adding...' : 'Add Condition'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Precondition Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          resetEditForm();
+        }}
+        title="Edit Medical Precondition"
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Precondition Field */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Precondition
+            </label>
+            <Input
+              value={customCondition}
+              onChange={(e) => setCustomCondition(e.target.value)}
+              placeholder="Enter medical condition name..."
+              className="w-full"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select from suggestions above or type a custom condition
+            </p>
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date Diagnosed
+            </label>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes (Optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes about the condition..."
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <Button
+              onClick={() => {
+                setShowEditModal(false);
+                resetEditForm();
+              }}
+              variant="secondary"
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditPrecondition}
+              disabled={isUpdating || !customCondition.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isUpdating ? 'Updating...' : 'Update Condition'}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -418,16 +465,14 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={showDeleteConfirm}
-        onConfirm={() => preconditionToDelete && handleDeletePrecondition(preconditionToDelete)}
-        onClose={() => {
-          setShowDeleteConfirm(false);
-          setPreconditionToDelete(null);
-        }}
-        title="Delete Precondition"
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeletePrecondition}
+        title="Delete Medical Precondition"
         message="Are you sure you want to delete this medical precondition? This action cannot be undone."
         confirmButtonText="Delete"
         cancelButtonText="Cancel"
         variant="danger"
+        isLoading={isUpdating}
       />
     </div>
   );

@@ -326,13 +326,13 @@
           }
         }
       },
-      "patch": {
+      "put": {
         "tags": [
           "patients"
         ],
         "summary": "Update Patient",
         "description": "Update an existing patient",
-        "operationId": "update_patient_api_v1_patients__patient_id__patch",
+        "operationId": "update_patient_api_v1_patients__patient_id__put",
         "parameters": [
           {
             "name": "patient_id",
@@ -900,6 +900,183 @@
             "schema": {
               "type": "string",
               "title": "File Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preconditions/{patient_id}": {
+      "get": {
+        "tags": [
+          "preconditions"
+        ],
+        "summary": "Get Patient Preconditions",
+        "description": "Get all preconditions for a specific patient",
+        "operationId": "get_patient_preconditions_api_v1_preconditions__patient_id__get",
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Patient Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preconditions/": {
+      "post": {
+        "tags": [
+          "preconditions"
+        ],
+        "summary": "Create Precondition",
+        "description": "Create a new precondition",
+        "operationId": "create_precondition_api_v1_preconditions__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreconditionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/preconditions/{precondition_id}": {
+      "put": {
+        "tags": [
+          "preconditions"
+        ],
+        "summary": "Update Precondition",
+        "description": "Update a precondition",
+        "operationId": "update_precondition_api_v1_preconditions__precondition_id__put",
+        "parameters": [
+          {
+            "name": "precondition_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Precondition Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreconditionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreconditionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "preconditions"
+        ],
+        "summary": "Delete Precondition",
+        "description": "Delete a precondition",
+        "operationId": "delete_precondition_api_v1_preconditions__precondition_id__delete",
+        "parameters": [
+          {
+            "name": "precondition_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Precondition Id"
             }
           }
         ],
@@ -2664,18 +2841,6 @@
               }
             ],
             "title": "Zip Code"
-          },
-          "preconditions": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preconditions"
           }
         },
         "type": "object",
@@ -2949,7 +3114,7 @@
           "id"
         ],
         "title": "PatientListItem",
-        "description": "Patient schema for list operations - excludes preconditions for performance"
+        "description": "Patient schema for list operations"
       },
       "PatientListResponse": {
         "properties": {
@@ -3176,18 +3341,6 @@
             ],
             "title": "Zip Code"
           },
-          "preconditions": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preconditions"
-          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -3292,18 +3445,6 @@
               }
             ],
             "title": "Zip Code"
-          },
-          "preconditions": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preconditions"
           },
           "id": {
             "type": "string",
@@ -3473,22 +3614,139 @@
               }
             ],
             "title": "Zip Code"
+          }
+        },
+        "type": "object",
+        "title": "PatientUpdate"
+      },
+      "PreconditionCreate": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
           },
-          "preconditions": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "note": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Preconditions"
+            "title": "Note"
           }
         },
         "type": "object",
-        "title": "PatientUpdate"
+        "required": [
+          "patient_id",
+          "name",
+          "date"
+        ],
+        "title": "PreconditionCreate"
+      },
+      "PreconditionListResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PreconditionRead"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "total"
+        ],
+        "title": "PreconditionListResponse",
+        "description": "Response model for precondition list"
+      },
+      "PreconditionRead": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id",
+          "name",
+          "date",
+          "id"
+        ],
+        "title": "PreconditionRead"
+      },
+      "PreconditionUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "date": {
+            "type": "null",
+            "title": "Date"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "PreconditionUpdate"
       },
       "SettingsRead": {
         "properties": {

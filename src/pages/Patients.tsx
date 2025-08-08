@@ -15,6 +15,7 @@ import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
+import { PreconditionService } from '../services/preconditionService';
 import { PatientFileService } from '../services/patientFileService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
@@ -233,14 +234,12 @@ export const Patients: React.FC = () => {
   const loadPatientPreconditions = async (patientId: string) => {
     setLoadingPreconditions(true);
     try {
-      // For now, we'll use a placeholder until the API method is implemented
-      // You may need to adjust this based on your actual API
-      const patient = await PatientService.getPatient(patientId);
-      // Assuming preconditions might be stored in patient data or we'll use null for now
-      setPatientPreconditions(patient.preconditions || null);
+      // Use the new PreconditionService instead of PatientService
+      const response = await PreconditionService.getPatientPreconditions(patientId);
+      setPatientPreconditions(response.data || []);
     } catch (error) {
       console.error('Error loading patient preconditions:', error);
-      setPatientPreconditions(null);
+      setPatientPreconditions([]);
     } finally {
       setLoadingPreconditions(false);
     }
@@ -1153,23 +1152,8 @@ export const Patients: React.FC = () => {
             {activePatientTab === 'preconditions' && (
               <div>
                 <PatientPreconditions
-                  preconditions={patientPreconditions}
                   patientId={selectedPatient.id}
-                  onUpdate={async (preconditions) => {
-                    if (!selectedPatient) return;
-
-                    try {
-                      // For now, just update the local state until the API method is implemented
-                      // You may need to implement PatientService.updatePatientPreconditions() method
-                      setPatientPreconditions(preconditions);
-                      showNotification('success', 'Success', 'Patient preconditions updated successfully');
-                    } catch (error) {
-                      console.error('Error updating patient preconditions:', error);
-                      showNotification('error', 'Error', 'Failed to update patient preconditions');
-                    }
-                  }}
                   isEditable={true}
-                  isLoading={loadingPreconditions}
                 />
               </div>
             )}
