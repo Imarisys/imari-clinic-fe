@@ -4,6 +4,7 @@ import { PatientWithAppointments } from '../../types/Patient';
 import { Appointment, AppointmentStatus } from '../../types/Appointment';
 import { PatientService } from '../../services/patientService';
 import { Button } from '../common/Button';
+import { PatientPreconditions } from './PatientPreconditions';
 
 interface PatientHistoryProps {
   patient: PatientWithAppointments;
@@ -126,6 +127,21 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
     return age;
   };
 
+  const handlePreconditionsUpdate = async (updatedPreconditions: any) => {
+    try {
+      setIsLoading(true);
+      const updatedPatient = await PatientService.updatePatient(patientData.id, {
+        preconditions: updatedPreconditions
+      });
+      setPatientData({ ...patientData, preconditions: updatedPatient.preconditions });
+    } catch (error) {
+      console.error('Error updating preconditions:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -221,6 +237,17 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Medical Preconditions Card */}
+            <div className="mt-6">
+              <PatientPreconditions
+                preconditions={patientData.preconditions}
+                patientId={patientData.id}
+                onUpdate={handlePreconditionsUpdate}
+                isEditable={true}
+                isLoading={isLoading}
+              />
             </div>
           </div>
 

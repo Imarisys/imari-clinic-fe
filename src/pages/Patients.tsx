@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
 import { PatientForm } from '../components/patients/PatientForm';
 import { PatientHistory } from '../components/patients/PatientHistory';
+import { PatientPreconditions } from '../components/patients/PatientPreconditions';
 import { PatientSearch, PatientSearchFilters } from '../components/patients/PatientSearch';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
@@ -14,14 +15,17 @@ import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
+import { PatientFileService } from '../services/patientFileService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
+import { PatientFileRead } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { SettingsService } from '../services/settingsService';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
+type PatientDetailTab = 'upcoming' | 'past' | 'files' | 'preconditions';
 
 export const Patients: React.FC = () => {
   const { t } = useTranslation();
@@ -37,6 +41,13 @@ export const Patients: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+
+  // Patient detail tabs state
+  const [activePatientTab, setActivePatientTab] = useState<PatientDetailTab>('upcoming');
+  const [patientFiles, setPatientFiles] = useState<PatientFileRead[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [patientPreconditions, setPatientPreconditions] = useState<any>(null);
+  const [loadingPreconditions, setLoadingPreconditions] = useState(false);
 
   // Patient summary state
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
@@ -204,33 +215,47 @@ export const Patients: React.FC = () => {
     }
   };
 
+  // Load patient files
+  const loadPatientFiles = async (patientId: string) => {
+    setLoadingFiles(true);
+    try {
+      const response = await PatientFileService.getPatientFiles(patientId);
+      setPatientFiles(response.files);
+    } catch (error) {
+      console.error('Error loading patient files:', error);
+      setPatientFiles([]);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Load patient preconditions
+  const loadPatientPreconditions = async (patientId: string) => {
+    setLoadingPreconditions(true);
+    try {
+      // For now, we'll use a placeholder until the API method is implemented
+      // You may need to adjust this based on your actual API
+      const patient = await PatientService.getPatient(patientId);
+      // Assuming preconditions might be stored in patient data or we'll use null for now
+      setPatientPreconditions(patient.preconditions || null);
+    } catch (error) {
+      console.error('Error loading patient preconditions:', error);
+      setPatientPreconditions(null);
+    } finally {
+      setLoadingPreconditions(false);
+    }
+  };
+
   // Load appointments when patient is selected for detail view
   useEffect(() => {
     if (selectedPatient && viewMode === 'detail') {
       loadPatientAppointments(selectedPatient.id);
+      // Load patient files and preconditions when detail view is opened
+      loadPatientFiles(selectedPatient.id);
+      loadPatientPreconditions(selectedPatient.id);
     }
   }, [selectedPatient, viewMode]);
 
-  // Load appointment types from API
-  const loadAppointmentTypes = async () => {
-    setAppointmentTypesLoading(true);
-    try {
-      const types = await AppointmentTypeService.listAppointmentTypes();
-      setAppointmentTypes(types);
-    } catch (err) {
-      console.error('Error loading appointment types:', err);
-      showNotification('error', 'Error', 'Failed to load appointment types');
-    } finally {
-      setAppointmentTypesLoading(false);
-    }
-  };
-
-  // Load appointment types when modal opens
-  useEffect(() => {
-    if (showAppointmentModal) {
-      loadAppointmentTypes();
-    }
-  }, [showAppointmentModal]);
 
   // Handle page change for pagination
   const handlePageChange = (page: number) => {
@@ -461,30 +486,30 @@ export const Patients: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-neutral-200">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-neutral-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-success-600">
+          <p className="text-lg font-semibold text-success-600">
             {summaryLoading ? '...' : patientSummary?.total_patients || patients.length}
           </p>
-          <p className="text-sm text-neutral-600">Total Patients</p>
+          <p className="text-xs text-neutral-600">Total Patients</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-primary-600">
+          <p className="text-lg font-semibold text-primary-600">
             {summaryLoading ? '...' : patientSummary?.new_patients || 0}
           </p>
-          <p className="text-sm text-neutral-600">New Patients</p>
+          <p className="text-xs text-neutral-600">New Patients</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-lg font-semibold text-blue-600">
             {summaryLoading ? '...' : patientSummary?.patients_with_follow_up || 0}
           </p>
-          <p className="text-sm text-neutral-600">Follow-up Patients</p>
+          <p className="text-xs text-neutral-600">Follow-up Patients</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-primary-600">
+          <p className="text-lg font-semibold text-primary-600">
             {summaryLoading ? '...' : patientSummary?.patients_with_email || patients.filter(p => p.email).length}
           </p>
-          <p className="text-sm text-neutral-600">With Email</p>
+          <p className="text-xs text-neutral-600">With Email</p>
         </div>
       </div>
     </div>
@@ -682,14 +707,6 @@ export const Patients: React.FC = () => {
       <DashboardLayout>
         <div className="fade-in-element">
           <div className="card mb-6">
-            <button
-              onClick={() => setViewMode('grid')}
-              className="btn-secondary mb-4"
-            >
-              <span className="material-icons-round mr-2">arrow_back</span>
-              Back to Patients
-            </button>
-
             <div className="flex items-start space-x-6">
               <div className="w-24 h-24 bg-primary-500 rounded-3xl flex items-center justify-center shadow-primary text-white">
                 <span className="text-3xl font-semibold">
@@ -776,6 +793,13 @@ export const Patients: React.FC = () => {
               </div>
 
               <div className="flex space-x-3">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className="btn-secondary"
+                  title="Back to Patients"
+                >
+                  <span className="material-icons-round">arrow_back</span>
+                </button>
                 <Button
                   variant="secondary"
                   icon="edit"
@@ -807,302 +831,348 @@ export const Patients: React.FC = () => {
             </div>
           </div>
 
-          {/* Patient Statistics */}
-          <div className="card mb-6">
-            <h3 className="text-xl font-bold text-neutral-800 mb-4">Patient Statistics</h3>
-            {appointmentsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="text-center p-4 bg-gray-50 rounded-lg animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-100">
-                  <div className="text-2xl font-bold text-teal-600">{patientAppointments.length}</div>
-                  <div className="text-sm text-gray-600">Total Appointments</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
-                  <div className="text-2xl font-bold text-green-600">
-                    {patientAppointments.filter(apt => apt.status === 'Completed').length}
-                  </div>
-                  <div className="text-sm text-gray-600">Completed</div>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {patientAppointments.filter(apt => apt.status === 'Booked' && new Date(apt.date) >= new Date()).length}
-                  </div>
-                  <div className="text-sm text-gray-600">Upcoming</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-100">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {patientAppointments.filter(apt => apt.status === 'Cancelled').length}
-                  </div>
-                  <div className="text-sm text-gray-600">Cancelled</div>
-                </div>
-              </div>
-            )}
+          {/* Patient Detail Tabs */}
+          <div className="mb-6">
+            <div className="flex space-x-2">
+              <Button
+                variant={activePatientTab === 'upcoming' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('upcoming')}
+                className="flex-1"
+              >
+                Upcoming Appointments
+              </Button>
+              <Button
+                variant={activePatientTab === 'past' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('past')}
+                className="flex-1"
+              >
+                Past Appointments
+              </Button>
+              <Button
+                variant={activePatientTab === 'files' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('files')}
+                className="flex-1"
+              >
+                Patient Files
+              </Button>
+              <Button
+                variant={activePatientTab === 'preconditions' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('preconditions')}
+                className="flex-1"
+              >
+                Preconditions
+              </Button>
+            </div>
           </div>
 
-          {/* Appointments Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Upcoming Appointments */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-neutral-800">Upcoming Appointments</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="material-icons-round text-blue-500">event</span>
-                  <span className="text-sm text-blue-600 font-medium">
-                    {patientAppointments.filter(apt => new Date(apt.date) >= new Date() && apt.status !== 'Cancelled').length} scheduled
-                  </span>
-                </div>
+          {/* Patient Detail Content */}
+          <div className="card p-4">
+            {activePatientTab === 'upcoming' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">Upcoming Appointments</h4>
+                {appointmentsLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h4>
+                    <p className="text-gray-500">Schedule a new appointment to get started.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {patientAppointments
+                      .filter(apt => new Date(apt.date) >= new Date())
+                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .map((appointment) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'Completed':
+                              return 'bg-green-100 text-green-800';
+                            case 'Booked':
+                              return 'bg-blue-100 text-blue-800';
+                            case 'Cancelled':
+                              return 'bg-red-100 text-red-800';
+                            case 'No Show':
+                              return 'bg-orange-100 text-orange-800';
+                            case 'In Progress':
+                              return 'bg-purple-100 text-purple-800';
+                            default:
+                              return 'bg-gray-100 text-gray-800';
+                          }
+                        };
+
+                        const formatDate = (dateString: string) => {
+                          return new Date(dateString).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                        };
+
+                        const formatTime = (timeString: string) => {
+                          const time = timeString.split('.')[0]; // Remove microseconds
+                          const [hours, minutes] = time.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const displayHour = hour % 12 || 12;
+                          return `${displayHour}:${minutes} ${ampm}`;
+                        };
+
+                        return (
+                          <div
+                            key={appointment.id}
+                            className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex-1">
+                                {appointment.appointment_type_name && (
+                                  <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                )}
+                                {appointment.title && (
+                                  <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                                )}
+                              </div>
+                              <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                {appointment.status}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center space-x-6">
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-blue-500">calendar_today</span>
+                                  <span>{formatDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-blue-500">schedule</span>
+                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {appointment.notes && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">Notes:</span> {appointment.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
-              {appointmentsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(2)].map((_, i) => (
-                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
-                  </svg>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h4>
-                  <p className="text-gray-500">Schedule a new appointment to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {patientAppointments
-                    .filter(apt => new Date(apt.date) >= new Date())
-                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                    .map((appointment) => {
-                      const getStatusColor = (status: string) => {
-                        switch (status) {
-                          case 'Completed':
-                            return 'bg-green-100 text-green-800';
-                          case 'Booked':
-                            return 'bg-blue-100 text-blue-800';
-                          case 'Cancelled':
-                            return 'bg-red-100 text-red-800';
-                          case 'No Show':
-                            return 'bg-orange-100 text-orange-800';
-                          case 'In Progress':
-                            return 'bg-purple-100 text-purple-800';
-                          default:
-                            return 'bg-gray-100 text-gray-800';
-                        }
-                      };
+            )}
 
-                      const formatDate = (dateString: string) => {
-                        return new Date(dateString).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        });
-                      };
+            {activePatientTab === 'past' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">Past Appointments</h4>
+                {appointmentsLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No past appointments</h4>
+                    <p className="text-gray-500">Appointment history will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {patientAppointments
+                      .filter(apt => new Date(apt.date) < new Date())
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .map((appointment) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'Completed':
+                              return 'bg-green-100 text-green-800';
+                            case 'Booked':
+                              return 'bg-blue-100 text-blue-800';
+                            case 'Cancelled':
+                              return 'bg-red-100 text-red-800';
+                            case 'No Show':
+                              return 'bg-orange-100 text-orange-800';
+                            case 'In Progress':
+                              return 'bg-purple-100 text-purple-800';
+                            default:
+                              return 'bg-gray-100 text-gray-800';
+                          }
+                        };
 
-                      const formatTime = (timeString: string) => {
-                        const time = timeString.split('.')[0]; // Remove microseconds
-                        const [hours, minutes] = time.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes} ${ampm}`;
-                      };
+                        const formatDate = (dateString: string) => {
+                          return new Date(dateString).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                        };
 
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex-1">
-                              {appointment.appointment_type_name && (
-                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                              )}
-                              {appointment.title && (
-                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                              )}
-                            </div>
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                              {appointment.status}
-                            </span>
-                          </div>
+                        const formatTime = (timeString: string) => {
+                          const time = timeString.split('.')[0]; // Remove microseconds
+                          const [hours, minutes] = time.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const displayHour = hour % 12 || 12;
+                          return `${displayHour}:${minutes} ${ampm}`;
+                        };
 
-                          <div className="flex items-center justify-between text-sm text-gray-600">
-                            <div className="flex items-center space-x-6">
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-blue-500">calendar_today</span>
-                                <span>{formatDate(appointment.date)}</span>
+                        return (
+                          <div
+                            key={appointment.id}
+                            className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex-1">
+                                {appointment.appointment_type_name && (
+                                  <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                )}
+                                {appointment.title && (
+                                  <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                                )}
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-blue-500">schedule</span>
-                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                              <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                {appointment.status}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                              <div className="flex items-center space-x-6">
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">calendar_today</span>
+                                  <span>{formatDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">schedule</span>
+                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                                </div>
                               </div>
-                            </div>
-                          </div>
 
-                          {appointment.notes && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-sm text-gray-700">
-                                <span className="font-medium">Notes:</span> {appointment.notes}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
-            {/* Past Appointments */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-neutral-800">Past Appointments</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="material-icons-round text-gray-500">history</span>
-                  <span className="text-sm text-gray-600 font-medium">
-                    {patientAppointments.filter(apt => new Date(apt.date) < new Date()).length} completed
-                  </span>
-                </div>
-              </div>
-              {appointmentsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(2)].map((_, i) => (
-                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No past appointments</h4>
-                  <p className="text-gray-500">Appointment history will appear here.</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {patientAppointments
-                    .filter(apt => new Date(apt.date) < new Date())
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((appointment) => {
-                      const getStatusColor = (status: string) => {
-                        switch (status) {
-                          case 'Completed':
-                            return 'bg-green-100 text-green-800';
-                          case 'Booked':
-                            return 'bg-blue-100 text-blue-800';
-                          case 'Cancelled':
-                            return 'bg-red-100 text-red-800';
-                          case 'No Show':
-                            return 'bg-orange-100 text-orange-800';
-                          case 'In Progress':
-                            return 'bg-purple-100 text-purple-800';
-                          default:
-                            return 'bg-gray-100 text-gray-800';
-                        }
-                      };
-
-                      const formatDate = (dateString: string) => {
-                        return new Date(dateString).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        });
-                      };
-
-                      const formatTime = (timeString: string) => {
-                        const time = timeString.split('.')[0]; // Remove microseconds
-                        const [hours, minutes] = time.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes} ${ampm}`;
-                      };
-
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex-1">
-                              {appointment.appointment_type_name && (
-                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                              )}
-                              {appointment.title && (
-                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                              )}
-                            </div>
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                              {appointment.status}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                            <div className="flex items-center space-x-6">
+                              {/* Action Buttons for Past Appointments */}
                               <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-gray-500">calendar_today</span>
-                                <span>{formatDate(appointment.date)}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-gray-500">schedule</span>
-                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                              </div>
-                            </div>
-
-                            {/* Action Buttons for Past Appointments */}
-                            <div className="flex items-center space-x-2">
-                              {appointment.status === 'Completed' && (
+                                {appointment.status === 'Completed' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log('View consultation details:', appointment.id);
+                                    }}
+                                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
+                                    title="View Details"
+                                  >
+                                    <span className="material-icons-round text-sm mr-1">description</span>
+                                    Details
+                                  </button>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('View consultation details:', appointment.id);
+                                    console.log('Edit appointment:', appointment.id);
                                   }}
-                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
-                                  title="View Details"
+                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title="Edit"
                                 >
-                                  <span className="material-icons-round text-sm mr-1">description</span>
-                                  Details
+                                  <span className="material-icons-round text-sm">edit</span>
                                 </button>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Edit appointment:', appointment.id);
-                                }}
-                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
-                                title="Edit"
-                              >
-                                <span className="material-icons-round text-sm">edit</span>
-                              </button>
+                              </div>
                             </div>
-                          </div>
 
-                          {appointment.notes && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-sm text-gray-700">
-                                <span className="font-medium">Notes:</span> {appointment.notes}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                            {appointment.notes && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">Notes:</span> {appointment.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                 </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {activePatientTab === 'files' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">Patient Files</h4>
+                {loadingFiles ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientFiles.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v4l4 4m-4-4H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2v-6a2 2 0 00-2-2h-4z" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No patient files found</h4>
+                    <p className="text-gray-500">Upload files to the patient record to get started.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {patientFiles.map((file) => (
+                      <div key={file.id} className="p-4 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="material-icons-round text-3xl text-blue-500">
+                            {file.file_type === 'document' ? 'description' : 'image'}
+                          </span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{file.filename}</p>
+                            <p className="text-xs text-gray-500">{file.file_size} bytes • {new Date(file.upload_date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => {
+                              // Handle file download/view - you may need to implement this based on your file service
+                              console.log('View file:', file.minio_object_name);
+                            }}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activePatientTab === 'preconditions' && (
+              <div>
+                <PatientPreconditions
+                  preconditions={patientPreconditions}
+                  patientId={selectedPatient.id}
+                  onUpdate={async (preconditions) => {
+                    if (!selectedPatient) return;
+
+                    try {
+                      // For now, just update the local state until the API method is implemented
+                      // You may need to implement PatientService.updatePatientPreconditions() method
+                      setPatientPreconditions(preconditions);
+                      showNotification('success', 'Success', 'Patient preconditions updated successfully');
+                    } catch (error) {
+                      console.error('Error updating patient preconditions:', error);
+                      showNotification('error', 'Error', 'Failed to update patient preconditions');
+                    }
+                  }}
+                  isEditable={true}
+                  isLoading={loadingPreconditions}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -1184,7 +1254,7 @@ export const Patients: React.FC = () => {
       setViewMode('history');
     } catch (error) {
       console.error('Error loading patient history:', error);
-      showNotification('error', 'Error', 'Failed to load patient history');
+      showNotification('error', 'Failed to load history', 'Unable to load patient history. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -1192,28 +1262,27 @@ export const Patients: React.FC = () => {
 
   return (
     <DashboardLayout>
+      {renderHeader()}
+
+      {/* Patient List / Grid View */}
       <div className="fade-in-element">
-        {renderHeader()}
+        {viewMode === 'grid' && (
+          <>
+            {patients.length === 0 && !isLoading && (
+              <div className="text-center py-8">
+                <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 7 9-7M4 7h16" />
+                </svg>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No patients found</h4>
+                <p className="text-gray-500">Add new patients using the button above.</p>
+              </div>
+            )}
 
-        {/* Patient List */}
-        <div className="mt-6">
-          {viewMode === 'grid' && renderGridView()}
-          {viewMode === 'list' && renderListView()}
+            {patients.length > 0 && renderGridView()}
+          </>
+        )}
 
-          {/* Pagination */}
-          {totalPatients > itemsPerPage && (
-            <div className="mt-4">
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalPatients}
-                itemsPerPage={itemsPerPage}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
-        </div>
+        {viewMode === 'list' && renderListView()}
       </div>
     </DashboardLayout>
   );

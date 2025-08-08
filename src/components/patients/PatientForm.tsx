@@ -4,6 +4,7 @@ import { useNotification } from '../../context/NotificationContext';
 import { Patient, PatientCreate, PatientUpdate } from '../../types/Patient';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { PatientPreconditions } from './PatientPreconditions';
 
 interface PatientFormProps {
   patient?: Patient | null;
@@ -35,6 +36,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     city: '',
     state: '',
     zip_code: '',
+    preconditions: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,6 +54,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         city: patient.city || '',
         state: patient.state || '',
         zip_code: patient.zip_code || '',
+        preconditions: patient.preconditions || [],
       });
     }
   }, [patient, isEditing]);
@@ -255,6 +258,17 @@ export const PatientForm: React.FC<PatientFormProps> = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* Medical Preconditions */}
+        <div className="border-t border-neutral-200 pt-6">
+          <PatientPreconditions
+            preconditions={formData.preconditions}
+            patientId={patient?.id}
+            onChange={(preconditions) => setFormData(prev => ({ ...prev, preconditions }))}
+            isEditable={true}
+            isLoading={isLoading}
+          />
         </div>
 
         {/* Form Actions */}
