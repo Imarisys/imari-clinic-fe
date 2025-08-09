@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import enTranslations from '../i18n/locales/en.json';
 import frTranslations from '../i18n/locales/fr.json';
 import arTranslations from '../i18n/locales/ar.json';
@@ -25,7 +25,41 @@ interface TranslationProviderProps {
 }
 
 export const TranslationProvider: React.FC<TranslationProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('en');
+
+  // Load language from localStorage on component mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('app_language') as Language;
+    if (savedLanguage && ['en', 'fr', 'ar'].includes(savedLanguage)) {
+      setLanguageState(savedLanguage);
+    }
+  }, []);
+
+  // Wrapper for setLanguage that also persists to localStorage
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('app_language', lang);
+
+    // Apply RTL/LTR direction for Arabic
+    if (lang === 'ar') {
+      document.documentElement.setAttribute('dir', 'rtl');
+      document.documentElement.setAttribute('lang', 'ar');
+    } else {
+      document.documentElement.setAttribute('dir', 'ltr');
+      document.documentElement.setAttribute('lang', lang);
+    }
+  };
+
+  // Apply direction on language change
+  useEffect(() => {
+    if (language === 'ar') {
+      document.documentElement.setAttribute('dir', 'rtl');
+      document.documentElement.setAttribute('lang', 'ar');
+    } else {
+      document.documentElement.setAttribute('dir', 'ltr');
+      document.documentElement.setAttribute('lang', language);
+    }
+  }, [language]);
 
   const t = (key: keyof Translations, params?: Record<string, string>): string => {
     let translation = translations[language][key] || translations.en[key] || key;

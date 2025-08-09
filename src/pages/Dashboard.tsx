@@ -13,8 +13,10 @@ import { AppointmentBookingForm } from '../components/patients/AppointmentBookin
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { SettingsService } from '../services/settingsService';
+import { useTranslation } from '../context/TranslationContext';
 
 export const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -139,19 +141,19 @@ export const Dashboard: React.FC = () => {
   };
 
   const getCurrentWeatherDescription = () => {
-    if (!weather?.forecast?.hourly?.weathercode) return 'Partly Cloudy';
+    if (!weather?.forecast?.hourly?.weathercode) return t('partly_cloudy');
     const weathercode = weather.forecast.hourly.weathercode[0];
 
     // Weather code mapping based on WMO codes
-    if (weathercode === 0) return 'Clear Sky';
-    if (weathercode >= 1 && weathercode <= 3) return 'Partly Cloudy';
-    if (weathercode >= 45 && weathercode <= 48) return 'Foggy';
-    if (weathercode >= 51 && weathercode <= 67) return 'Rainy';
-    if (weathercode >= 71 && weathercode <= 77) return 'Snowy';
-    if (weathercode >= 80 && weathercode <= 82) return 'Rain Showers';
-    if (weathercode >= 95 && weathercode <= 99) return 'Thunderstorm';
+    if (weathercode === 0) return t('clear_sky');
+    if (weathercode >= 1 && weathercode <= 3) return t('partly_cloudy');
+    if (weathercode >= 45 && weathercode <= 48) return t('foggy');
+    if (weathercode >= 51 && weathercode <= 67) return t('rainy');
+    if (weathercode >= 71 && weathercode <= 77) return t('snowy');
+    if (weathercode >= 80 && weathercode <= 82) return t('rain_showers');
+    if (weathercode >= 95 && weathercode <= 99) return t('thunderstorm');
 
-    return 'Partly Cloudy';
+    return t('partly_cloudy');
   };
 
   const getWeatherIcon = (temperature: number | null) => {
@@ -186,8 +188,8 @@ export const Dashboard: React.FC = () => {
 
   // Calculate unique patients from today's appointments
   const getUniquePatientCount = (): string => {
-    if (appointmentsLoading) return "...";
-    if (appointmentsError) return "Error";
+    if (appointmentsLoading) return t('loading');
+    if (appointmentsError) return t('error');
 
     const uniquePatientIds = new Set(appointments.map(appointment => appointment.patient_id));
     return uniquePatientIds.size.toString();
@@ -196,30 +198,30 @@ export const Dashboard: React.FC = () => {
   // Update first stats card to show actual appointment count
   const stats = [
     {
-      title: "Today's Appointments",
-      value: appointmentsLoading ? "..." : appointmentsError ? "Error" : appointments.length.toString(),
+      title: t('todays_appointments'),
+      value: appointmentsLoading ? t('loading') : appointmentsError ? t('error') : appointments.length.toString(),
       icon: "event",
       bgColor: "bg-primary-50",
       iconColor: "bg-primary-500"
     },
     {
-      title: "Total Patients",
-      value: patientSummaryLoading ? "..." : patientSummaryError ? "Error" : patientSummary?.total_patients?.toString() || "0",
+      title: t('total_patients'),
+      value: patientSummaryLoading ? t('loading') : patientSummaryError ? t('error') : patientSummary?.total_patients?.toString() || "0",
       icon: "people",
       bgColor: "bg-success-50",
       iconColor: "bg-success-500"
     },
     {
-      title: "Weather",
-      value: weatherLoading ? "..." : weatherError ? "Error" : `${getCurrentTemperature()}°C`,
-      subtitle: weatherLoading ? "Loading..." : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
+      title: t('weather'),
+      value: weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`,
+      subtitle: weatherLoading ? t('loading') : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
       icon: "wb_sunny",
       bgColor: "bg-sky-50",
       iconColor: "bg-sky-500",
       customIcon: weatherLoading ? "⏳" : weatherError ? "❌" : getWeatherIcon(getCurrentTemperature())
     },
     {
-      title: "Revenue Today",
+      title: t('revenue_today'),
       value: `${currency} --`,
       icon: "attach_money",
       bgColor: "bg-amber-50",
@@ -401,14 +403,16 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-neutral-800 mb-1">
-              {`Welcome back, Dr. ${user?.last_name || ''}`}
+              {t('welcome_back_dr', { name: user?.last_name || '' })}
             </h2>
             <p className="text-neutral-600">
-              Today is {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+              {t('today_is', {
+                date: new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })
               })}
             </p>
           </div>
@@ -440,13 +444,13 @@ export const Dashboard: React.FC = () => {
           <div className="lg:col-span-2">
             <div className="card">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-neutral-800">Today's Schedule</h3>
+                <h3 className="text-xl font-bold text-neutral-800">{t('todays_schedule')}</h3>
                 <button
                   className="btn-secondary text-sm"
                   onClick={() => navigate('/calendar')}
                 >
                   <span className="material-icons-round mr-2 text-lg">calendar_today</span>
-                  View Calendar
+                  {t('view_calendar')}
                 </button>
               </div>
 
@@ -454,7 +458,7 @@ export const Dashboard: React.FC = () => {
                 {appointmentsLoading ? (
                   <div className="text-center py-8">
                     <span className="material-icons-round text-4xl text-primary-300 animate-pulse">schedule</span>
-                    <p className="mt-2 text-neutral-500">Loading appointments...</p>
+                    <p className="mt-2 text-neutral-500">{t('loading_appointments')}</p>
                   </div>
                 ) : appointmentsError ? (
                   <div className="text-center py-8">
@@ -464,7 +468,7 @@ export const Dashboard: React.FC = () => {
                 ) : appointments.length === 0 ? (
                   <div className="text-center py-8">
                     <span className="material-icons-round text-4xl text-neutral-300">event_busy</span>
-                    <p className="mt-2 text-neutral-500">No appointments scheduled for today</p>
+                    <p className="mt-2 text-neutral-500">{t('no_appointments_scheduled_today')}</p>
                   </div>
                 ) : (
                   appointments.map((appointment, index) => (
@@ -498,7 +502,7 @@ export const Dashboard: React.FC = () => {
                               className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
                             >
                               <span className="material-icons-round text-sm">play_arrow</span>
-                              <span>Start</span>
+                              <span>{t('start')}</span>
                             </button>
                           )}
                           {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && (
@@ -507,7 +511,7 @@ export const Dashboard: React.FC = () => {
                               className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
                             >
                               <span className="material-icons-round text-sm">play_circle</span>
-                              <span>Resume</span>
+                              <span>{t('resume')}</span>
                             </button>
                           )}
                           {appointment.status === 'Completed' && (
@@ -516,7 +520,7 @@ export const Dashboard: React.FC = () => {
                               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
                             >
                               <span className="material-icons-round text-sm">visibility</span>
-                              <span>View</span>
+                              <span>{t('view')}</span>
                             </button>
                           )}
                         </div>
@@ -532,29 +536,29 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-6">
             {/* Quick Actions */}
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-6">Quick Actions</h3>
+              <h3 className="text-xl font-bold text-neutral-800 mb-6">{t('quick_actions')}</h3>
               <div className="space-y-3">
                 <button className="w-full btn-primary text-left" onClick={() => setIsAddPatientModalOpen(true)}>
                   <span className="material-icons-round mr-3">person_add</span>
-                  Add New Patient
+                  {t('add_new_patient')}
                 </button>
                 <button className="w-full btn-secondary text-left" onClick={() => setShowNewAppointmentForm(true)}>
                   <span className="material-icons-round mr-3">event</span>
-                  Schedule Appointment
+                  {t('schedule_appointment')}
                 </button>
                 <button className="w-full btn-accent text-left">
                   <span className="material-icons-round mr-3">description</span>
-                  Generate Report
+                  {t('generate_report')}
                 </button>
               </div>
             </div>
 
             {/* Activity Overview */}
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-6">Activity Overview</h3>
+              <h3 className="text-xl font-bold text-neutral-800 mb-6">{t('activity_overview')}</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">Appointments Completed</span>
+                  <span className="text-neutral-600">{t('appointments_completed')}</span>
                   <span className="font-semibold text-success-600">8/12</span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2">
@@ -562,7 +566,7 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">Patient Satisfaction</span>
+                  <span className="text-neutral-600">{t('patient_satisfaction')}</span>
                   <span className="font-semibold text-primary-600">4.8/5</span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2">
@@ -570,7 +574,7 @@ export const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">Revenue Target</span>
+                  <span className="text-neutral-600">{t('revenue_target')}</span>
                   <span className="font-semibold text-primary-600">$2.3K/$3K</span>
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2">
@@ -594,16 +598,16 @@ export const Dashboard: React.FC = () => {
                     {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
                   </div>
                   <p className="text-4xl font-bold mb-1">
-                    {weatherLoading ? 'Loading...' : weatherError ? 'Error' : `${getCurrentTemperature()}°C`}
+                    {weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`}
                   </p>
                   <p className="text-primary-100 text-base font-medium">
-                    {weatherLoading ? 'Fetching weather data...' : weatherError ? weatherError : getCurrentWeatherDescription()}
+                    {weatherLoading ? t('fetching_weather_data') : weatherError ? weatherError : getCurrentWeatherDescription()}
                   </p>
                 </div>
 
                 <div className="border-t border-primary-400 pt-3 mt-3">
                   <p className="text-primary-100 text-xs uppercase tracking-wider font-medium">
-                    Today's Weather
+                    {t('todays_weather')}
                   </p>
                 </div>
               </div>
@@ -615,7 +619,7 @@ export const Dashboard: React.FC = () => {
         <Modal
           isOpen={isAddPatientModalOpen}
           onClose={() => setIsAddPatientModalOpen(false)}
-          title="Add New Patient"
+          title={t('add_new_patient')}
           size="xl"
         >
           <PatientForm
@@ -632,7 +636,7 @@ export const Dashboard: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                  {bookingStep === 'patient' ? t('select_patient') : t('book_appointment')}
                 </h2>
                 <button
                   onClick={closeNewAppointmentModal}
@@ -651,7 +655,7 @@ export const Dashboard: React.FC = () => {
                     }`}>
                       1
                     </div>
-                    <span className="text-sm font-medium">Select Patient</span>
+                    <span className="text-sm font-medium">{t('select_patient')}</span>
                   </div>
                   <div className="flex-1 h-px bg-gray-200"></div>
                   <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
@@ -660,7 +664,7 @@ export const Dashboard: React.FC = () => {
                     }`}>
                       2
                     </div>
-                    <span className="text-sm font-medium">Book Appointment</span>
+                    <span className="text-sm font-medium">{t('book_appointment')}</span>
                   </div>
                 </div>
               </div>
@@ -673,7 +677,7 @@ export const Dashboard: React.FC = () => {
                       {showCreatePatientForm ? (
                         <div>
                           <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <h3 className="text-lg font-medium text-gray-900">{t('create_new_patient')}</h3>
                             <button
                               onClick={() => setShowCreatePatientForm(false)}
                               className="text-gray-400 hover:text-gray-600"
@@ -693,7 +697,7 @@ export const Dashboard: React.FC = () => {
                             <div className="relative">
                               <input
                                 type="text"
-                                placeholder="Search patients by name, email, or phone..."
+                                placeholder={t('search_patients_placeholder')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -711,7 +715,7 @@ export const Dashboard: React.FC = () => {
                               className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
                             >
                               <span className="material-icons-round mb-2">add</span>
-                              <div className="text-sm font-medium">Create New Patient</div>
+                              <div className="text-sm font-medium">{t('create_new_patient')}</div>
                             </button>
                           </div>
 
@@ -740,12 +744,12 @@ export const Dashboard: React.FC = () => {
                               ))}
                               {displayedPatients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  No patients found matching "{searchQuery}"
+                                  {t('no_patients_found', { query: searchQuery })}
                                 </div>
                               )}
                               {displayedPatients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  No patients available. Create a new patient to get started.
+                                  {t('no_patients_available')}
                                 </div>
                               )}
                             </div>
@@ -759,9 +763,12 @@ export const Dashboard: React.FC = () => {
                     <div className="min-h-full">
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <h3 className="text-lg font-medium text-gray-900">{t('book_appointment')}</h3>
                           <p className="text-sm text-gray-600">
-                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                            {t('for_patient', {
+                              firstName: selectedPatientForBooking.first_name,
+                              lastName: selectedPatientForBooking.last_name
+                            })}
                           </p>
                         </div>
                         <button

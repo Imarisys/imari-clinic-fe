@@ -47,7 +47,7 @@ export class PreconditionService {
           'Content-Type': 'application/json',
         },
       });
-
+      
       await handleHttpError(response);
       return await response.json();
     } catch (error) {
@@ -68,7 +68,7 @@ export class PreconditionService {
         },
         body: JSON.stringify(precondition),
       });
-
+      
       await handleHttpError(response);
       return await response.json();
     } catch (error) {
@@ -89,7 +89,7 @@ export class PreconditionService {
         },
         body: JSON.stringify(update),
       });
-
+      
       await handleHttpError(response);
       return await response.json();
     } catch (error) {
@@ -109,7 +109,7 @@ export class PreconditionService {
           'Content-Type': 'application/json',
         },
       });
-
+      
       await handleHttpError(response);
       // Delete endpoint returns empty response, so no need to parse JSON
     } catch (error) {

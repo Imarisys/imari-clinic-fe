@@ -12,7 +12,7 @@ import { AppointmentTypeService, AppointmentType, AppointmentTypeCreate } from '
 import { authService } from '../services/authService';
 
 export const SettingsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language: currentUILanguage, setLanguage: setUILanguage } = useTranslation();
   const { showNotification } = useNotification();
 
   const [settings, setSettings] = useState<SettingsType | null>(null);
@@ -60,6 +60,13 @@ export const SettingsPage: React.FC = () => {
     { value: 'spa', label: 'Wellness', color: 'text-teal-600' }
   ];
 
+  // Available languages - always show these regardless of backend response
+  const availableLanguages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'fr', name: 'French', nativeName: 'Français' },
+    { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
+  ];
+
   useEffect(() => {
     loadData();
   }, []);
@@ -100,11 +107,15 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleInputChange = (field: keyof SettingsType, value: any) => {
-    if (!settings) return;
-    setSettings(prev => prev ? {
-      ...prev,
-      [field]: value
-    } : null);
+    if (settings) {
+      const updatedSettings = { ...settings, [field]: value };
+      setSettings(updatedSettings);
+
+      // If language is changed, also update the UI language immediately
+      if (field === 'display_language') {
+        setUILanguage(value as 'en' | 'fr' | 'ar');
+      }
+    }
   };
 
   const handleWorkingDayToggle = (day: string) => {
@@ -272,7 +283,7 @@ export const SettingsPage: React.FC = () => {
             {t('clinic_information')}
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Input
                 label={t('clinic_name')}
@@ -308,6 +319,31 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => handleInputChange('clinic_email', e.target.value)}
                 placeholder="Enter clinic email"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Language Settings Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">language</span>
+            {t('language_settings')}
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('language' as any) || 'Language'}</label>
+              <select
+                value={settings.display_language || currentUILanguage}
+                onChange={(e) => handleInputChange('display_language', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -682,12 +718,14 @@ export const SettingsPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
               <select
-                value={settings.display_language}
+                value={settings.display_language || currentUILanguage}
                 onChange={(e) => handleInputChange('display_language', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                {fieldValues.languages.map((lang) => (
-                  <option key={lang} value={lang}>{lang}</option>
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </option>
                 ))}
               </select>
             </div>

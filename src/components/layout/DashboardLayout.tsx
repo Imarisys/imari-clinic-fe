@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
+import { AIChat } from '../common/AIChat';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,9 @@ export const DashboardLayout = ({ children, forceCollapsed, onSidebarToggle }: D
           </div>
         </main>
       </div>
+      
+      {/* AI Chat Widget */}
+      <AIChat />
     </div>
   );
 };
