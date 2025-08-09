@@ -113,7 +113,7 @@ export const SettingsPage: React.FC = () => {
 
       // If language is changed, also update the UI language immediately
       if (field === 'display_language') {
-        setUILanguage(value as 'en' | 'fr' | 'ar');
+        setUILanguage(value as 'en' | 'fr' );
       }
     }
   };

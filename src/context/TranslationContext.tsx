@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import enTranslations from '../i18n/locales/en.json';
 import frTranslations from '../i18n/locales/fr.json';
-import arTranslations from '../i18n/locales/ar.json';
 
 type Translations = typeof enTranslations;
-type Language = 'en' | 'fr' | 'ar';
+type Language = 'en' | 'fr';
 
 interface TranslationContextType {
   language: Language;
@@ -15,7 +14,6 @@ interface TranslationContextType {
 const translations: Record<Language, Translations> = {
   en: enTranslations,
   fr: frTranslations,
-  ar: arTranslations,
 };
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
@@ -30,7 +28,7 @@ export const TranslationProvider: React.FC<TranslationProviderProps> = ({ childr
   // Load language from localStorage on component mount
   useEffect(() => {
     const savedLanguage = localStorage.getItem('app_language') as Language;
-    if (savedLanguage && ['en', 'fr', 'ar'].includes(savedLanguage)) {
+    if (savedLanguage && ['en', 'fr'].includes(savedLanguage)) {
       setLanguageState(savedLanguage);
     }
   }, []);
@@ -40,26 +38,10 @@ export const TranslationProvider: React.FC<TranslationProviderProps> = ({ childr
     setLanguageState(lang);
     localStorage.setItem('app_language', lang);
 
-    // Apply RTL/LTR direction for Arabic
-    if (lang === 'ar') {
-      document.documentElement.setAttribute('dir', 'rtl');
-      document.documentElement.setAttribute('lang', 'ar');
-    } else {
-      document.documentElement.setAttribute('dir', 'ltr');
-      document.documentElement.setAttribute('lang', lang);
-    }
+    // Set document language attribute
+    document.documentElement.setAttribute('dir', 'ltr');
+    document.documentElement.setAttribute('lang', lang);
   };
-
-  // Apply direction on language change
-  useEffect(() => {
-    if (language === 'ar') {
-      document.documentElement.setAttribute('dir', 'rtl');
-      document.documentElement.setAttribute('lang', 'ar');
-    } else {
-      document.documentElement.setAttribute('dir', 'ltr');
-      document.documentElement.setAttribute('lang', language);
-    }
-  }, [language]);
 
   const t = (key: keyof Translations, params?: Record<string, string>): string => {
     let translation = translations[language][key] || translations.en[key] || key;

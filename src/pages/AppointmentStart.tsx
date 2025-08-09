@@ -49,12 +49,20 @@ export const AppointmentStart: React.FC = () => {
   const [treatmentPlan, setTreatmentPlan] = useState('');
   const [prescription, setPrescription] = useState('');
 
-  // Vital signs - only show 3 by default
-  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([
-    { id: '1', name: 'Heart Rate', value: '', unit: 'bpm', icon: 'monitor_heart', color: 'red' },
-    { id: '2', name: 'Blood Pressure', value: '', unit: 'mmHg', icon: 'favorite', color: 'pink' },
-    { id: '3', name: 'Temperature', value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
-  ]);
+  // Vital signs - initialize empty, will be populated with translated values
+  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+
+  // Initialize vital signs with translated values when translation context is available
+  useEffect(() => {
+    if (vitalSigns.length === 0) { // Only initialize if not already set
+      const defaultVitalSigns = [
+        { id: '1', name: t('heart_rate'), value: '', unit: t('bpm'), icon: 'monitor_heart', color: 'red' },
+        { id: '2', name: t('blood_pressure'), value: '', unit: t('mmhg'), icon: 'favorite', color: 'pink' },
+        { id: '3', name: t('temperature'), value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
+      ];
+      setVitalSigns(defaultVitalSigns);
+    }
+  }, [t, vitalSigns.length]);
 
   // Show vital signs history modal
   const [showVitalHistory, setShowVitalHistory] = useState(false);
