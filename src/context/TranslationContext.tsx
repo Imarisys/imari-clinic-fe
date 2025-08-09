@@ -46,10 +46,10 @@ export const TranslationProvider: React.FC<TranslationProviderProps> = ({ childr
   const t = (key: keyof Translations, params?: Record<string, string>): string => {
     let translation = translations[language][key] || translations.en[key] || key;
 
-    // Replace parameters in translation string
+    // Replace parameters in translation string - use double curly braces {{param}}
     if (params) {
       Object.entries(params).forEach(([param, value]) => {
-        translation = translation.replace(`{${param}}`, value);
+        translation = translation.replace(`{{${param}}}`, value);
       });
     }
 

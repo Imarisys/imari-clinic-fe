@@ -16,7 +16,7 @@ import { SettingsService } from '../services/settingsService';
 import { useTranslation } from '../context/TranslationContext';
 
 export const Dashboard: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -407,7 +407,7 @@ export const Dashboard: React.FC = () => {
             </h2>
             <p className="text-neutral-600">
               {t('today_is', {
-                date: new Date().toLocaleDateString('en-US', {
+                date: new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',

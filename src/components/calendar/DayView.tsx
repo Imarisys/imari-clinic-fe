@@ -1,5 +1,6 @@
 import React from 'react';
 import { Appointment, AppointmentStatus } from '../../types/Appointment';
+import { useTranslation } from '../../context/TranslationContext';
 
 interface DayViewProps {
   currentDate: Date;
@@ -44,13 +45,28 @@ export const DayView: React.FC<DayViewProps> = ({
   workingHours = { startTime: '08:00', endTime: '17:00' },
   workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
 }) => {
+  const { t } = useTranslation();
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
 
   // Check if current date is a working day
   const isWorkingDay = (): boolean => {
-    const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
-    return workingDays.includes(dayName);
+    // Get the English day name to compare with settings
+    const englishDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const englishDayName = englishDayNames[currentDate.getDay()];
+    return workingDays.includes(englishDayName);
+  };
+
+  // Helper function to get translated day name
+  const getDayName = (): string => {
+    const dayNames = [t('sunday'), t('monday'), t('tuesday'), t('wednesday'), t('thursday'), t('friday'), t('saturday')];
+    return dayNames[currentDate.getDay()];
+  };
+
+  // Helper function to get translated short day name
+  const getShortDayName = (): string => {
+    const shortDayNames = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
+    return shortDayNames[currentDate.getDay()];
   };
 
   const isWorking = isWorkingDay();
@@ -147,7 +163,7 @@ export const DayView: React.FC<DayViewProps> = ({
               ? 'text-neutral-500' 
               : 'text-red-400'
           }`}>
-            {currentDate.toLocaleDateString('en-US', { weekday: 'short' })}
+            {getShortDayName()}
           </p>
           <p className={`text-lg font-semibold ${
             currentDate.toDateString() === new Date().toDateString()

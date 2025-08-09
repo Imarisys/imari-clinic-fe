@@ -1,3 +1,6 @@
+import React from 'react';
+import { useTranslation } from '../../context/TranslationContext';
+
 interface AppointmentData {
   id: string;
   patientName: string;
@@ -16,6 +19,8 @@ interface MonthViewProps {
 }
 
 export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDayClick }: MonthViewProps) => {
+  const { t } = useTranslation();
+
   const getMonthDays = (date: Date): Date[] => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -80,7 +85,7 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
     }
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
   const monthDays = getMonthDays(currentDate);
 
   return (
@@ -140,7 +145,7 @@ export const MonthView = ({ currentDate, appointments, onAppointmentClick, onDay
                   );
                 })}
                 {dayAppointments.length > 3 && (
-                  <div 
+                  <div
                     className="text-xs text-gray-500 pl-1 slide-up-element"
                     style={{ animationDelay: `${(index * 0.01) + 0.015}s` }}
                   >
