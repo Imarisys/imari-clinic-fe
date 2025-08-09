@@ -18,7 +18,15 @@ export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [fieldValues, setFieldValues] = useState<SettingsFieldValues | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check if we should restore to layout tab after reload
+    const savedTab = localStorage.getItem('settings_active_tab');
+    if (savedTab) {
+      localStorage.removeItem('settings_active_tab'); // Clean up
+      return savedTab;
+    }
+    return 'general';
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Cloud backup states
@@ -134,7 +142,24 @@ export const SettingsPage: React.FC = () => {
     try {
       const updatedSettings = await SettingsService.updateSettings(settings);
       setSettings(updatedSettings);
-      showNotification('success', 'Success', 'Settings saved successfully');
+
+      // Check if layout position was changed and reload page if so
+      const currentLayoutPosition = updatedSettings.layout_position || 'sidebar';
+      const previousLayoutPosition = localStorage.getItem('previous_layout_position') || 'sidebar';
+
+      showNotification('success', 'Success', t('layout_updated_successfully'));
+
+      // Store the current layout position for next comparison
+      localStorage.setItem('previous_layout_position', currentLayoutPosition);
+
+      // Reload page if layout position changed
+      if (currentLayoutPosition !== previousLayoutPosition) {
+        // Store the current tab so we can restore it after reload
+        localStorage.setItem('settings_active_tab', 'layout');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000); // Small delay to show the success notification
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       showNotification('error', 'Error', 'Failed to save settings');
@@ -779,7 +804,7 @@ export const SettingsPage: React.FC = () => {
                 {/* Visual Preview */}
                 <div className="bg-gray-100 rounded-lg p-4 mb-4">
                   <div className="flex">
-                    <div className="w-16 h-12 bg-primary-500 rounded mr-2"></div>
+                    <div className="w-20 h-12 bg-primary-500 rounded mr-2"></div>
                     <div className="flex-1 h-12 bg-gray-300 rounded"></div>
                   </div>
                 </div>
