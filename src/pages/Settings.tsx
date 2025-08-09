@@ -735,6 +735,166 @@ export const SettingsPage: React.FC = () => {
     );
   };
 
+  const renderLayoutTab = () => {
+    if (!settings) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Layout Position Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">view_quilt</span>
+            {t('layout_position')}
+          </h3>
+
+          <p className="text-gray-600 mb-6">{t('layout_position_description')}</p>
+
+          <div className="space-y-6">
+            {/* Layout Position Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sidebar Layout Option */}
+              <div
+                onClick={() => handleInputChange('layout_position', 'sidebar')}
+                className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  (settings.layout_position || 'sidebar') === 'sidebar'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-800">{t('sidebar_layout')}</h4>
+                  <div className={`w-5 h-5 rounded-full border-2 ${
+                    (settings.layout_position || 'sidebar') === 'sidebar'
+                      ? 'border-primary-500 bg-primary-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {(settings.layout_position || 'sidebar') === 'sidebar' && (
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visual Preview */}
+                <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <div className="flex">
+                    <div className="w-16 h-12 bg-primary-500 rounded mr-2"></div>
+                    <div className="flex-1 h-12 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Navigation menu positioned on the left side of the screen
+                </p>
+              </div>
+
+              {/* Header Layout Option */}
+              <div
+                onClick={() => handleInputChange('layout_position', 'header')}
+                className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  settings.layout_position === 'header'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-800">{t('header_layout')}</h4>
+                  <div className={`w-5 h-5 rounded-full border-2 ${
+                    settings.layout_position === 'header'
+                      ? 'border-primary-500 bg-primary-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {settings.layout_position === 'header' && (
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visual Preview */}
+                <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <div className="space-y-2">
+                    <div className="w-full h-4 bg-primary-500 rounded"></div>
+                    <div className="w-full h-8 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Navigation menu positioned at the top of the screen
+                </p>
+              </div>
+            </div>
+
+            {/* Layout Preview */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <span className="material-icons-round text-primary-600 mr-2">preview</span>
+                Live Preview
+              </h4>
+
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                {(settings.layout_position || 'sidebar') === 'sidebar' ? (
+                  <div className="flex h-32">
+                    <div className="w-20 bg-primary-600 flex flex-col items-center justify-center space-y-2">
+                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                        <span className="material-icons-round text-primary-600 text-sm">local_hospital</span>
+                      </div>
+                      <div className="space-y-1">
+                        {['dashboard', 'calendar', 'people', 'bar_chart', 'settings'].map((icon, idx) => (
+                          <div key={idx} className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                            <span className="material-icons-round text-white text-xs">{icon}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-gray-50 p-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        <div className="h-8 bg-gray-200 rounded mt-4"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-0">
+                    <div className="h-16 bg-primary-600 flex items-center justify-between px-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                          <span className="material-icons-round text-primary-600 text-sm">local_hospital</span>
+                        </div>
+                        <span className="text-white font-medium">Clinic Name</span>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {['dashboard', 'calendar', 'people', 'bar_chart', 'settings'].map((icon, idx) => (
+                          <div key={idx} className="w-8 h-8 bg-white/20 rounded flex items-center justify-center">
+                            <span className="material-icons-round text-white text-sm">{icon}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="w-8 h-8 bg-white/20 rounded-full"></div>
+                    </div>
+                    <div className="h-16 bg-gray-50 p-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                This preview shows how your layout will appear. Changes take effect immediately.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderBackupRestoreTab = () => (
     <div className="space-y-6">
       {/* Cloud Backup Section */}
@@ -952,6 +1112,7 @@ export const SettingsPage: React.FC = () => {
     { id: 'appointments', label: 'Appointments', icon: 'event' },
     { id: 'notifications', label: 'Notifications', icon: 'notifications' },
     { id: 'display', label: 'Display', icon: 'display_settings' },
+    { id: 'layout', label: t('layout_position'), icon: 'view_quilt' },
     { id: 'backup_restore', label: 'Backup & Restore', icon: 'cloud' }
   ];
 
@@ -1023,6 +1184,7 @@ export const SettingsPage: React.FC = () => {
             {activeTab === 'appointments' && renderAppointmentsTab()}
             {activeTab === 'notifications' && renderNotificationsTab()}
             {activeTab === 'display' && renderDisplayTab()}
+            {activeTab === 'layout' && renderLayoutTab()}
             {activeTab === 'backup_restore' && renderBackupRestoreTab()}
           </div>
         </div>

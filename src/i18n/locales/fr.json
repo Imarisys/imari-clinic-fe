@@ -390,5 +390,10 @@
   "cancel_edit": "Annuler la modification",
   "save_status": "Enregistrer le statut",
   "deleting": "Suppression...",
-  "saving": "Enregistrement..."
+  "saving": "Enregistrement...",
+  "layout_position": "Position de la mise en page",
+  "sidebar_layout": "Barre latérale",
+  "header_layout": "En-tête",
+  "layout_position_description": "Choisissez où afficher la navigation principale",
+  "layout_updated_successfully": "Mise en page mise à jour avec succès"
 }

@@ -392,5 +392,10 @@
   "cancel_appointment": "Cancel Appointment",
   "save_status": "Save Status",
   "deleting": "Deleting...",
-  "saving": "Saving..."
+  "saving": "Saving...",
+  "layout_position": "Layout Position",
+  "sidebar_layout": "Sidebar",
+  "header_layout": "Header",
+  "layout_position_description": "Choose where to display the main navigation",
+  "layout_updated_successfully": "Layout updated successfully"
 }
