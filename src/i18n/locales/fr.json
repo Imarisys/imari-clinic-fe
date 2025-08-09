@@ -359,8 +359,9 @@
   "consultation": "Consultation",
   "follow_up": "Suivi",
   "emergency": "Urgence",
-  "routine_check": "Examen de routine",
+  "routine_check": "Contrôle de routine",
   "booked": "Réservé",
+  "completed": "Terminé",
   "no_show": "Absent",
   "date_required": "La date est obligatoire",
   "start_time_required": "L'heure de début est obligatoire",
@@ -380,6 +381,14 @@
   "full_name": "Nom complet",
   "in_progress": "En cours",
   "cancel_appointment": "Annuler le rendez-vous",
-  "completed": "Terminé",
-  "cancelled": "Annulé"
+  "patient_info": "Patient",
+  "date_time": "Date et heure",
+  "additional_notes_placeholder": "Notes ou instructions supplémentaires...",
+  "date_required_validation": "La date est obligatoire",
+  "start_time_required_validation": "L'heure de début est obligatoire",
+  "end_time_required_validation": "L'heure de fin est obligatoire",
+  "cancel_edit": "Annuler la modification",
+  "save_status": "Enregistrer le statut",
+  "deleting": "Suppression...",
+  "saving": "Enregistrement..."
 }

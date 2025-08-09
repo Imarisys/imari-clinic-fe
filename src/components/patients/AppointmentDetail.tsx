@@ -3,6 +3,7 @@ import { Appointment, AppointmentUpdate, AppointmentType, AppointmentStatus } fr
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Patient } from '../../types/Patient';
+import { useTranslation } from '../../context/TranslationContext';
 
 interface AppointmentDetailProps {
   appointment: Appointment;
@@ -25,6 +26,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
   onClose,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [isCancelLoading, setIsCancelLoading] = useState(false);
@@ -91,6 +93,36 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
   const appointmentTypes: AppointmentType[] = ['Consultation', 'Follow Up', 'Emergency', 'Routine Check'];
   const appointmentStatuses: AppointmentStatus[] = ['Booked', 'Completed', 'No Show'];
 
+  // Helper function to get translated appointment type
+  const getTranslatedType = (type: AppointmentType): string => {
+    switch (type) {
+      case 'Consultation':
+        return t('consultation');
+      case 'Follow Up':
+        return t('follow_up');
+      case 'Emergency':
+        return t('emergency');
+      case 'Routine Check':
+        return t('routine_check');
+      default:
+        return type;
+    }
+  };
+
+  // Helper function to get translated appointment status
+  const getTranslatedStatus = (status: AppointmentStatus): string => {
+    switch (status) {
+      case 'Booked':
+        return t('booked');
+      case 'Completed':
+        return t('completed');
+      case 'No Show':
+        return t('no_show');
+      default:
+        return status;
+    }
+  };
+
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -140,15 +172,15 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.date) {
-      newErrors.date = 'Date is required';
+      newErrors.date = t('date_required_validation');
     }
 
     if (!formData.start_time) {
-      newErrors.start_time = 'Start time is required';
+      newErrors.start_time = t('start_time_required_validation');
     }
 
     if (!formData.end_time) {
-      newErrors.end_time = 'End time is required';
+      newErrors.end_time = t('end_time_required_validation');
     }
 
     if (formData.start_time && formData.end_time) {
@@ -156,7 +188,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
       const endTime = new Date(`2000-01-01T${formData.end_time}`);
 
       if (endTime <= startTime) {
-        newErrors.end_time = 'End time must be after start time';
+        newErrors.end_time = t('end_time_after_start');
       }
     }
 
@@ -237,7 +269,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              {isEditing ? 'Edit Appointment' : 'Appointment Details'}
+              {isEditing ? t('edit_appointment') : t('appointment_details')}
             </h2>
             <button
               onClick={onClose}
@@ -252,7 +284,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-gray-900 mb-2">Patient</h3>
+            <h3 className="font-medium text-gray-900 mb-2">{t('patient')}</h3>
             <p className="text-sm text-gray-600">
               {patient.first_name} {patient.last_name}
             </p>
@@ -266,7 +298,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Type
+                    {t('type')}
                   </label>
                   <select
                     value={formData.type || ''}
@@ -276,14 +308,14 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   >
                     {appointmentTypes.map((type) => (
                       <option key={type} value={type}>
-                        {type}
+                        {getTranslatedType(type)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
+                    {t('status')}
                   </label>
                   <select
                     value={formData.status || ''}
@@ -293,7 +325,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   >
                     {appointmentStatuses.map((status) => (
                       <option key={status} value={status}>
-                        {status}
+                        {getTranslatedStatus(status)}
                       </option>
                     ))}
                   </select>
@@ -303,7 +335,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
               {/* Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date *
+                  {t('date')} *
                 </label>
                 <Input
                   type="date"
@@ -318,7 +350,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Time *
+                    {t('start_time')} *
                   </label>
                   <Input
                     type="time"
@@ -330,7 +362,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    End Time *
+                    {t('end_time')} *
                   </label>
                   <Input
                     type="time"
@@ -345,14 +377,14 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
               {/* Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
+                  {t('notes')}
                 </label>
                 <textarea
                   value={formData.notes || ''}
                   onChange={(e) => handleChange('notes', e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                  placeholder="Additional notes or instructions..."
+                  placeholder={t('additional_notes_placeholder')}
                   disabled={isEditLoading}
                 />
               </div>
@@ -366,7 +398,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                     onClick={() => setIsEditing(false)}
                     disabled={isEditLoading}
                   >
-                    Cancel Edit
+                    {t('cancel_edit')}
                   </Button>
                   <Button
                     type="button"
@@ -374,7 +406,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                     onClick={handleDelete}
                     disabled={isEditLoading || isCancelLoading}
                   >
-                    {isCancelLoading ? 'Deleting...' : 'Delete Appointment'}
+                    {isCancelLoading ? t('deleting') : t('delete_appointment')}
                   </Button>
                 </div>
                 <Button
@@ -383,7 +415,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   onClick={handleEdit}
                   disabled={isEditLoading}
                 >
-                  {isEditLoading ? 'Saving...' : 'Save Changes'}
+                  {isEditLoading ? t('saving') : t('save_changes')}
                 </Button>
               </div>
             </div>
@@ -395,16 +427,16 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                 <div className="flex items-center space-x-3 mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">{appointment.title}</h3>
                   <span className={`px-3 py-1 text-sm font-medium rounded-full ${getTypeColor(appointment.type)}`}>
-                    {appointment.type}
+                    {getTranslatedType(appointment.type)}
                   </span>
                   <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                    {appointment.status}
+                    {getTranslatedStatus(appointment.status)}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Date & Time</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t('date_time')}</h4>
                     <div className="space-y-1 text-sm text-gray-600">
                       <p>{formatDate(appointment.date)}</p>
                       <p>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</p>
@@ -412,7 +444,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Status</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t('status')}</h4>
                     <select
                       value={tempStatus}
                       onChange={(e) => {
@@ -425,7 +457,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                     >
                       {appointmentStatuses.map((status) => (
                         <option key={status} value={status}>
-                          {status}
+                          {getTranslatedStatus(status)}
                         </option>
                       ))}
                     </select>
@@ -434,7 +466,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
                 {appointment.notes && (
                   <div className="mt-6">
-                    <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t('notes')}</h4>
                     <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{appointment.notes}</p>
                   </div>
                 )}
@@ -447,7 +479,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   onClick={onClose}
                   disabled={isLoading || isCancelLoading}
                 >
-                  Close
+                  {t('close')}
                 </Button>
 
                 {canEdit && (
@@ -456,7 +488,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                     onClick={() => setIsEditing(true)}
                     disabled={isLoading}
                   >
-                    Edit Appointment
+                    {t('edit_appointment')}
                   </Button>
                 )}
 
@@ -465,7 +497,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   onClick={handleDelete}
                   disabled={isLoading || isCancelLoading}
                 >
-                  {isCancelLoading ? 'Deleting...' : 'Cancel Appointment'}
+                  {isCancelLoading ? t('deleting') : t('cancel_appointment')}
                 </Button>
 
                 <Button
@@ -473,7 +505,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   disabled={isCancelLoading || !hasStatusChanged}
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {isCancelLoading ? 'Saving...' : 'Save Status'}
+                  {isCancelLoading ? t('saving') : t('save_status')}
                 </Button>
               </div>
             </div>
