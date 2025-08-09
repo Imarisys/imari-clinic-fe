@@ -469,7 +469,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Time
+                {t('start_time_required')}
               </label>
               <Input
                 type="time"
@@ -481,7 +481,7 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Time
+                {t('end_time_required')}
               </label>
               <Input
                 type="time"
