@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
-  baseUrl: 'http://localhost:8000',
-  baseURL: 'http://localhost:8000', // Legacy compatibility
+  baseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
   endpoints: {
     auth: {
       login: '/api/v1/auth/login',
