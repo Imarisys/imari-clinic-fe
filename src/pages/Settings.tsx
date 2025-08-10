@@ -52,20 +52,20 @@ export const SettingsPage: React.FC = () => {
 
   // Available icons for appointment types
   const availableIcons = [
-    { value: 'event', label: 'General Appointment', color: 'text-blue-600' },
-    { value: 'medical_services', label: 'Medical Checkup', color: 'text-green-600' },
-    { value: 'healing', label: 'Treatment', color: 'text-purple-600' },
-    { value: 'vaccines', label: 'Vaccination', color: 'text-orange-600' },
-    { value: 'psychology', label: 'Consultation', color: 'text-indigo-600' },
-    { value: 'monitor_heart', label: 'Cardiology', color: 'text-red-600' },
-    { value: 'visibility', label: 'Eye Exam', color: 'text-cyan-600' },
-    { value: 'hearing', label: 'Hearing Test', color: 'text-yellow-600' },
-    { value: 'pregnant_woman', label: 'Prenatal Care', color: 'text-pink-600' },
-    { value: 'child_care', label: 'Pediatric', color: 'text-emerald-600' },
-    { value: 'elderly', label: 'Geriatric Care', color: 'text-gray-600' },
-    { value: 'psychology_alt', label: 'Mental Health', color: 'text-violet-600' },
-    { value: 'sports_soccer', label: 'Sports Medicine', color: 'text-lime-600' },
-    { value: 'spa', label: 'Wellness', color: 'text-teal-600' }
+    { value: 'event', label: t('general_appointment'), color: 'text-blue-600' },
+    { value: 'medical_services', label: t('medical_checkup'), color: 'text-green-600' },
+    { value: 'healing', label: t('treatment'), color: 'text-purple-600' },
+    { value: 'vaccines', label: t('vaccination'), color: 'text-orange-600' },
+    { value: 'psychology', label: t('consultation'), color: 'text-indigo-600' },
+    { value: 'monitor_heart', label: t('cardiology'), color: 'text-red-600' },
+    { value: 'visibility', label: t('eye_exam'), color: 'text-cyan-600' },
+    { value: 'hearing', label: t('hearing_test'), color: 'text-yellow-600' },
+    { value: 'pregnant_woman', label: t('prenatal_care'), color: 'text-pink-600' },
+    { value: 'child_care', label: t('pediatric'), color: 'text-emerald-600' },
+    { value: 'elderly', label: t('geriatric_care'), color: 'text-gray-600' },
+    { value: 'psychology_alt', label: t('mental_health'), color: 'text-violet-600' },
+    { value: 'sports_soccer', label: t('sports_medicine'), color: 'text-lime-600' },
+    { value: 'spa', label: t('wellness'), color: 'text-teal-600' }
   ];
 
   // Available languages - always show these regardless of backend response
@@ -433,7 +433,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-800 flex items-center">
               <span className="material-icons-round text-primary-600 mr-2">category</span>
-              Appointment Types
+              {t('appointment_types')}
             </h3>
             <Button
               onClick={() => {
@@ -445,7 +445,7 @@ export const SettingsPage: React.FC = () => {
               className="flex items-center"
             >
               <span className="material-icons-round mr-2">add</span>
-              Add Type
+              {t('add_type')}
             </Button>
           </div>
 
@@ -453,7 +453,7 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <span className="material-icons-round animate-spin text-2xl text-primary-600 mb-2">autorenew</span>
-                <p className="text-gray-600">Loading appointment types...</p>
+                <p className="text-gray-600">{t('loading_appointment_types')}</p>
               </div>
             </div>
           ) : appointmentTypes.length === 0 ? (
@@ -461,8 +461,8 @@ export const SettingsPage: React.FC = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="material-icons-round text-gray-400 text-2xl">category</span>
               </div>
-              <h4 className="text-lg font-medium text-gray-800 mb-2">No Appointment Types</h4>
-              <p className="text-gray-600 mb-4">Create your first appointment type to get started.</p>
+              <h4 className="text-lg font-medium text-gray-800 mb-2">{t('no_appointment_types')}</h4>
+              <p className="text-gray-600 mb-4">{t('create_first_appointment_type')}</p>
               <Button
                 onClick={() => {
                   setEditingAppointmentType(null);
@@ -472,7 +472,7 @@ export const SettingsPage: React.FC = () => {
                 variant="primary"
               >
                 <span className="material-icons-round mr-2">add</span>
-                Add Appointment Type
+                {t('add_appointment_type')}
               </Button>
             </div>
           ) : (
@@ -897,8 +897,8 @@ export const SettingsPage: React.FC = () => {
                             <span className="material-icons-round text-white text-sm">{icon}</span>
                           </div>
                         ))}
+                        <div className="w-8 h-8 bg-white/20 rounded-full"></div>
                       </div>
-                      <div className="w-8 h-8 bg-white/20 rounded-full"></div>
                     </div>
                     <div className="h-16 bg-gray-50 p-4">
                       <div className="space-y-2">
@@ -1133,12 +1133,12 @@ export const SettingsPage: React.FC = () => {
   );
 
   const tabs = [
-    { id: 'general', label: 'General', icon: 'settings' },
-    { id: 'appointments', label: 'Appointments', icon: 'event' },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications' },
-    { id: 'display', label: 'Display', icon: 'display_settings' },
+    { id: 'general', label: t('general'), icon: 'settings' },
+    { id: 'appointments', label: t('appointments'), icon: 'event' },
+    { id: 'notifications', label: t('notifications'), icon: 'notifications' },
+    { id: 'display', label: t('display'), icon: 'display_settings' },
     { id: 'layout', label: t('layout_position'), icon: 'view_quilt' },
-    { id: 'backup_restore', label: 'Backup & Restore', icon: 'cloud' }
+    { id: 'backup_restore', label: t('backup_restore'), icon: 'cloud' }
   ];
 
   if (isLoading) {

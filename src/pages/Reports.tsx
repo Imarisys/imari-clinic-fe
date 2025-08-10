@@ -21,6 +21,7 @@ import { RevenueChart } from '../components/reports/RevenueChart';
 import { AppointmentSummary } from '../components/reports/AppointmentSummary';
 import { PatientInsights } from '../components/reports/PatientInsights';
 import { PerformanceMetrics } from '../components/reports/PerformanceMetrics';
+import { useTranslation } from '../context/TranslationContext';
 
 type ReportType = 'appointments' | 'patients' | 'revenue' | 'performance';
 type DateRange = '7days' | '30days' | '90days' | '1year' | 'custom';
@@ -35,6 +36,7 @@ interface ReportData {
 }
 
 export const Reports: React.FC = () => {
+  const { t } = useTranslation();
   const [selectedReportType, setSelectedReportType] = useState<ReportType>('appointments');
   const [dateRange, setDateRange] = useState<DateRange>('30days');
   const [customDateStart, setCustomDateStart] = useState('');
@@ -192,8 +194,8 @@ export const Reports: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-                <p className="text-gray-600 mt-1">Comprehensive insights into your practice performance</p>
+                <h1 className="text-3xl font-bold text-gray-900">{t('reports_analytics')}</h1>
+                <p className="text-gray-600 mt-1">{t('comprehensive_insights_practice_performance')}</p>
               </div>
               <div className="flex space-x-3">
                 <Button
@@ -202,7 +204,7 @@ export const Reports: React.FC = () => {
                   className="flex items-center space-x-2"
                 >
                   <PrinterIcon className="h-4 w-4" />
-                  <span>Print</span>
+                  <span>{t('print')}</span>
                 </Button>
                 <Button
                   variant="primary"
@@ -210,7 +212,7 @@ export const Reports: React.FC = () => {
                   className="flex items-center space-x-2"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
-                  <span>Export</span>
+                  <span>{t('export')}</span>
                 </Button>
               </div>
             </div>
@@ -299,36 +301,35 @@ export const Reports: React.FC = () => {
               </div>
             </div>
             
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Coming Soon!</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('coming_soon')}</h2>
             <p className="text-gray-600 text-lg mb-6">
-              We're working hard to bring you comprehensive reports and analytics. 
-              This feature will be available soon with detailed insights about your practice performance.
+              {t('working_hard_comprehensive_reports')}
             </p>
             
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-              <h3 className="font-semibold text-gray-900 mb-3">What's Coming:</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{t('whats_coming')}</h3>
               <ul className="text-sm text-gray-700 space-y-2 text-left">
                 <li className="flex items-center">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                  Appointment Analytics & Trends
+                  {t('appointment_analytics_trends')}
                 </li>
                 <li className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                  Patient Demographics & Insights
+                  {t('patient_demographics_insights')}
                 </li>
                 <li className="flex items-center">
                   <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                  Revenue Analysis & Forecasting
+                  {t('revenue_analysis_forecasting')}
                 </li>
                 <li className="flex items-center">
                   <div className="w-2 h-2 bg-orange-500 rounded-full mr-3"></div>
-                  Practice Performance Metrics
+                  {t('practice_performance_metrics')}
                 </li>
               </ul>
             </div>
             
             <p className="text-sm text-gray-500 mt-6">
-              Stay tuned for updates!
+              {t('stay_tuned_updates')}
             </p>
           </div>
         </div>
@@ -338,31 +339,31 @@ export const Reports: React.FC = () => {
       <Modal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
-        title="Export Report"
+        title={t('export_report')}
       >
         <div className="space-y-4">
-          <p className="text-gray-600">Choose the format for your report export:</p>
+          <p className="text-gray-600">{t('choose_format_export')}</p>
           <div className="flex space-x-3">
             <Button
               variant="primary"
               onClick={() => handleExportReport('pdf')}
               className="flex-1"
             >
-              Export as PDF
+              {t('export_as_pdf')}
             </Button>
             <Button
               variant="secondary"
               onClick={() => handleExportReport('excel')}
               className="flex-1"
             >
-              Export as Excel
+              {t('export_as_excel')}
             </Button>
             <Button
               variant="secondary"
               onClick={() => handleExportReport('csv')}
               className="flex-1"
             >
-              Export as CSV
+              {t('export_as_csv')}
             </Button>
           </div>
         </div>
