@@ -571,8 +571,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('email_notifications')}</h4>
+                  <p className="text-sm text-gray-500">{t('receive_notifications_email')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -601,8 +601,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">SMS Notifications</h4>
-                  <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('sms_notifications')}</h4>
+                  <p className="text-sm text-gray-500">{t('receive_notifications_sms')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -631,8 +631,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">Appointment Reminders</h4>
-                  <p className="text-sm text-gray-500">Send automatic appointment reminders</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('appointment_reminders')}</h4>
+                  <p className="text-sm text-gray-500">{t('send_automatic_reminders')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -658,7 +658,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex-1">
                     <Input
-                      label="Reminder Time (minutes before)"
+                      label={t('reminder_time_minutes')}
                       type="number"
                       value={settings.notifications_reminder_time.toString()}
                       onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
@@ -934,7 +934,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div>
               <h4 className="font-medium text-gray-800">Enable Cloud Backup</h4>
-              <p className="text-sm text-gray-600">Automatically backup your clinic data to secure cloud storage</p>
+              <p className="text-sm text-gray-600 mb-4">{t('automatically_backup_desc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
