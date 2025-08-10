@@ -1,10 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import enTranslations from '../i18n/locales/en.json';
 import frTranslations from '../i18n/locales/fr.json';
-import arTranslations from '../i18n/locales/ar.json';
 
 type Translations = typeof enTranslations;
-type Language = 'en' | 'fr' | 'ar';
+type Language = 'en' | 'fr';
 
 interface TranslationContextType {
   language: Language;
@@ -15,7 +14,6 @@ interface TranslationContextType {
 const translations: Record<Language, Translations> = {
   en: enTranslations,
   fr: frTranslations,
-  ar: arTranslations,
 };
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
@@ -25,15 +23,33 @@ interface TranslationProviderProps {
 }
 
 export const TranslationProvider: React.FC<TranslationProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('en');
+
+  // Load language from localStorage on component mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('app_language') as Language;
+    if (savedLanguage && ['en', 'fr'].includes(savedLanguage)) {
+      setLanguageState(savedLanguage);
+    }
+  }, []);
+
+  // Wrapper for setLanguage that also persists to localStorage
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem('app_language', lang);
+
+    // Set document language attribute
+    document.documentElement.setAttribute('dir', 'ltr');
+    document.documentElement.setAttribute('lang', lang);
+  };
 
   const t = (key: keyof Translations, params?: Record<string, string>): string => {
     let translation = translations[language][key] || translations.en[key] || key;
 
-    // Replace parameters in translation string
+    // Replace parameters in translation string - use double curly braces {{param}}
     if (params) {
       Object.entries(params).forEach(([param, value]) => {
-        translation = translation.replace(`{${param}}`, value);
+        translation = translation.replace(`{{${param}}}`, value);
       });
     }
 

@@ -35,6 +35,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     city: '',
     state: '',
     zip_code: '',
+    preconditions: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -52,6 +53,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         city: patient.city || '',
         state: patient.state || '',
         zip_code: patient.zip_code || '',
+        preconditions: patient.preconditions || [],
       });
     }
   }, [patient, isEditing]);
@@ -60,25 +62,25 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.first_name.trim()) {
-      newErrors.first_name = 'First name is required';
+      newErrors.first_name = t('first_name_required');
     }
 
     if (!formData.last_name.trim()) {
-      newErrors.last_name = 'Last name is required';
+      newErrors.last_name = t('last_name_required');
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = t('phone_required');
     } else {
       // Remove any non-digit characters for validation
       const phoneDigits = formData.phone.replace(/\D/g, '');
       if (phoneDigits.length !== 8) {
-        newErrors.phone = 'Phone number must be exactly 8 digits';
+        newErrors.phone = t('phone_invalid_format');
       }
     }
 
     if (formData.email && !formData.email.includes('@')) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = t('email_invalid');
     }
 
     setErrors(newErrors);
@@ -109,10 +111,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({
       // Show success notification only if onSubmit doesn't throw an error
       showNotification(
         'success',
-        isEditing ? 'Patient Updated!' : 'Patient Created!',
+        isEditing ? t('patient_updated_successfully') : t('patient_created_successfully'),
         isEditing
-          ? `${formData.first_name} ${formData.last_name}'s information has been successfully updated.`
-          : `${formData.first_name} ${formData.last_name} has been successfully added to your patient records.`
+          ? `${formData.first_name} ${formData.last_name} ${t('patient_info_updated')}`
+          : `${formData.first_name} ${formData.last_name} ${t('patient_added_to_system')}`
       );
 
     } catch (error) {
@@ -121,10 +123,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({
       // Show error notification
       showNotification(
         'error',
-        isEditing ? 'Update Failed' : 'Creation Failed',
+        isEditing ? t('failed_to_update_patient') : t('failed_to_create_patient'),
         error instanceof Error
           ? error.message
-          : `Failed to ${isEditing ? 'update' : 'create'} patient. Please try again.`
+          : isEditing ? t('unable_to_update_patient') : t('unable_to_create_patient')
       );
     }
   };
@@ -138,60 +140,60 @@ export const PatientForm: React.FC<PatientFormProps> = ({
   };
 
   return (
-    <div className={`card ${fullWidth ? 'max-w-full' : 'max-w-4xl'} mx-auto`}>
-      <div className="mb-6">
+    <div className={`${fullWidth ? 'w-full' : 'card max-w-4xl mx-auto'}`}>
+      <div className={`${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''} mb-6`}>
         <h2 className="text-2xl font-bold text-primary-600 mb-2">
-          {isEditing ? 'Edit Patient' : 'Add New Patient'}
+          {isEditing ? t('edit_patient') : t('add_new_patient')}
         </h2>
         <p className="text-neutral-600">
-          {isEditing ? 'Update patient information' : 'Enter patient details to create a new record'}
+          {isEditing ? t('update_patient_information') : t('enter_patient_details')}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className={`space-y-6 ${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''}`}>
         {/* Personal Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <Input
-            label="First Name"
+            label={t('first_name')}
             value={formData.first_name}
             onChange={(e) => handleInputChange('first_name', e.target.value)}
             error={errors.first_name}
             required
-            placeholder="Enter first name"
+            placeholder={t('enter_first_name')}
           />
 
           <Input
-            label="Last Name"
+            label={t('last_name')}
             value={formData.last_name}
             onChange={(e) => handleInputChange('last_name', e.target.value)}
             error={errors.last_name}
             required
-            placeholder="Enter last name"
+            placeholder={t('enter_last_name')}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <Input
-            label="Phone Number"
+            label={t('phone_number')}
             type="tel"
             value={formData.phone}
             onChange={(e) => handleInputChange('phone', e.target.value)}
             error={errors.phone}
             required
-            placeholder="XX XXX XXX"
+            placeholder={t('phone_placeholder')}
           />
 
           <Input
-            label="Email (Optional)"
+            label={t('email_optional')}
             type="email"
             value={formData.email}
             onChange={(e) => handleInputChange('email', e.target.value)}
             error={errors.email}
-            placeholder="email@example.com"
+            placeholder={t('email_placeholder')}
           />
 
           <Input
-            label="Date of Birth (Optional)"
+            label={t('date_of_birth_optional')}
             type="date"
             value={formData.date_of_birth}
             onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
@@ -201,7 +203,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         {/* Gender Selection */}
         <div>
           <label className="block text-sm font-semibold text-neutral-700 mb-2">
-            Gender (Optional)
+            {t('gender_optional')}
           </label>
           <div className="flex space-x-4">
             {(['male', 'female'] as const).map((gender) => (
@@ -214,7 +216,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                   onChange={(e) => handleInputChange('gender', e.target.value as any)}
                   className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 focus:ring-primary-500 focus:ring-2"
                 />
-                <span className="text-neutral-700 capitalize">{gender}</span>
+                <span className="text-neutral-700 capitalize">{t(gender)}</span>
               </label>
             ))}
           </div>
@@ -222,36 +224,36 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
         {/* Address Information */}
         <div className="border-t border-neutral-200 pt-6">
-          <h3 className="text-lg font-semibold text-neutral-800 mb-4">Address (Optional)</h3>
+          <h3 className="text-lg font-semibold text-neutral-800 mb-4">{t('address_optional')}</h3>
 
           <div className="space-y-4">
             <Input
-              label="Street Address"
+              label={t('street_address')}
               value={formData.street}
               onChange={(e) => handleInputChange('street', e.target.value)}
-              placeholder="123 Main Street"
+              placeholder={t('street_placeholder')}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <Input
-                label="City"
+                label={t('city')}
                 value={formData.city}
                 onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="New York"
+                placeholder={t('city_placeholder')}
               />
 
               <Input
-                label="State"
+                label={t('state')}
                 value={formData.state}
                 onChange={(e) => handleInputChange('state', e.target.value)}
-                placeholder="NY"
+                placeholder={t('state_placeholder')}
               />
 
               <Input
-                label="ZIP Code"
+                label={t('zip_code')}
                 value={formData.zip_code}
                 onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                placeholder="10001"
+                placeholder={t('zip_placeholder')}
               />
             </div>
           </div>
@@ -265,7 +267,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Cancel
+            {t('cancel')}
           </Button>
 
           <Button
@@ -274,7 +276,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({
             loading={isLoading}
             icon={isEditing ? "save" : "person_add"}
           >
-            {isEditing ? 'Update Patient' : 'Create Patient'}
+            {isEditing ? t('update_patient') : t('create_patient')}
           </Button>
         </div>
       </form>

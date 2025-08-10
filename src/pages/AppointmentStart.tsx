@@ -11,24 +11,26 @@ import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
 import { DentalChart } from '../components/dental/DentalChart';
+import { useTranslation } from '../context/TranslationContext';
 
-// Predefined vital signs with their units and styling
-const VITAL_SIGN_OPTIONS = [
-  { name: 'Heart Rate', unit: 'bpm', icon: 'monitor_heart', color: 'red' },
-  { name: 'Blood Pressure', unit: 'mmHg', icon: 'favorite', color: 'pink' },
-  { name: 'Temperature', unit: '°C', icon: 'device_thermostat', color: 'orange' },
-  { name: 'Weight', unit: 'kg', icon: 'monitor_weight', color: 'blue' },
-  { name: 'Height', unit: 'cm', icon: 'height', color: 'green' },
-  { name: 'Oxygen Saturation', unit: '%', icon: 'air', color: 'purple' },
-  { name: 'Respiratory Rate', unit: 'breaths/min', icon: 'air', color: 'indigo' },
-  { name: 'Blood Sugar', unit: 'mg/dL', icon: 'bloodtype', color: 'rose' },
-  { name: 'Pulse', unit: 'bpm', icon: 'favorite', color: 'red' },
+// Predefined vital signs with their units and styling - now using translation keys
+const getVitalSignOptions = (t: any) => [
+  { name: t('heart_rate'), unit: t('bpm'), icon: 'monitor_heart', color: 'red' },
+  { name: t('blood_pressure'), unit: t('mmhg'), icon: 'favorite', color: 'pink' },
+  { name: t('temperature'), unit: '°C', icon: 'device_thermostat', color: 'orange' },
+  { name: t('weight'), unit: t('kg'), icon: 'monitor_weight', color: 'blue' },
+  { name: t('height'), unit: t('cm'), icon: 'height', color: 'green' },
+  { name: t('oxygen_saturation'), unit: t('percent'), icon: 'air', color: 'purple' },
+  { name: t('respiratory_rate'), unit: t('breaths_per_min'), icon: 'air', color: 'indigo' },
+  { name: t('blood_sugar'), unit: t('mg_per_dl'), icon: 'bloodtype', color: 'rose' },
+  { name: t('pulse'), unit: t('bpm'), icon: 'favorite', color: 'red' },
 ];
 
 export const AppointmentStart: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const { t } = useTranslation();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [medicalData, setMedicalData] = useState<AppointmentMedicalData | null>(null);
@@ -47,12 +49,20 @@ export const AppointmentStart: React.FC = () => {
   const [treatmentPlan, setTreatmentPlan] = useState('');
   const [prescription, setPrescription] = useState('');
 
-  // Vital signs - only show 3 by default
-  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([
-    { id: '1', name: 'Heart Rate', value: '', unit: 'bpm', icon: 'monitor_heart', color: 'red' },
-    { id: '2', name: 'Blood Pressure', value: '', unit: 'mmHg', icon: 'favorite', color: 'pink' },
-    { id: '3', name: 'Temperature', value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
-  ]);
+  // Vital signs - initialize empty, will be populated with translated values
+  const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+
+  // Initialize vital signs with translated values when translation context is available
+  useEffect(() => {
+    if (vitalSigns.length === 0) { // Only initialize if not already set
+      const defaultVitalSigns = [
+        { id: '1', name: t('heart_rate'), value: '', unit: t('bpm'), icon: 'monitor_heart', color: 'red' },
+        { id: '2', name: t('blood_pressure'), value: '', unit: t('mmhg'), icon: 'favorite', color: 'pink' },
+        { id: '3', name: t('temperature'), value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
+      ];
+      setVitalSigns(defaultVitalSigns);
+    }
+  }, [t, vitalSigns.length]);
 
   // Show vital signs history modal
   const [showVitalHistory, setShowVitalHistory] = useState(false);
@@ -114,7 +124,7 @@ export const AppointmentStart: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to fetch appointment:', error);
-        showNotification('error', 'Error', 'Failed to load appointment details');
+        showNotification('error', t('error'), t('failed_to_load_appointment_details'));
         navigate('/dashboard');
       } finally {
         setLoading(false);
@@ -139,8 +149,9 @@ export const AppointmentStart: React.FC = () => {
 
       // Populate vital signs from the API data
       if (data.vital_signs) {
+        const vitalSignOptions = getVitalSignOptions(t);
         const vitalsFromApi = Object.entries(data.vital_signs).map(([key, value], index) => {
-          const vitalOption = VITAL_SIGN_OPTIONS.find(option =>
+          const vitalOption = vitalSignOptions.find((option: any) =>
             option.name.toLowerCase().replace(/\s+/g, '_') === key.toLowerCase()
           );
 
@@ -190,7 +201,7 @@ export const AppointmentStart: React.FC = () => {
       // Remove the success notification for auto-saves - they should be silent
     } catch (error) {
       console.error('Failed to save medical data:', error);
-      showNotification('error', 'Error', 'Failed to save medical data');
+      showNotification('error', t('error'), t('failed_to_save_medical_data'));
     } finally {
       setSavingMedicalData(false);
     }
@@ -241,7 +252,7 @@ export const AppointmentStart: React.FC = () => {
       fetchThumbnails(response.files, appointment.patient_id);
     } catch (error) {
       console.error('Failed to fetch patient files:', error);
-      showNotification('error', 'Error', 'Failed to load patient files');
+      showNotification('error', t('error'), t('failed_to_load_patient_files'));
     } finally {
       setLoadingFiles(false);
     }
@@ -290,11 +301,11 @@ export const AppointmentStart: React.FC = () => {
         setAppointment(updatedAppointment);
         setIsStarted(true);
         setStartTime(new Date(updatedAppointment.actual_start_time || new Date()));
-        showNotification('success', 'Appointment Started', 'The consultation has been started');
+        showNotification('success', t('appointment_started'), t('consultation_has_been_started'));
       }
     } catch (error) {
       console.error('Failed to start appointment:', error);
-      showNotification('error', 'Error', 'Failed to start appointment');
+      showNotification('error', t('error'), t('failed_to_start_appointment'));
       // Fallback to local state if API call fails
       setIsStarted(true);
       setStartTime(new Date());
@@ -308,12 +319,12 @@ export const AppointmentStart: React.FC = () => {
         const updatedAppointment = await AppointmentService.endAppointment(appointment.id);
         setAppointment(updatedAppointment);
         setIsCompleted(true);
-        showNotification('success', 'Appointment Completed', 'The consultation has been marked as completed');
+        showNotification('success', t('appointment_completed'), t('consultation_has_been_completed'));
         // Don't navigate away - stay on the page
       }
     } catch (error) {
       console.error('Failed to end appointment:', error);
-      showNotification('error', 'Error', 'Failed to complete appointment');
+      showNotification('error', t('error'), t('failed_to_complete_appointment'));
     }
   };
 
@@ -363,7 +374,8 @@ export const AppointmentStart: React.FC = () => {
   const updateVitalSign = (id: string, field: keyof VitalSign, value: string) => {
     if (field === 'name') {
       // Auto-map unit, icon, and color when name is selected
-      const selectedOption = VITAL_SIGN_OPTIONS.find(option => option.name === value);
+      const vitalSignOptions = getVitalSignOptions(t);
+      const selectedOption = vitalSignOptions.find((option: any) => option.name === value);
       if (selectedOption) {
         setVitalSigns(prev => prev.map(vital =>
           vital.id === id ? {
@@ -396,11 +408,11 @@ export const AppointmentStart: React.FC = () => {
       setUploadingFile(true);
       const fileData: FileUploadData = { file };
       await PatientFileService.uploadPatientFile(appointment.patient_id, fileData);
-      showNotification('success', 'Success', 'File uploaded successfully');
+      showNotification('success', t('success'), t('file_uploaded_successfully'));
       fetchPatientFiles(); // Refresh the files list
     } catch (error) {
       console.error('Failed to upload file:', error);
-      showNotification('error', 'Error', 'Failed to upload file');
+      showNotification('error', t('error'), t('failed_to_upload_file'));
     } finally {
       setUploadingFile(false);
       // Reset the input
@@ -423,7 +435,7 @@ export const AppointmentStart: React.FC = () => {
         });
       } catch (error) {
         console.error('Failed to load image preview:', error);
-        showNotification('error', 'Error', 'Failed to load image preview');
+        showNotification('error', t('error'), t('failed_to_load_image_preview'));
       }
     } else {
       // For non-images, open preview URL in new window
@@ -440,7 +452,7 @@ export const AppointmentStart: React.FC = () => {
       await PatientFileService.downloadFile(appointment.patient_id, file.id, file.filename);
     } catch (error) {
       console.error('Failed to download file:', error);
-      showNotification('error', 'Error', 'Failed to download file');
+      showNotification('error', t('error'), t('failed_to_download_file'));
     }
   };
 
@@ -448,23 +460,23 @@ export const AppointmentStart: React.FC = () => {
   const handleFileDelete = async (file: PatientFileRead) => {
     if (!appointment?.patient_id) return;
 
-    if (!window.confirm(`Are you sure you want to delete ${file.filename}?`)) {
+    if (!window.confirm(t('confirm_delete_file', { filename: file.filename }))) {
       return;
     }
 
     try {
       await PatientFileService.deletePatientFile(appointment.patient_id, file.id);
-      showNotification('success', 'Success', 'File deleted successfully');
+      showNotification('success', t('success'), t('file_deleted_successfully'));
       fetchPatientFiles(); // Refresh the files list
     } catch (error) {
       console.error('Failed to delete file:', error);
-      showNotification('error', 'Error', 'Failed to delete file');
+      showNotification('error', t('error'), t('failed_to_delete_file'));
     }
   };
 
   const handleGeneratePrescription = () => {
     // TODO: Implement prescription generation
-    showNotification('info', 'Generate Prescription', 'Prescription generation functionality coming soon');
+    showNotification('info', t('generate_prescription'), t('prescription_generation_coming_soon'));
   };
 
   const getElapsedTime = () => {
@@ -485,11 +497,11 @@ export const AppointmentStart: React.FC = () => {
     try {
       setIsCreatingFollowUp(true);
       await AppointmentService.createAppointment(appointmentData);
-      showNotification('success', 'Follow-up Appointment Created', 'The follow-up appointment has been scheduled successfully');
+      showNotification('success', t('followup_appointment_created'), t('followup_appointment_scheduled_successfully'));
       setShowFollowUpModal(false);
     } catch (error) {
       console.error('Failed to create follow-up appointment:', error);
-      showNotification('error', 'Error', 'Failed to create follow-up appointment');
+      showNotification('error', t('error'), t('failed_to_create_followup_appointment'));
     } finally {
       setIsCreatingFollowUp(false);
     }
@@ -540,7 +552,7 @@ export const AppointmentStart: React.FC = () => {
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
             <div className="animate-spin w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-neutral-600">Loading appointment details...</p>
+            <p className="text-neutral-600">{t('loading_appointment_details')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -552,10 +564,10 @@ export const AppointmentStart: React.FC = () => {
       <DashboardLayout forceCollapsed={isStarted}>
         <div className="text-center py-12">
           <span className="material-icons-round text-6xl text-neutral-300 mb-4">error_outline</span>
-          <h2 className="text-2xl font-bold text-neutral-800 mb-2">Appointment Not Found</h2>
-          <p className="text-neutral-600 mb-6">The requested appointment could not be found.</p>
+          <h2 className="text-2xl font-bold text-neutral-800 mb-2">{t('appointment_not_found')}</h2>
+          <p className="text-neutral-600 mb-6">{t('appointment_not_found_message')}</p>
           <button onClick={() => navigate('/dashboard')} className="btn-primary">
-            Back to Dashboard
+            {t('back_to_dashboard')}
           </button>
         </div>
       </DashboardLayout>
@@ -588,7 +600,7 @@ export const AppointmentStart: React.FC = () => {
                 <>
                   {/* Session Timer */}
                   <div className="bg-white/15 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <p className="text-primary-100 text-xs">Duration</p>
+                    <p className="text-primary-100 text-xs">{t('duration')}</p>
                     <p className="text-lg font-mono font-bold">{getElapsedTime()}</p>
                   </div>
 
@@ -599,12 +611,12 @@ export const AppointmentStart: React.FC = () => {
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-1"
                     >
                       <span className="material-icons-round text-sm">check_circle</span>
-                      <span className="text-sm">Complete</span>
+                      <span className="text-sm">{t('complete')}</span>
                     </button>
                   ) : (
                     <div className="bg-gray-400 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1">
                       <span className="material-icons-round text-sm">check_circle</span>
-                      <span className="text-sm">Completed</span>
+                      <span className="text-sm">{t('completed')}</span>
                     </div>
                   )}
                 </>
@@ -612,14 +624,14 @@ export const AppointmentStart: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   {/* Completed Timer Display */}
                   <div className="bg-white/15 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <p className="text-primary-100 text-xs">Final Duration</p>
+                    <p className="text-primary-100 text-xs">{t('final_duration')}</p>
                     <p className="text-lg font-mono font-bold">{getElapsedTime()}</p>
                   </div>
 
                   {/* Completed Status */}
                   <div className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1">
                     <span className="material-icons-round text-sm">check_circle</span>
-                    <span className="text-sm">Completed</span>
+                    <span className="text-sm">{t('completed')}</span>
                   </div>
                 </div>
               ) : (
@@ -628,7 +640,7 @@ export const AppointmentStart: React.FC = () => {
                   className="bg-white text-primary-600 px-6 py-2 rounded-lg font-semibold hover:bg-primary-50 transition-all duration-300"
                 >
                   <span className="material-icons-round mr-1 text-sm align-middle">play_arrow</span>
-                  Start
+                  {t('start')}
                 </button>
               )}
             </div>
@@ -645,7 +657,7 @@ export const AppointmentStart: React.FC = () => {
                   <span className="material-icons-round text-blue-600 text-sm">schedule</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-neutral-500 font-medium">Time</p>
+                  <p className="text-xs text-neutral-500 font-medium">{t('time')}</p>
                   <p className="text-sm font-semibold text-neutral-800 truncate">
                     {formatTimeHHMM(appointment.start_time)} - {formatTimeHHMM(appointment.end_time)}
                   </p>
@@ -657,7 +669,7 @@ export const AppointmentStart: React.FC = () => {
                   <span className="material-icons-round text-green-600 text-sm">medical_services</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-neutral-500 font-medium">Type</p>
+                  <p className="text-xs text-neutral-500 font-medium">{t('type')}</p>
                   <p className="text-sm font-semibold text-neutral-800 truncate max-w-32" title={appointment.appointment_type_name}>
                     {appointment.appointment_type_name}
                   </p>
@@ -673,7 +685,7 @@ export const AppointmentStart: React.FC = () => {
                 className="flex items-center space-x-1 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-lg hover:bg-orange-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
               >
                 <span className="material-icons-round text-sm">event</span>
-                <span className="font-medium">Follow Up</span>
+                <span className="font-medium">{t('follow_up')}</span>
               </button>
 
               {/* Generate Prescription Button */}
@@ -683,14 +695,14 @@ export const AppointmentStart: React.FC = () => {
                 className="flex items-center space-x-1 bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
               >
                 <span className="material-icons-round text-sm">medication</span>
-                <span className="font-medium">Generate Rx</span>
+                <span className="font-medium">{t('generate_rx')}</span>
               </button>
 
               {/* Upload File Button */}
               <label className="flex items-center space-x-1 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer text-sm">
                 <span className="material-icons-round text-sm">upload_file</span>
                 <span className="font-medium">
-                  {uploadingFile ? 'Uploading...' : 'Upload'}
+                  {uploadingFile ? t('uploading') : t('upload')}
                 </span>
                 <input
                   type="file"
@@ -705,10 +717,10 @@ export const AppointmentStart: React.FC = () => {
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex items-center space-x-1 bg-neutral-100 text-neutral-700 px-3 py-1.5 rounded-lg hover:bg-neutral-200 transition-colors text-sm font-medium"
-                title="Return to Dashboard"
+                title={t('return_to_dashboard')}
               >
                 <span className="material-icons-round text-sm">arrow_back</span>
-                <span>Dashboard</span>
+                <span>{t('dashboard')}</span>
               </button>
             </div>
           </div>
@@ -728,7 +740,7 @@ export const AppointmentStart: React.FC = () => {
                 }`}
               >
                 <span className="material-icons-round">medical_services</span>
-                <span>Consultation</span>
+                <span>{t('consultation')}</span>
               </button>
 
               <button
@@ -740,7 +752,7 @@ export const AppointmentStart: React.FC = () => {
                 }`}
               >
                 <span className="material-icons-round">favorite</span>
-                <span>Vital Signs</span>
+                <span>{t('vital_signs')}</span>
               </button>
 
               <button
@@ -752,7 +764,7 @@ export const AppointmentStart: React.FC = () => {
                 }`}
               >
                 <span className="material-icons-round">sentiment_very_satisfied</span>
-                <span>Dental</span>
+                <span>{t('dental')}</span>
               </button>
 
               <button
@@ -764,14 +776,14 @@ export const AppointmentStart: React.FC = () => {
                 }`}
               >
                 <span className="material-icons-round">folder</span>
-                <span>Patient Files</span>
+                <span>{t('patient_files')}</span>
               </button>
 
               {/* Save Indicator */}
               {savingMedicalData && (
                 <div className="ml-auto flex items-center space-x-2 px-4 py-3">
                   <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
-                  <span className="text-sm text-primary-600 font-medium">Saving...</span>
+                  <span className="text-sm text-primary-600 font-medium">{t('saving')}</span>
                 </div>
               )}
             </div>
@@ -783,14 +795,14 @@ export const AppointmentStart: React.FC = () => {
                 <div className="space-y-4">
                   <div className="bg-neutral-50 rounded-xl p-4" data-vital-signs-section>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-lg font-semibold text-neutral-800">Patient Vitals</h4>
+                      <h4 className="text-lg font-semibold text-neutral-800">{t('patient_vitals')}</h4>
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={handleVitalHistoryClick}
                           className="flex items-center space-x-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
                         >
                           <span className="material-icons-round text-sm">history</span>
-                          <span className="text-sm font-medium">History</span>
+                          <span className="text-sm font-medium">{t('history')}</span>
                         </button>
                         <button
                           onClick={addVitalSign}
@@ -798,7 +810,7 @@ export const AppointmentStart: React.FC = () => {
                           className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg hover:bg-primary-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
                         >
                           <span className="material-icons-round text-sm">add</span>
-                          <span className="text-sm font-medium">Add</span>
+                          <span className="text-sm font-medium">{t('add')}</span>
                         </button>
                       </div>
                     </div>
@@ -819,8 +831,8 @@ export const AppointmentStart: React.FC = () => {
                                   disabled={!isStarted}
                                   className="appearance-none w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent pr-8 disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                                 >
-                                  <option value="">Select vital sign</option>
-                                  {VITAL_SIGN_OPTIONS.map((option, index) => (
+                                  <option value="">{t('select_vital_sign')}</option>
+                                  {getVitalSignOptions(t).map((option, index) => (
                                     <option key={index} value={option.name}>
                                       {option.name}
                                     </option>
@@ -836,7 +848,7 @@ export const AppointmentStart: React.FC = () => {
                               type="text"
                               value={vital.value}
                               onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
-                              placeholder="Value"
+                              placeholder={t('value')}
                               disabled={!isStarted}
                               className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                             />
@@ -846,7 +858,7 @@ export const AppointmentStart: React.FC = () => {
                             ) : (
                               <input
                                 type="text"
-                                placeholder="Unit"
+                                placeholder={t('unit')}
                                 value={vital.unit}
                                 onChange={(e) => updateVitalSign(vital.id, 'unit', e.target.value)}
                                 disabled={!isStarted}
@@ -859,7 +871,7 @@ export const AppointmentStart: React.FC = () => {
                             onClick={() => removeVitalSign(vital.id)}
                             disabled={!isStarted}
                             className="w-7 h-7 bg-red-50 text-red-600 rounded flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0 disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed"
-                            title="Remove vital sign"
+                            title={t('remove_vital_sign')}
                           >
                             <span className="material-icons-round text-sm">remove</span>
                           </button>
@@ -877,18 +889,18 @@ export const AppointmentStart: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <span className="material-icons-round text-blue-600 mr-2">local_hospital</span>
-                        <h4 className="font-semibold text-blue-800">Diagnosis</h4>
+                        <h4 className="font-semibold text-blue-800">{t('diagnosis')}</h4>
                       </div>
                       <button
                         onClick={handleDiagnosisHistoryClick}
                         className="flex items-center space-x-2 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 transition-colors"
                       >
                         <span className="material-icons-round text-sm">history</span>
-                        <span className="text-sm font-medium">History</span>
+                        <span className="text-sm font-medium">{t('history')}</span>
                       </button>
                     </div>
                     <textarea
-                      placeholder="Enter diagnosis and findings..."
+                      placeholder={t('enter_diagnosis_and_findings')}
                       rows={3}
                       value={diagnosis}
                       onChange={(e) => setDiagnosis(e.target.value)}
@@ -901,18 +913,18 @@ export const AppointmentStart: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <span className="material-icons-round text-green-600 mr-2">healing</span>
-                        <h4 className="font-semibold text-green-800">Treatment Plan</h4>
+                        <h4 className="font-semibold text-green-800">{t('treatment_plan')}</h4>
                       </div>
                       <button
                         onClick={handleTreatmentHistoryClick}
                         className="flex items-center space-x-2 bg-green-100 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-200 transition-colors"
                       >
                         <span className="material-icons-round text-sm">history</span>
-                        <span className="text-sm font-medium">History</span>
+                        <span className="text-sm font-medium">{t('history')}</span>
                       </button>
                     </div>
                     <textarea
-                      placeholder="Enter detailed treatment plan and recommendations..."
+                      placeholder={t('enter_detailed_treatment_plan')}
                       rows={4}
                       value={treatmentPlan}
                       onChange={(e) => setTreatmentPlan(e.target.value)}
@@ -925,18 +937,18 @@ export const AppointmentStart: React.FC = () => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <span className="material-icons-round text-purple-600 mr-2">medication</span>
-                        <h4 className="font-semibold text-purple-800">Prescription</h4>
+                        <h4 className="font-semibold text-purple-800">{t('prescription')}</h4>
                       </div>
                       <button
                         onClick={handlePrescriptionHistoryClick}
                         className="flex items-center space-x-2 bg-purple-100 text-purple-700 px-3 py-1.5 rounded-lg hover:bg-purple-200 transition-colors"
                       >
                         <span className="material-icons-round text-sm">history</span>
-                        <span className="text-sm font-medium">History</span>
+                        <span className="text-sm font-medium">{t('history')}</span>
                       </button>
                     </div>
                     <textarea
-                      placeholder="Enter prescription details and medications..."
+                      placeholder={t('enter_prescription_details')}
                       rows={3}
                       value={prescription}
                       onChange={(e) => setPrescription(e.target.value)}
@@ -963,13 +975,13 @@ export const AppointmentStart: React.FC = () => {
                 <div className="space-y-4">
                   <div className="bg-neutral-50 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-neutral-800">Patient Files</h4>
+                      <h4 className="text-lg font-semibold text-neutral-800">{t('patient_files')}</h4>
                       <div className="flex items-center space-x-2">
                         {/* File Upload Button */}
                         <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
                           <span className="material-icons-round text-sm">upload_file</span>
                           <span className="text-sm font-medium">
-                            {uploadingFile ? 'Uploading...' : 'Upload File'}
+                            {uploadingFile ? t('uploading') : t('upload_file')}
                           </span>
                           <input
                             type="file"
@@ -988,7 +1000,7 @@ export const AppointmentStart: React.FC = () => {
                           <span className="material-icons-round text-sm">
                             {fileViewMode === 'grid' ? 'view_list' : 'grid_view'}
                           </span>
-                          <span className="text-sm font-medium">{fileViewMode === 'grid' ? 'List' : 'Grid'}</span>
+                          <span className="text-sm font-medium">{fileViewMode === 'grid' ? t('list') : t('grid')}</span>
                         </button>
                       </div>
                     </div>
@@ -996,7 +1008,7 @@ export const AppointmentStart: React.FC = () => {
                     {loadingFiles ? (
                       <div className="text-center py-8">
                         <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <p className="text-neutral-600">Loading files...</p>
+                        <p className="text-neutral-600">{t('loading_files')}</p>
                       </div>
                     ) : fileViewMode === 'grid' ? (
                       /* Grid View */
@@ -1047,7 +1059,7 @@ export const AppointmentStart: React.FC = () => {
                                 <button
                                   onClick={() => handleFilePreview(file)}
                                   className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                  title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                                  title={PatientFileService.isImageFile(file) ? t('preview_image') : t('open_file')}
                                 >
                                   <span className="material-icons-round text-base">
                                     {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
@@ -1056,14 +1068,14 @@ export const AppointmentStart: React.FC = () => {
                                 <button
                                   onClick={() => handleFileDownload(file)}
                                   className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
-                                  title="Download file"
+                                  title={t('download_file')}
                                 >
                                   <span className="material-icons-round text-base">download</span>
                                 </button>
                                 <button
                                   onClick={() => handleFileDelete(file)}
                                   className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
-                                  title="Delete file"
+                                  title={t('delete_file')}
                                 >
                                   <span className="material-icons-round text-base">delete</span>
                                 </button>
@@ -1131,7 +1143,7 @@ export const AppointmentStart: React.FC = () => {
                                 <button
                                   onClick={() => handleFilePreview(file)}
                                   className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
-                                  title={PatientFileService.isImageFile(file) ? "Preview image" : "Open file"}
+                                  title={PatientFileService.isImageFile(file) ? t('preview_image') : t('open_file')}
                                 >
                                   <span className="material-icons-round text-base">
                                     {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
@@ -1140,14 +1152,14 @@ export const AppointmentStart: React.FC = () => {
                                 <button
                                   onClick={() => handleFileDownload(file)}
                                   className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
-                                  title="Download file"
+                                  title={t('download_file')}
                                 >
                                   <span className="material-icons-round text-base">download</span>
                                 </button>
                                 <button
                                   onClick={() => handleFileDelete(file)}
                                   className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
-                                  title="Delete file"
+                                  title={t('delete_file')}
                                 >
                                   <span className="material-icons-round text-base">delete</span>
                                 </button>
@@ -1161,7 +1173,7 @@ export const AppointmentStart: React.FC = () => {
                     {!loadingFiles && patientFiles.length === 0 && (
                       <div className="text-center py-8 text-neutral-500">
                         <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">folder_open</span>
-                        <p>No files uploaded for this patient</p>
+                        <p>{t('no_files_uploaded')}</p>
                       </div>
                     )}
                   </div>
@@ -1176,7 +1188,7 @@ export const AppointmentStart: React.FC = () => {
           <Modal
             isOpen={showFollowUpModal}
             onClose={handleFollowUpCancel}
-            title="Schedule Follow-up Appointment"
+            title={t('schedule_followup_appointment')}
             size="xl"
           >
             <AppointmentBookingForm
@@ -1205,11 +1217,11 @@ export const AppointmentStart: React.FC = () => {
           <Modal
             isOpen={showVitalHistory}
             onClose={() => setShowVitalHistory(false)}
-            title="Vital Signs History"
+            title={t('vital_signs_history')}
             size="lg"
           >
             <div className="space-y-4">
-              <p className="text-neutral-600 mb-4">Patient vital signs history across appointments</p>
+              <p className="text-neutral-600 mb-4">{t('patient_vital_signs_history')}</p>
 
               {patientHistory && patientHistory.medical_history.length > 0 ? (
                 <div className="space-y-4">
@@ -1230,7 +1242,8 @@ export const AppointmentStart: React.FC = () => {
 
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {record.vital_signs && Object.entries(record.vital_signs).map(([key, value]) => {
-                          const vitalOption = VITAL_SIGN_OPTIONS.find(option => 
+                          const vitalSignOptions = getVitalSignOptions(t);
+                          const vitalOption = vitalSignOptions.find((option: any) =>
                             option.name.toLowerCase().replace(/\s+/g, '_') === key.toLowerCase()
                           );
                           
@@ -1255,7 +1268,7 @@ export const AppointmentStart: React.FC = () => {
               ) : (
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                  <p>No vital signs history available</p>
+                  <p>{t('no_vital_signs_history')}</p>
                 </div>
               )}
             </div>
@@ -1267,11 +1280,11 @@ export const AppointmentStart: React.FC = () => {
           <Modal
             isOpen={showDiagnosisHistory}
             onClose={() => setShowDiagnosisHistory(false)}
-            title="Diagnosis History"
+            title={t('diagnosis_history')}
             size="lg"
           >
             <div className="space-y-4">
-              <p className="text-neutral-600 mb-4">Patient diagnosis history across appointments</p>
+              <p className="text-neutral-600 mb-4">{t('patient_diagnosis_history')}</p>
 
               {patientHistory && patientHistory.medical_history.length > 0 ? (
                 <div className="space-y-4">
@@ -1304,7 +1317,7 @@ export const AppointmentStart: React.FC = () => {
                                 onClick={() => toggleExpandHistoryItem(itemId)}
                                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                               >
-                                {isExpanded ? 'Show Less' : 'Show More'}
+                                {isExpanded ? t('show_less') : t('show_more')}
                               </button>
                             )}
                           </div>
@@ -1315,7 +1328,7 @@ export const AppointmentStart: React.FC = () => {
               ) : (
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                  <p>No diagnosis history available</p>
+                  <p>{t('no_diagnosis_history')}</p>
                 </div>
               )}
             </div>
@@ -1327,11 +1340,11 @@ export const AppointmentStart: React.FC = () => {
           <Modal
             isOpen={showTreatmentHistory}
             onClose={() => setShowTreatmentHistory(false)}
-            title="Treatment Plan History"
+            title={t('treatment_plan_history')}
             size="lg"
           >
             <div className="space-y-4">
-              <p className="text-neutral-600 mb-4">Patient treatment plan history across appointments</p>
+              <p className="text-neutral-600 mb-4">{t('patient_treatment_plan_history')}</p>
 
               {patientHistory && patientHistory.medical_history.length > 0 ? (
                 <div className="space-y-4">
@@ -1364,7 +1377,7 @@ export const AppointmentStart: React.FC = () => {
                                 onClick={() => toggleExpandHistoryItem(itemId)}
                                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                               >
-                                {isExpanded ? 'Show Less' : 'Show More'}
+                                {isExpanded ? t('show_less') : t('show_more')}
                               </button>
                             )}
                           </div>
@@ -1375,7 +1388,7 @@ export const AppointmentStart: React.FC = () => {
               ) : (
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                  <p>No treatment plan history available</p>
+                  <p>{t('no_treatment_plan_history')}</p>
                 </div>
               )}
             </div>
@@ -1387,11 +1400,11 @@ export const AppointmentStart: React.FC = () => {
           <Modal
             isOpen={showPrescriptionHistory}
             onClose={() => setShowPrescriptionHistory(false)}
-            title="Prescription History"
+            title={t('prescription_history')}
             size="lg"
           >
             <div className="space-y-4">
-              <p className="text-neutral-600 mb-4">Patient prescription history across appointments</p>
+              <p className="text-neutral-600 mb-4">{t('patient_prescription_history')}</p>
 
               {patientHistory && patientHistory.medical_history.length > 0 ? (
                 <div className="space-y-4">
@@ -1424,7 +1437,7 @@ export const AppointmentStart: React.FC = () => {
                                 onClick={() => toggleExpandHistoryItem(itemId)}
                                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                               >
-                                {isExpanded ? 'Show Less' : 'Show More'}
+                                {isExpanded ? t('show_less') : t('show_more')}
                               </button>
                             )}
                           </div>
@@ -1435,7 +1448,7 @@ export const AppointmentStart: React.FC = () => {
               ) : (
                 <div className="text-center py-8 text-neutral-500">
                   <span className="material-icons-round text-4xl text-neutral-300 mb-2 block">timeline</span>
-                  <p>No prescription history available</p>
+                  <p>{t('no_prescription_history')}</p>
                 </div>
               )}
             </div>
@@ -1464,19 +1477,19 @@ export const AppointmentStart: React.FC = () => {
                   <button
                     onClick={() => previewModal.file && handleFileDownload(previewModal.file)}
                     className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
-                    title="Download file"
+                    title={t('download_file')}
                   >
                     <span className="material-icons-round">download</span>
-                    <span className="text-sm font-medium hidden sm:block">Download</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('download')}</span>
                   </button>
                   {/* Close button */}
                   <button
                     onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
                     className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
-                    title="Close preview"
+                    title={t('close_preview')}
                   >
                     <span className="material-icons-round">close</span>
-                    <span className="text-sm font-medium hidden sm:block">Close</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('close')}</span>
                   </button>
                 </div>
               </div>
@@ -1493,15 +1506,15 @@ export const AppointmentStart: React.FC = () => {
                 ) : (
                   <div className="text-center text-white">
                     <span className="material-icons-round text-8xl text-white mb-6 block opacity-70">image_not_supported</span>
-                    <p className="text-2xl mb-2">No preview available for this file type</p>
-                    <p className="text-lg opacity-70 mt-4">Click download to view the file</p>
+                    <p className="text-2xl mb-2">{t('no_preview_available')}</p>
+                    <p className="text-lg opacity-70 mt-4">{t('click_download_to_view')}</p>
                   </div>
                 )}
               </div>
 
               {/* Instructions */}
               <div className="px-6 py-4 bg-black bg-opacity-70 text-white text-center relative z-10 flex-shrink-0">
-                <p className="text-sm opacity-70">Click anywhere outside the modal or press ESC to close • Use download button to save the file</p>
+                <p className="text-sm opacity-70">{t('preview_modal_instructions')}</p>
               </div>
             </div>
           </div>

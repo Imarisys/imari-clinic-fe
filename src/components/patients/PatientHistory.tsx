@@ -4,6 +4,7 @@ import { PatientWithAppointments } from '../../types/Patient';
 import { Appointment, AppointmentStatus } from '../../types/Appointment';
 import { PatientService } from '../../services/patientService';
 import { Button } from '../common/Button';
+import { PatientPreconditions } from './PatientPreconditions';
 
 interface PatientHistoryProps {
   patient: PatientWithAppointments;
@@ -126,6 +127,21 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
     return age;
   };
 
+  const handlePreconditionsUpdate = async (updatedPreconditions: any) => {
+    try {
+      setIsLoading(true);
+      const updatedPatient = await PatientService.updatePatient(patientData.id, {
+        preconditions: updatedPreconditions
+      });
+      setPatientData({ ...patientData, preconditions: updatedPatient.preconditions });
+    } catch (error) {
+      console.error('Error updating preconditions:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -142,11 +158,11 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  <span>Back</span>
+                  <span>{t('back')}</span>
                 </Button>
                 <div className="h-6 w-px bg-gray-300"></div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Patient History
+                  {t('patient_history')}
                 </h1>
               </div>
               {onScheduleNew && (
@@ -222,20 +238,28 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Medical Preconditions Card */}
+            <div className="mt-6">
+              <PatientPreconditions
+                patientId={patientData.id}
+                isEditable={true}
+              />
+            </div>
           </div>
 
           {/* Appointment History */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
               <div className="p-6 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Appointment History</h3>
-                <p className="text-gray-500 mt-1">View all patient {t('appointments')}</p>
+                <h3 className="text-lg font-semibold text-gray-900">{t('appointment_history')}</h3>
+                <p className="text-gray-500 mt-1">{t('view_all_patient_appointments')}</p>
               </div>
 
               {isLoading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-gray-500 mt-4">Loading history...</p>
+                  <p className="text-gray-500 mt-4">{t('loading_history')}</p>
                 </div>
               ) : sortedAppointments.length === 0 ? (
                 <div className="p-8 text-center">
@@ -243,7 +267,7 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
                   </svg>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_appointments')}</h4>
-                  <p className="text-gray-500">No appointment history found</p>
+                  <p className="text-gray-500">{t('no_appointment_history_found')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200">
@@ -304,7 +328,7 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-900">
-                  Appointment Details
+                  {t('appointment_details')}
                 </h3>
                 <Button
                   variant="ghost"
@@ -331,7 +355,7 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                   </div>
                 </div>
                 <div>
-                  <h5 className="font-medium text-gray-700">Date & Time</h5>
+                  <h5 className="font-medium text-gray-700">{t('date_time')}</h5>
                   <p className="text-gray-600">
                     {formatDate(selectedAppointment.date)} {t('at')} {formatTime(selectedAppointment.start_time)} - {formatTime(selectedAppointment.end_time)}
                   </p>

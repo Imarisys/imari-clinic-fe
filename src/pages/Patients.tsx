@@ -5,6 +5,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
 import { PatientForm } from '../components/patients/PatientForm';
 import { PatientHistory } from '../components/patients/PatientHistory';
+import { PatientPreconditions } from '../components/patients/PatientPreconditions';
 import { PatientSearch, PatientSearchFilters } from '../components/patients/PatientSearch';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
@@ -14,14 +15,18 @@ import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientService } from '../services/patientService';
+import { PreconditionService } from '../services/preconditionService';
+import { PatientFileService } from '../services/patientFileService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
+import { PatientFileRead } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { SettingsService } from '../services/settingsService';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
+type PatientDetailTab = 'upcoming' | 'past' | 'files' | 'preconditions';
 
 export const Patients: React.FC = () => {
   const { t } = useTranslation();
@@ -37,6 +42,13 @@ export const Patients: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+
+  // Patient detail tabs state
+  const [activePatientTab, setActivePatientTab] = useState<PatientDetailTab>('upcoming');
+  const [patientFiles, setPatientFiles] = useState<PatientFileRead[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [patientPreconditions, setPatientPreconditions] = useState<any>(null);
+  const [loadingPreconditions, setLoadingPreconditions] = useState(false);
 
   // Patient summary state
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
@@ -65,19 +77,21 @@ export const Patients: React.FC = () => {
   const { showNotification } = useNotification();
   const location = useLocation();
 
-  // Escape key listener for detail view
+  // ESC key listener for edit mode
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && viewMode === 'detail') {
-        setViewMode('grid');
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && viewMode === 'edit') {
+        setViewMode('detail');
       }
     };
 
-    if (viewMode === 'detail') {
-      window.addEventListener('keydown', handleEsc);
-      return () => window.removeEventListener('keydown', handleEsc);
-    }
+    document.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
   }, [viewMode]);
+
 
   // Reset to grid view when navigating to patients page
   useEffect(() => {
@@ -204,33 +218,45 @@ export const Patients: React.FC = () => {
     }
   };
 
+  // Load patient files
+  const loadPatientFiles = async (patientId: string) => {
+    setLoadingFiles(true);
+    try {
+      const response = await PatientFileService.getPatientFiles(patientId);
+      setPatientFiles(response.files);
+    } catch (error) {
+      console.error('Error loading patient files:', error);
+      setPatientFiles([]);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Load patient preconditions
+  const loadPatientPreconditions = async (patientId: string) => {
+    setLoadingPreconditions(true);
+    try {
+      // Use the new PreconditionService instead of PatientService
+      const response = await PreconditionService.getPatientPreconditions(patientId);
+      setPatientPreconditions(response.data || []);
+    } catch (error) {
+      console.error('Error loading patient preconditions:', error);
+      setPatientPreconditions([]);
+    } finally {
+      setLoadingPreconditions(false);
+    }
+  };
+
   // Load appointments when patient is selected for detail view
   useEffect(() => {
     if (selectedPatient && viewMode === 'detail') {
       loadPatientAppointments(selectedPatient.id);
+      // Load patient files and preconditions when detail view is opened
+      loadPatientFiles(selectedPatient.id);
+      loadPatientPreconditions(selectedPatient.id);
     }
   }, [selectedPatient, viewMode]);
 
-  // Load appointment types from API
-  const loadAppointmentTypes = async () => {
-    setAppointmentTypesLoading(true);
-    try {
-      const types = await AppointmentTypeService.listAppointmentTypes();
-      setAppointmentTypes(types);
-    } catch (err) {
-      console.error('Error loading appointment types:', err);
-      showNotification('error', 'Error', 'Failed to load appointment types');
-    } finally {
-      setAppointmentTypesLoading(false);
-    }
-  };
-
-  // Load appointment types when modal opens
-  useEffect(() => {
-    if (showAppointmentModal) {
-      loadAppointmentTypes();
-    }
-  }, [showAppointmentModal]);
 
   // Handle page change for pagination
   const handlePageChange = (page: number) => {
@@ -307,11 +333,11 @@ export const Patients: React.FC = () => {
       // Show success notification with backend message
       showNotification(
         'success',
-        'Patient Deleted!',
+        t('patient_deleted'),
         backendMessage
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete patient');
+      setError(err instanceof Error ? err.message : t('failed_to_delete_patient'));
       console.error('Error deleting patient:', err);
     } finally {
       setIsLoading(false);
@@ -338,10 +364,10 @@ export const Patients: React.FC = () => {
     setIsExporting(true);
     try {
       await PatientService.exportPatients();
-      showNotification('success', 'Export Successful', 'Patients data has been exported successfully');
+      showNotification('success', t('export_successful'), t('patients_data_exported_successfully'));
     } catch (err) {
       console.error('Error exporting patients:', err);
-      showNotification('error', 'Export Failed', err instanceof Error ? err.message : 'Failed to export patients');
+      showNotification('error', t('export_failed'), err instanceof Error ? err.message : t('failed_to_export_patients'));
     } finally {
       setIsExporting(false);
     }
@@ -353,10 +379,10 @@ export const Patients: React.FC = () => {
     try {
       await loadPatients(currentPage);
       await loadPatientSummary();
-      showNotification('success', 'Refreshed', 'Patient data has been refreshed successfully');
+      showNotification('success', t('refreshed'), t('patient_data_refreshed_successfully'));
     } catch (err) {
       console.error('Error refreshing data:', err);
-      showNotification('error', 'Refresh Failed', 'Failed to refresh patient data');
+      showNotification('error', t('refresh_failed'), t('failed_to_refresh_patient_data'));
     } finally {
       // Add a small delay to show the animation even if the request is very fast
       setTimeout(() => {
@@ -383,8 +409,8 @@ export const Patients: React.FC = () => {
     <div className="card mb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary-600 mb-2">Patients</h1>
-          <p className="text-neutral-600">Manage your patient records and information</p>
+          <h1 className="text-3xl font-bold text-primary-600 mb-2">{t('patients')}</h1>
+          <p className="text-neutral-600">{t('manage_patient_records')}</p>
           {error && (
             <div className="mt-2 p-3 bg-error-50 border border-error-200 rounded-lg">
               <p className="text-error-700 text-sm">{error}</p>
@@ -392,7 +418,7 @@ export const Patients: React.FC = () => {
                 onClick={() => setError(null)}
                 className="text-error-600 text-xs hover:text-error-800 mt-1"
               >
-                Dismiss
+                {t('dismiss')}
               </button>
             </div>
           )}
@@ -425,7 +451,7 @@ export const Patients: React.FC = () => {
         <div className="flex-1 max-w-md">
           <Input
             icon="search"
-            placeholder="Search patients by name, email, or phone..."
+            placeholder={t('search_patients_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             variant="default"
@@ -440,7 +466,7 @@ export const Patients: React.FC = () => {
             disabled={isLoading || isRefreshing}
             className={isRefreshing ? 'animate-spin' : ''}
           >
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            {isRefreshing ? t('refreshing') : t('refresh')}
           </Button>
           <Button
             variant="secondary"
@@ -448,43 +474,43 @@ export const Patients: React.FC = () => {
             onClick={handleExportPatients}
             disabled={isExporting || isLoading}
           >
-            {isExporting ? 'Exporting...' : 'Export'}
+            {isExporting ? t('exporting') : t('export')}
           </Button>
           <Button
             variant="primary"
             icon="person_add"
             onClick={() => setViewMode('create')}
           >
-            Add Patient
+            {t('add_patient')}
           </Button>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-neutral-200">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-neutral-200">
         <div className="text-center">
-          <p className="text-2xl font-bold text-success-600">
+          <p className="text-lg font-semibold text-success-600">
             {summaryLoading ? '...' : patientSummary?.total_patients || patients.length}
           </p>
-          <p className="text-sm text-neutral-600">Total Patients</p>
+          <p className="text-xs text-neutral-600">{t('total_patients')}</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-primary-600">
+          <p className="text-lg font-semibold text-primary-600">
             {summaryLoading ? '...' : patientSummary?.new_patients || 0}
           </p>
-          <p className="text-sm text-neutral-600">New Patients</p>
+          <p className="text-xs text-neutral-600">{t('new_patients')}</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-lg font-semibold text-blue-600">
             {summaryLoading ? '...' : patientSummary?.patients_with_follow_up || 0}
           </p>
-          <p className="text-sm text-neutral-600">Follow-up Patients</p>
+          <p className="text-xs text-neutral-600">{t('follow_up_patients')}</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-primary-600">
+          <p className="text-lg font-semibold text-primary-600">
             {summaryLoading ? '...' : patientSummary?.patients_with_email || patients.filter(p => p.email).length}
           </p>
-          <p className="text-sm text-neutral-600">With Email</p>
+          <p className="text-xs text-neutral-600">{t('with_email')}</p>
         </div>
       </div>
     </div>
@@ -518,7 +544,7 @@ export const Patients: React.FC = () => {
             </h3>
             {patient.date_of_birth && (
               <span className="text-sm text-neutral-500">
-                Age {calculateAge(patient.date_of_birth)}
+                {t('age')} {calculateAge(patient.date_of_birth)}
               </span>
             )}
           </div>
@@ -560,7 +586,7 @@ export const Patients: React.FC = () => {
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
             <div className="loading-spinner w-12 h-12 mx-auto mb-4"></div>
-            <p className="text-neutral-600">Loading patients...</p>
+            <p className="text-neutral-600">{t('loading_patients')}</p>
           </div>
         </div>
       </DashboardLayout>
@@ -579,10 +605,10 @@ export const Patients: React.FC = () => {
         <table className="w-full">
           <thead className="bg-gradient-to-r from-neutral-50 to-white border-b border-neutral-200">
             <tr>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Patient</th>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Contact</th>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Age</th>
-              <th className="text-left py-4 px-6 font-semibold text-neutral-700">Actions</th>
+              <th className="text-left py-4 px-6 font-semibold text-neutral-700">{t('patient')}</th>
+              <th className="text-left py-4 px-6 font-semibold text-neutral-700">{t('contact')}</th>
+              <th className="text-left py-4 px-6 font-semibold text-neutral-700">{t('age')}</th>
+              <th className="text-left py-4 px-6 font-semibold text-neutral-700">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -647,7 +673,7 @@ export const Patients: React.FC = () => {
               className="btn-secondary mb-4"
             >
               <span className="material-icons-round mr-2">arrow_back</span>
-              Back to Patients
+              {t('back_to_patients')}
             </button>
           </div>
           <PatientForm
@@ -671,6 +697,7 @@ export const Patients: React.FC = () => {
             onCancel={() => setViewMode('detail')}
             isEditing={true}
             isLoading={isLoading}
+            fullWidth={true}
           />
         </div>
       </DashboardLayout>
@@ -682,14 +709,6 @@ export const Patients: React.FC = () => {
       <DashboardLayout>
         <div className="fade-in-element">
           <div className="card mb-6">
-            <button
-              onClick={() => setViewMode('grid')}
-              className="btn-secondary mb-4"
-            >
-              <span className="material-icons-round mr-2">arrow_back</span>
-              Back to Patients
-            </button>
-
             <div className="flex items-start space-x-6">
               <div className="w-24 h-24 bg-primary-500 rounded-3xl flex items-center justify-center shadow-primary text-white">
                 <span className="text-3xl font-semibold">
@@ -706,7 +725,7 @@ export const Patients: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                   {/* Contact Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">Contact Information</h3>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('contact_information')}</h3>
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
                         <span className="material-icons-round text-lg text-gray-400">phone</span>
@@ -723,7 +742,7 @@ export const Patients: React.FC = () => {
 
                   {/* Personal Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">Personal Information</h3>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('personal_information')}</h3>
                     <div className="space-y-2">
                       {selectedPatient.date_of_birth && (
                         <div className="flex items-center space-x-2">
@@ -731,21 +750,21 @@ export const Patients: React.FC = () => {
                           <span className="text-gray-800">
                             {new Date(selectedPatient.date_of_birth).toLocaleDateString()} 
                             <span className="text-gray-500 ml-2">
-                              (Age {calculateAge(selectedPatient.date_of_birth)})
+                              ({t('age')} {calculateAge(selectedPatient.date_of_birth)})
                             </span>
                           </span>
                         </div>
                       )}
                       <div className="flex items-center space-x-2">
                         <span className="material-icons-round text-lg text-gray-400">person</span>
-                        <span className="text-gray-800 capitalize">{selectedPatient.gender || 'Not specified'}</span>
+                        <span className="text-gray-800 capitalize">{selectedPatient.gender || t('not_specified')}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Address Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">Address</h3>
+                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('address')}</h3>
                     <div className="space-y-2">
                       {selectedPatient.street || selectedPatient.city || selectedPatient.state || selectedPatient.zip_code ? (
                         <>
@@ -767,7 +786,7 @@ export const Patients: React.FC = () => {
                       ) : (
                         <div className="flex items-center space-x-2">
                           <span className="material-icons-round text-lg text-gray-400">location_off</span>
-                          <span className="text-gray-500 italic">No address provided</span>
+                          <span className="text-gray-500 italic">{t('no_address_provided')}</span>
                         </div>
                       )}
                     </div>
@@ -776,12 +795,19 @@ export const Patients: React.FC = () => {
               </div>
 
               <div className="flex space-x-3">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className="btn-secondary"
+                  title={t('back_to_patients')}
+                >
+                  <span className="material-icons-round">arrow_back</span>
+                </button>
                 <Button
                   variant="secondary"
                   icon="edit"
                   onClick={() => setViewMode('edit')}
                 >
-                  Edit
+                  {t('edit')}
                 </Button>
                 <Button
                   variant="primary"
@@ -791,7 +817,7 @@ export const Patients: React.FC = () => {
                     setShowAppointmentModal(true);
                   }}
                 >
-                  Schedule
+                  {t('schedule')}
                 </Button>
                 <Button
                   variant="danger"
@@ -801,308 +827,384 @@ export const Patients: React.FC = () => {
                   }}
                   disabled={isLoading}
                 >
-                  Delete
+                  {t('delete')}
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Patient Statistics */}
-          <div className="card mb-6">
-            <h3 className="text-xl font-bold text-neutral-800 mb-4">Patient Statistics</h3>
-            {appointmentsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="text-center p-4 bg-gray-50 rounded-lg animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-100">
-                  <div className="text-2xl font-bold text-teal-600">{patientAppointments.length}</div>
-                  <div className="text-sm text-gray-600">Total Appointments</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-100">
-                  <div className="text-2xl font-bold text-green-600">
-                    {patientAppointments.filter(apt => apt.status === 'Completed').length}
-                  </div>
-                  <div className="text-sm text-gray-600">Completed</div>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-100">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {patientAppointments.filter(apt => apt.status === 'Booked' && new Date(apt.date) >= new Date()).length}
-                  </div>
-                  <div className="text-sm text-gray-600">Upcoming</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-100">
-                  <div className="text-2xl font-bold text-orange-600">
-                    {patientAppointments.filter(apt => apt.status === 'Cancelled').length}
-                  </div>
-                  <div className="text-sm text-gray-600">Cancelled</div>
-                </div>
-              </div>
-            )}
+          {/* Patient Detail Tabs */}
+          <div className="mb-6">
+            <div className="flex space-x-2">
+              <Button
+                variant={activePatientTab === 'upcoming' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('upcoming')}
+                className="flex-1"
+              >
+                {t('upcoming_appointments')}
+              </Button>
+              <Button
+                variant={activePatientTab === 'past' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('past')}
+                className="flex-1"
+              >
+                {t('past_appointments')}
+              </Button>
+              <Button
+                variant={activePatientTab === 'files' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('files')}
+                className="flex-1"
+              >
+                {t('patient_files')}
+              </Button>
+              <Button
+                variant={activePatientTab === 'preconditions' ? 'primary' : 'secondary'}
+                onClick={() => setActivePatientTab('preconditions')}
+                className="flex-1"
+              >
+                {t('preconditions')}
+              </Button>
+            </div>
           </div>
 
-          {/* Appointments Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Upcoming Appointments */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-neutral-800">Upcoming Appointments</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="material-icons-round text-blue-500">event</span>
-                  <span className="text-sm text-blue-600 font-medium">
-                    {patientAppointments.filter(apt => new Date(apt.date) >= new Date() && apt.status !== 'Cancelled').length} scheduled
-                  </span>
-                </div>
-              </div>
-              {appointmentsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(2)].map((_, i) => (
-                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
-                  </svg>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h4>
-                  <p className="text-gray-500">Schedule a new appointment to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {patientAppointments
-                    .filter(apt => new Date(apt.date) >= new Date())
-                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                    .map((appointment) => {
-                      const getStatusColor = (status: string) => {
-                        switch (status) {
-                          case 'Completed':
-                            return 'bg-green-100 text-green-800';
-                          case 'Booked':
-                            return 'bg-blue-100 text-blue-800';
-                          case 'Cancelled':
-                            return 'bg-red-100 text-red-800';
-                          case 'No Show':
-                            return 'bg-orange-100 text-orange-800';
-                          case 'In Progress':
-                            return 'bg-purple-100 text-purple-800';
-                          default:
-                            return 'bg-gray-100 text-gray-800';
-                        }
-                      };
+          {/* Patient Detail Content */}
+          <div className="card p-4">
+            {activePatientTab === 'upcoming' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">{t('upcoming_appointments')}</h4>
+                {appointmentsLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientAppointments.filter(apt => new Date(apt.date) >= new Date()).length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m-8 0a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1m-8 0h8m-4 4v4" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_upcoming_appointments')}</h4>
+                    <p className="text-gray-500">{t('schedule_new_appointment')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {patientAppointments
+                      .filter(apt => new Date(apt.date) >= new Date())
+                      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                      .map((appointment) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'Completed':
+                              return 'bg-green-100 text-green-800';
+                            case 'Booked':
+                              return 'bg-blue-100 text-blue-800';
+                            case 'Cancelled':
+                              return 'bg-red-100 text-red-800';
+                            case 'No Show':
+                              return 'bg-orange-100 text-orange-800';
+                            case 'In Progress':
+                              return 'bg-purple-100 text-purple-800';
+                            default:
+                              return 'bg-gray-100 text-gray-800';
+                          }
+                        };
 
-                      const formatDate = (dateString: string) => {
-                        return new Date(dateString).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        });
-                      };
+                        const formatDate = (dateString: string) => {
+                          return new Date(dateString).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                        };
 
-                      const formatTime = (timeString: string) => {
-                        const time = timeString.split('.')[0]; // Remove microseconds
-                        const [hours, minutes] = time.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes} ${ampm}`;
-                      };
+                        const formatTime = (timeString: string) => {
+                          const time = timeString.split('.')[0]; // Remove microseconds
+                          const [hours, minutes] = time.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const displayHour = hour % 12 || 12;
+                          return `${displayHour}:${minutes} ${ampm}`;
+                        };
 
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="p-4 rounded-xl bg-white border-2 border-blue-200 hover:shadow-md transition-all duration-200"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex-1">
-                              {appointment.appointment_type_name && (
-                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                              )}
-                              {appointment.title && (
-                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                              )}
-                            </div>
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                              {appointment.status}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between text-sm text-gray-600">
-                            <div className="flex items-center space-x-6">
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-blue-500">calendar_today</span>
-                                <span>{formatDate(appointment.date)}</span>
+                        return (
+                          <div
+                            key={appointment.id}
+                            className={`p-3 rounded-xl bg-white border-2 hover:shadow-md transition-all duration-200 ${
+                              appointment.status === 'Completed' ? 'border-green-200' :
+                              appointment.status === 'Booked' ? 'border-blue-200' :
+                              appointment.status === 'Cancelled' ? 'border-red-200' :
+                              appointment.status === 'No Show' ? 'border-orange-200' :
+                              appointment.status === 'In Progress' ? 'border-purple-200' :
+                              'border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex-1">
+                                {appointment.appointment_type_name && (
+                                  <span className="block mb-1 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                )}
+                                {appointment.title && (
+                                  <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                                )}
                               </div>
+
+                              {/* Action Buttons for Upcoming Appointments */}
                               <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-blue-500">schedule</span>
-                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {appointment.notes && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-sm text-gray-700">
-                                <span className="font-medium">Notes:</span> {appointment.notes}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
-            {/* Past Appointments */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-neutral-800">Past Appointments</h3>
-                <div className="flex items-center space-x-2">
-                  <span className="material-icons-round text-gray-500">history</span>
-                  <span className="text-sm text-gray-600 font-medium">
-                    {patientAppointments.filter(apt => new Date(apt.date) < new Date()).length} completed
-                  </span>
-                </div>
-              </div>
-              {appointmentsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(2)].map((_, i) => (
-                    <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
-                <div className="text-center py-8">
-                  <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No past appointments</h4>
-                  <p className="text-gray-500">Appointment history will appear here.</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {patientAppointments
-                    .filter(apt => new Date(apt.date) < new Date())
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((appointment) => {
-                      const getStatusColor = (status: string) => {
-                        switch (status) {
-                          case 'Completed':
-                            return 'bg-green-100 text-green-800';
-                          case 'Booked':
-                            return 'bg-blue-100 text-blue-800';
-                          case 'Cancelled':
-                            return 'bg-red-100 text-red-800';
-                          case 'No Show':
-                            return 'bg-orange-100 text-orange-800';
-                          case 'In Progress':
-                            return 'bg-purple-100 text-purple-800';
-                          default:
-                            return 'bg-gray-100 text-gray-800';
-                        }
-                      };
-
-                      const formatDate = (dateString: string) => {
-                        return new Date(dateString).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        });
-                      };
-
-                      const formatTime = (timeString: string) => {
-                        const time = timeString.split('.')[0]; // Remove microseconds
-                        const [hours, minutes] = time.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const displayHour = hour % 12 || 12;
-                        return `${displayHour}:${minutes} ${ampm}`;
-                      };
-
-                      return (
-                        <div
-                          key={appointment.id}
-                          className="p-4 rounded-xl bg-white border-2 border-gray-200 hover:shadow-md transition-all duration-200"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex-1">
-                              {appointment.appointment_type_name && (
-                                <span className="block mb-2 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
-                              )}
-                              {appointment.title && (
-                                <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
-                              )}
-                            </div>
-                            <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                              {appointment.status}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                            <div className="flex items-center space-x-6">
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-gray-500">calendar_today</span>
-                                <span>{formatDate(appointment.date)}</span>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <span className="material-icons-round text-base text-gray-500">schedule</span>
-                                <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
-                              </div>
-                            </div>
-
-                            {/* Action Buttons for Past Appointments */}
-                            <div className="flex items-center space-x-2">
-                              {appointment.status === 'Completed' && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('View consultation details:', appointment.id);
+                                    console.log('Edit appointment:', appointment.id);
+                                    // TODO: Implement edit appointment functionality
                                   }}
-                                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
-                                  title="View Details"
+                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title={t('edit_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">description</span>
-                                  Details
+                                  <span className="material-icons-round text-sm mr-1">edit</span>
+                                  {t('edit')}
                                 </button>
-                              )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Edit appointment:', appointment.id);
-                                }}
-                                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
-                                title="Edit"
-                              >
-                                <span className="material-icons-round text-sm">edit</span>
-                              </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Delete appointment:', appointment.id);
+                                    // TODO: Implement delete appointment functionality
+                                  }}
+                                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title={t('delete_appointment')}
+                                >
+                                  <span className="material-icons-round text-sm mr-1">delete</span>
+                                  {t('delete')}
+                                </button>
+                              </div>
                             </div>
-                          </div>
 
-                          {appointment.notes && (
-                            <div className="mt-3 pt-3 border-t border-gray-200">
-                              <p className="text-sm text-gray-700">
-                                <span className="font-medium">Notes:</span> {appointment.notes}
-                              </p>
+                            {/* Date, Time and Status in one line */}
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-blue-500">calendar_today</span>
+                                  <span>{formatDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-blue-500">schedule</span>
+                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                                </div>
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                  {appointment.status}
+                                </span>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                            {appointment.notes && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">{t('notes')}:</span> {appointment.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activePatientTab === 'past' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">{t('past_appointments')}</h4>
+                {appointmentsLoading ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientAppointments.filter(apt => new Date(apt.date) < new Date()).length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_past_appointments')}</h4>
+                    <p className="text-gray-500">{t('appointment_history_will_appear_here')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {patientAppointments
+                      .filter(apt => new Date(apt.date) < new Date())
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                      .map((appointment) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'Completed':
+                              return 'bg-green-100 text-green-800';
+                            case 'Booked':
+                              return 'bg-blue-100 text-blue-800';
+                            case 'Cancelled':
+                              return 'bg-red-100 text-red-800';
+                            case 'No Show':
+                              return 'bg-orange-100 text-orange-800';
+                            case 'In Progress':
+                              return 'bg-purple-100 text-purple-800';
+                            default:
+                              return 'bg-gray-100 text-gray-800';
+                          }
+                        };
+
+                        const formatDate = (dateString: string) => {
+                          return new Date(dateString).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                        };
+
+                        const formatTime = (timeString: string) => {
+                          const time = timeString.split('.')[0]; // Remove microseconds
+                          const [hours, minutes] = time.split(':');
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const displayHour = hour % 12 || 12;
+                          return `${displayHour}:${minutes} ${ampm}`;
+                        };
+
+                        return (
+                          <div
+                            key={appointment.id}
+                            className={`p-3 rounded-xl bg-white border-2 hover:shadow-md transition-all duration-200 ${
+                              appointment.status === 'Completed' ? 'border-green-200' :
+                              appointment.status === 'Booked' ? 'border-blue-200' :
+                              appointment.status === 'Cancelled' ? 'border-red-200' :
+                              appointment.status === 'No Show' ? 'border-orange-200' :
+                              appointment.status === 'In Progress' ? 'border-purple-200' :
+                              'border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex-1">
+                                {appointment.appointment_type_name && (
+                                  <span className="block mb-1 text-base font-bold text-gray-900">{appointment.appointment_type_name}</span>
+                                )}
+                                {appointment.title && (
+                                  <h4 className="text-lg font-semibold text-gray-900">{appointment.title}</h4>
+                                )}
+                              </div>
+
+                              {/* Action Buttons for Past Appointments */}
+                              <div className="flex items-center space-x-2">
+                                {appointment.status === 'Completed' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log('View consultation details:', appointment.id);
+                                    }}
+                                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
+                                    title={t('view_details')}
+                                  >
+                                    <span className="material-icons-round text-sm mr-1">description</span>
+                                    {t('details')}
+                                  </button>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Edit appointment:', appointment.id);
+                                  }}
+                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
+                                  title={t('edit')}
+                                >
+                                  <span className="material-icons-round text-sm mr-1">edit</span>
+                                  {t('edit')}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Date, Time and Status in one line */}
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">calendar_today</span>
+                                  <span>{formatDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="material-icons-round text-base text-gray-500">schedule</span>
+                                  <span>{formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}</span>
+                                </div>
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                                  {appointment.status}
+                                </span>
+                              </div>
+                            </div>
+
+                            {appointment.notes && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <p className="text-sm text-gray-700">
+                                  <span className="font-medium">{t('notes')}:</span> {appointment.notes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                 </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {activePatientTab === 'files' && (
+              <div>
+                <h4 className="text-lg font-semibold text-neutral-800 mb-4">{t('patient_files')}</h4>
+                {loadingFiles ? (
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                  </div>
+                ) : patientFiles.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v4l4 4m-4-4H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2v-6a2 2 0 00-2-2h-4z" />
+                    </svg>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_patient_files_found')}</h4>
+                    <p className="text-gray-500">{t('upload_files_to_get_started')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {patientFiles.map((file) => (
+                      <div key={file.id} className="p-4 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="material-icons-round text-3xl text-blue-500">
+                            {file.file_type === 'document' ? 'description' : 'image'}
+                          </span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-800">{file.filename}</p>
+                            <p className="text-xs text-gray-500">{file.file_size} bytes • {new Date(file.upload_date).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => {
+                              // Handle file download/view - you may need to implement this based on your file service
+                              console.log('View file:', file.minio_object_name);
+                            }}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {t('view')}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activePatientTab === 'preconditions' && (
+              <div>
+                <PatientPreconditions
+                  patientId={selectedPatient.id}
+                  isEditable={true}
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -1111,10 +1213,13 @@ export const Patients: React.FC = () => {
           isOpen={showDeleteConfirmation}
           onClose={() => setShowDeleteConfirmation(false)}
           onConfirm={handleConfirmDelete}
-          title="Delete Patient"
-          message={`Are you sure you want to delete ${patientToDelete?.first_name} ${patientToDelete?.last_name}? This action cannot be undone and will permanently remove all patient data.`}
-          confirmButtonText="Delete Patient"
-          cancelButtonText="Cancel"
+          title={t('delete_patient')}
+          message={t('delete_patient_confirmation', {
+            firstName: patientToDelete?.first_name || '',
+            lastName: patientToDelete?.last_name || ''
+          })}
+          confirmButtonText={t('delete_patient')}
+          cancelButtonText={t('cancel')}
           isLoading={isLoading}
           variant="danger"
         />
@@ -1124,7 +1229,7 @@ export const Patients: React.FC = () => {
           <Modal
             isOpen={showAppointmentModal}
             onClose={() => setShowAppointmentModal(false)}
-            title="Schedule Appointment"
+            title={t('schedule_appointment')}
             size="xl"
           >
             <AppointmentBookingForm
@@ -1139,12 +1244,12 @@ export const Patients: React.FC = () => {
                     await loadPatientAppointments(selectedPatientForBooking.id);
                   }
 
-                  showNotification('success', 'Appointment Scheduled', 'The appointment has been scheduled successfully');
+                  showNotification('success', t('appointment_scheduled'), t('appointment_scheduled_successfully'));
                   setShowAppointmentModal(false);
                   setSelectedPatientForBooking(null);
                 } catch (err) {
                   console.error('Error scheduling appointment:', err);
-                  showNotification('error', 'Failed to Schedule', err instanceof Error ? err.message : 'Failed to schedule the appointment');
+                  showNotification('error', t('failed_to_schedule'), err instanceof Error ? err.message : t('failed_to_schedule_appointment'));
                 } finally {
                   setAppointmentLoading(false);
                 }
@@ -1184,7 +1289,7 @@ export const Patients: React.FC = () => {
       setViewMode('history');
     } catch (error) {
       console.error('Error loading patient history:', error);
-      showNotification('error', 'Error', 'Failed to load patient history');
+      showNotification('error', t('failed_to_load_history'), t('unable_to_load_patient_history'));
     } finally {
       setIsLoading(false);
     }
@@ -1192,28 +1297,27 @@ export const Patients: React.FC = () => {
 
   return (
     <DashboardLayout>
+      {renderHeader()}
+
+      {/* Patient List / Grid View */}
       <div className="fade-in-element">
-        {renderHeader()}
+        {viewMode === 'grid' && (
+          <>
+            {patients.length === 0 && !isLoading && (
+              <div className="text-center py-8">
+                <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 7 9-7M4 7h16" />
+                </svg>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_patients_found')}</h4>
+                <p className="text-gray-500">{t('start_by_adding_patient')}</p>
+              </div>
+            )}
 
-        {/* Patient List */}
-        <div className="mt-6">
-          {viewMode === 'grid' && renderGridView()}
-          {viewMode === 'list' && renderListView()}
+            {patients.length > 0 && renderGridView()}
+          </>
+        )}
 
-          {/* Pagination */}
-          {totalPatients > itemsPerPage && (
-            <div className="mt-4">
-              <Pagination
-                currentPage={currentPage}
-                totalItems={totalPatients}
-                itemsPerPage={itemsPerPage}
-                onPageChange={handlePageChange}
-                onPageSizeChange={handlePageSizeChange}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
-        </div>
+        {viewMode === 'list' && renderListView()}
       </div>
     </DashboardLayout>
   );

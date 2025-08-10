@@ -12,13 +12,21 @@ import { AppointmentTypeService, AppointmentType, AppointmentTypeCreate } from '
 import { authService } from '../services/authService';
 
 export const SettingsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language: currentUILanguage, setLanguage: setUILanguage } = useTranslation();
   const { showNotification } = useNotification();
 
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [fieldValues, setFieldValues] = useState<SettingsFieldValues | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Check if we should restore to layout tab after reload
+    const savedTab = localStorage.getItem('settings_active_tab');
+    if (savedTab) {
+      localStorage.removeItem('settings_active_tab'); // Clean up
+      return savedTab;
+    }
+    return 'general';
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Cloud backup states
@@ -44,20 +52,27 @@ export const SettingsPage: React.FC = () => {
 
   // Available icons for appointment types
   const availableIcons = [
-    { value: 'event', label: 'General Appointment', color: 'text-blue-600' },
-    { value: 'medical_services', label: 'Medical Checkup', color: 'text-green-600' },
-    { value: 'healing', label: 'Treatment', color: 'text-purple-600' },
-    { value: 'vaccines', label: 'Vaccination', color: 'text-orange-600' },
-    { value: 'psychology', label: 'Consultation', color: 'text-indigo-600' },
-    { value: 'monitor_heart', label: 'Cardiology', color: 'text-red-600' },
-    { value: 'visibility', label: 'Eye Exam', color: 'text-cyan-600' },
-    { value: 'hearing', label: 'Hearing Test', color: 'text-yellow-600' },
-    { value: 'pregnant_woman', label: 'Prenatal Care', color: 'text-pink-600' },
-    { value: 'child_care', label: 'Pediatric', color: 'text-emerald-600' },
-    { value: 'elderly', label: 'Geriatric Care', color: 'text-gray-600' },
-    { value: 'psychology_alt', label: 'Mental Health', color: 'text-violet-600' },
-    { value: 'sports_soccer', label: 'Sports Medicine', color: 'text-lime-600' },
-    { value: 'spa', label: 'Wellness', color: 'text-teal-600' }
+    { value: 'event', label: t('general_appointment'), color: 'text-blue-600' },
+    { value: 'medical_services', label: t('medical_checkup'), color: 'text-green-600' },
+    { value: 'healing', label: t('treatment'), color: 'text-purple-600' },
+    { value: 'vaccines', label: t('vaccination'), color: 'text-orange-600' },
+    { value: 'psychology', label: t('consultation'), color: 'text-indigo-600' },
+    { value: 'monitor_heart', label: t('cardiology'), color: 'text-red-600' },
+    { value: 'visibility', label: t('eye_exam'), color: 'text-cyan-600' },
+    { value: 'hearing', label: t('hearing_test'), color: 'text-yellow-600' },
+    { value: 'pregnant_woman', label: t('prenatal_care'), color: 'text-pink-600' },
+    { value: 'child_care', label: t('pediatric'), color: 'text-emerald-600' },
+    { value: 'elderly', label: t('geriatric_care'), color: 'text-gray-600' },
+    { value: 'psychology_alt', label: t('mental_health'), color: 'text-violet-600' },
+    { value: 'sports_soccer', label: t('sports_medicine'), color: 'text-lime-600' },
+    { value: 'spa', label: t('wellness'), color: 'text-teal-600' }
+  ];
+
+  // Available languages - always show these regardless of backend response
+  const availableLanguages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'fr', name: 'French', nativeName: 'Français' },
+    { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
   ];
 
   useEffect(() => {
@@ -100,11 +115,15 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleInputChange = (field: keyof SettingsType, value: any) => {
-    if (!settings) return;
-    setSettings(prev => prev ? {
-      ...prev,
-      [field]: value
-    } : null);
+    if (settings) {
+      const updatedSettings = { ...settings, [field]: value };
+      setSettings(updatedSettings);
+
+      // If language is changed, also update the UI language immediately
+      if (field === 'display_language') {
+        setUILanguage(value as 'en' | 'fr' );
+      }
+    }
   };
 
   const handleWorkingDayToggle = (day: string) => {
@@ -123,7 +142,24 @@ export const SettingsPage: React.FC = () => {
     try {
       const updatedSettings = await SettingsService.updateSettings(settings);
       setSettings(updatedSettings);
-      showNotification('success', 'Success', 'Settings saved successfully');
+
+      // Check if layout position was changed and reload page if so
+      const currentLayoutPosition = updatedSettings.layout_position || 'sidebar';
+      const previousLayoutPosition = localStorage.getItem('previous_layout_position') || 'sidebar';
+
+      showNotification('success', 'Success', t('layout_updated_successfully'));
+
+      // Store the current layout position for next comparison
+      localStorage.setItem('previous_layout_position', currentLayoutPosition);
+
+      // Reload page if layout position changed
+      if (currentLayoutPosition !== previousLayoutPosition) {
+        // Store the current tab so we can restore it after reload
+        localStorage.setItem('settings_active_tab', 'layout');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000); // Small delay to show the success notification
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
       showNotification('error', 'Error', 'Failed to save settings');
@@ -272,7 +308,7 @@ export const SettingsPage: React.FC = () => {
             {t('clinic_information')}
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Input
                 label={t('clinic_name')}
@@ -308,6 +344,31 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => handleInputChange('clinic_email', e.target.value)}
                 placeholder="Enter clinic email"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Language Settings Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">language</span>
+            {t('language_settings')}
+          </h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('language' as any) || 'Language'}</label>
+              <select
+                value={settings.display_language || currentUILanguage}
+                onChange={(e) => handleInputChange('display_language', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -372,7 +433,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-800 flex items-center">
               <span className="material-icons-round text-primary-600 mr-2">category</span>
-              Appointment Types
+              {t('appointment_types')}
             </h3>
             <Button
               onClick={() => {
@@ -384,7 +445,7 @@ export const SettingsPage: React.FC = () => {
               className="flex items-center"
             >
               <span className="material-icons-round mr-2">add</span>
-              Add Type
+              {t('add_type')}
             </Button>
           </div>
 
@@ -392,7 +453,7 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <span className="material-icons-round animate-spin text-2xl text-primary-600 mb-2">autorenew</span>
-                <p className="text-gray-600">Loading appointment types...</p>
+                <p className="text-gray-600">{t('loading_appointment_types')}</p>
               </div>
             </div>
           ) : appointmentTypes.length === 0 ? (
@@ -400,8 +461,8 @@ export const SettingsPage: React.FC = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="material-icons-round text-gray-400 text-2xl">category</span>
               </div>
-              <h4 className="text-lg font-medium text-gray-800 mb-2">No Appointment Types</h4>
-              <p className="text-gray-600 mb-4">Create your first appointment type to get started.</p>
+              <h4 className="text-lg font-medium text-gray-800 mb-2">{t('no_appointment_types')}</h4>
+              <p className="text-gray-600 mb-4">{t('create_first_appointment_type')}</p>
               <Button
                 onClick={() => {
                   setEditingAppointmentType(null);
@@ -411,7 +472,7 @@ export const SettingsPage: React.FC = () => {
                 variant="primary"
               >
                 <span className="material-icons-round mr-2">add</span>
-                Add Appointment Type
+                {t('add_appointment_type')}
               </Button>
             </div>
           ) : (
@@ -510,8 +571,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">Email Notifications</h4>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('email_notifications')}</h4>
+                  <p className="text-sm text-gray-500">{t('receive_notifications_email')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -540,8 +601,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">SMS Notifications</h4>
-                  <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('sms_notifications')}</h4>
+                  <p className="text-sm text-gray-500">{t('receive_notifications_sms')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -570,8 +631,8 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">Appointment Reminders</h4>
-                  <p className="text-sm text-gray-500">Send automatic appointment reminders</p>
+                  <h4 className="text-sm font-medium text-gray-900">{t('appointment_reminders')}</h4>
+                  <p className="text-sm text-gray-500">{t('send_automatic_reminders')}</p>
                 </div>
               </div>
               <div className="relative">
@@ -597,7 +658,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex-1">
                     <Input
-                      label="Reminder Time (minutes before)"
+                      label={t('reminder_time_minutes')}
                       type="number"
                       value={settings.notifications_reminder_time.toString()}
                       onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
@@ -682,14 +743,176 @@ export const SettingsPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
               <select
-                value={settings.display_language}
+                value={settings.display_language || currentUILanguage}
                 onChange={(e) => handleInputChange('display_language', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
-                {fieldValues.languages.map((lang) => (
-                  <option key={lang} value={lang}>{lang}</option>
+                {availableLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName} ({lang.name})
+                  </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLayoutTab = () => {
+    if (!settings) return null;
+
+    return (
+      <div className="space-y-6">
+        {/* Layout Position Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">view_quilt</span>
+            {t('layout_position')}
+          </h3>
+
+          <p className="text-gray-600 mb-6">{t('layout_position_description')}</p>
+
+          <div className="space-y-6">
+            {/* Layout Position Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Sidebar Layout Option */}
+              <div
+                onClick={() => handleInputChange('layout_position', 'sidebar')}
+                className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  (settings.layout_position || 'sidebar') === 'sidebar'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-800">{t('sidebar_layout')}</h4>
+                  <div className={`w-5 h-5 rounded-full border-2 ${
+                    (settings.layout_position || 'sidebar') === 'sidebar'
+                      ? 'border-primary-500 bg-primary-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {(settings.layout_position || 'sidebar') === 'sidebar' && (
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visual Preview */}
+                <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <div className="flex">
+                    <div className="w-20 h-12 bg-primary-500 rounded mr-2"></div>
+                    <div className="flex-1 h-12 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Navigation menu positioned on the left side of the screen
+                </p>
+              </div>
+
+              {/* Header Layout Option */}
+              <div
+                onClick={() => handleInputChange('layout_position', 'header')}
+                className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
+                  settings.layout_position === 'header'
+                    ? 'border-primary-500 bg-primary-50'
+                    : 'border-gray-200 bg-white hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-800">{t('header_layout')}</h4>
+                  <div className={`w-5 h-5 rounded-full border-2 ${
+                    settings.layout_position === 'header'
+                      ? 'border-primary-500 bg-primary-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {settings.layout_position === 'header' && (
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary-500"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Visual Preview */}
+                <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <div className="space-y-2">
+                    <div className="w-full h-4 bg-primary-500 rounded"></div>
+                    <div className="w-full h-8 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Navigation menu positioned at the top of the screen
+                </p>
+              </div>
+            </div>
+
+            {/* Layout Preview */}
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
+              <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <span className="material-icons-round text-primary-600 mr-2">preview</span>
+                Live Preview
+              </h4>
+
+              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                {(settings.layout_position || 'sidebar') === 'sidebar' ? (
+                  <div className="flex h-32">
+                    <div className="w-20 bg-primary-600 flex flex-col items-center justify-center space-y-2">
+                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                        <span className="material-icons-round text-primary-600 text-sm">local_hospital</span>
+                      </div>
+                      <div className="space-y-1">
+                        {['dashboard', 'calendar', 'people', 'bar_chart', 'settings'].map((icon, idx) => (
+                          <div key={idx} className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                            <span className="material-icons-round text-white text-xs">{icon}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-gray-50 p-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                        <div className="h-8 bg-gray-200 rounded mt-4"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-0">
+                    <div className="h-16 bg-primary-600 flex items-center justify-between px-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                          <span className="material-icons-round text-primary-600 text-sm">local_hospital</span>
+                        </div>
+                        <span className="text-white font-medium">Clinic Name</span>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {['dashboard', 'calendar', 'people', 'bar_chart', 'settings'].map((icon, idx) => (
+                          <div key={idx} className="w-8 h-8 bg-white/20 rounded flex items-center justify-center">
+                            <span className="material-icons-round text-white text-sm">{icon}</span>
+                          </div>
+                        ))}
+                        <div className="w-8 h-8 bg-white/20 rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="h-16 bg-gray-50 p-4">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                This preview shows how your layout will appear. Changes take effect immediately.
+              </p>
             </div>
           </div>
         </div>
@@ -711,7 +934,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div>
               <h4 className="font-medium text-gray-800">Enable Cloud Backup</h4>
-              <p className="text-sm text-gray-600">Automatically backup your clinic data to secure cloud storage</p>
+              <p className="text-sm text-gray-600 mb-4">{t('automatically_backup_desc')}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -910,11 +1133,12 @@ export const SettingsPage: React.FC = () => {
   );
 
   const tabs = [
-    { id: 'general', label: 'General', icon: 'settings' },
-    { id: 'appointments', label: 'Appointments', icon: 'event' },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications' },
-    { id: 'display', label: 'Display', icon: 'display_settings' },
-    { id: 'backup_restore', label: 'Backup & Restore', icon: 'cloud' }
+    { id: 'general', label: t('general'), icon: 'settings' },
+    { id: 'appointments', label: t('appointments'), icon: 'event' },
+    { id: 'notifications', label: t('notifications'), icon: 'notifications' },
+    { id: 'display', label: t('display'), icon: 'display_settings' },
+    { id: 'layout', label: t('layout_position'), icon: 'view_quilt' },
+    { id: 'backup_restore', label: t('backup_restore'), icon: 'cloud' }
   ];
 
   if (isLoading) {
@@ -985,6 +1209,7 @@ export const SettingsPage: React.FC = () => {
             {activeTab === 'appointments' && renderAppointmentsTab()}
             {activeTab === 'notifications' && renderNotificationsTab()}
             {activeTab === 'display' && renderDisplayTab()}
+            {activeTab === 'layout' && renderLayoutTab()}
             {activeTab === 'backup_restore' && renderBackupRestoreTab()}
           </div>
         </div>

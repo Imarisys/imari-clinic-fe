@@ -10,7 +10,6 @@ interface Language {
 const languages: Language[] = [
   { code: 'en', name: 'English', flag: '🇬🇧' },
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'ar', name: 'العربية', flag: '🇹🇳' },
 ];
 
 export const LanguageSelector: React.FC = () => {
@@ -23,7 +22,7 @@ export const LanguageSelector: React.FC = () => {
   const handleLanguageChange = (newLanguage: Language) => {
     setSelectedLanguage(newLanguage);
     setIsOpen(false);
-    setLanguage(newLanguage.code as 'en' | 'fr' | 'ar');
+    setLanguage(newLanguage.code as 'en' | 'fr');
   };
 
   return (

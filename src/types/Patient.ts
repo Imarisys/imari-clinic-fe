@@ -13,6 +13,7 @@ export interface Patient {
     city: string;
     state: string;
     zip_code: string;
+    preconditions?: any; // JSON field for medical preconditions
 }
 
 // For creating new patients (without id)
@@ -27,6 +28,7 @@ export interface PatientCreate {
     city?: string;
     state?: string;
     zip_code?: string;
+    preconditions?: any; // JSON field for medical preconditions
 }
 
 // For updating patients (all fields optional)
@@ -41,6 +43,7 @@ export interface PatientUpdate {
     city?: string;
     state?: string;
     zip_code?: string;
+    preconditions?: any; // JSON field for medical preconditions
 }
 
 // For API responses (matches PatientRead from OpenAPI)

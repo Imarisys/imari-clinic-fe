@@ -1,5 +1,6 @@
 import React from 'react';
 import { Appointment, AppointmentStatus } from '../../types/Appointment';
+import { useTranslation } from '../../context/TranslationContext';
 
 interface WeeklyViewProps {
   isSlotSelected: (date: string, time: string) => boolean;
@@ -43,6 +44,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   workingHours = { startTime: '08:00', endTime: '17:00' },
   workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
 }) => {
+  const { t } = useTranslation();
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
 
@@ -102,10 +104,24 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
     return day;
   });
 
+  // Helper function to get translated day name
+  const getDayName = (date: Date): string => {
+    const dayNames = [t('sunday'), t('monday'), t('tuesday'), t('wednesday'), t('thursday'), t('friday'), t('saturday')];
+    return dayNames[date.getDay()];
+  };
+
+  // Helper function to get short day name
+  const getShortDayName = (date: Date): string => {
+    const shortDayNames = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
+    return shortDayNames[date.getDay()];
+  };
+
   // Check if a day is a working day
   const isWorkingDay = (date: Date): boolean => {
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    return workingDays.includes(dayName);
+    // Get the English day name to compare with settings
+    const englishDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const englishDayName = englishDayNames[date.getDay()];
+    return workingDays.includes(englishDayName);
   };
 
   // Generate time slots based on working hours
@@ -133,7 +149,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
         {days.map((day, index) => {
           const isWorking = isWorkingDay(day);
           const isToday = day.toDateString() === new Date().toDateString();
-          
+
           return (
             <div
               key={index}
@@ -158,7 +174,7 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                   ? 'text-neutral-500' 
                   : 'text-red-400'
               }`}>
-                {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                {getShortDayName(day)}
               </p>
               <p className={`text-lg font-semibold ${
                 isToday

@@ -70,10 +70,52 @@ export const api = {
         }
       };
     }
+    if (url.includes('/preconditions/')) {
+      // Mock preconditions data for development
+      return {
+        data: {
+          data: [], // Empty preconditions list
+          total: 0
+        }
+      };
+    }
     // For other endpoints, return empty array
     return { data: [] };
   },
   post: async (url: string, data: any, config?: any): Promise<{ data: any }> => {
+    // Mock implementation for development
+    if (url.includes('/preconditions/')) {
+      // Return mock created precondition
+      return {
+        data: {
+          id: Date.now().toString(),
+          patient_id: data.patient_id,
+          name: data.name,
+          date: data.date,
+          note: data.note
+        }
+      };
+    }
+    return { data: null };
+  },
+  put: async (url: string, data: any, config?: any): Promise<{ data: any }> => {
+    // Mock implementation for development
+    if (url.includes('/preconditions/')) {
+      // Return mock updated precondition
+      const id = url.split('/').pop();
+      return {
+        data: {
+          id,
+          patient_id: 'mock_patient_id',
+          name: data.name || 'Updated Condition',
+          date: data.date || new Date().toISOString().split('T')[0],
+          note: data.note
+        }
+      };
+    }
+    return { data: null };
+  },
+  delete: async (url: string): Promise<{ data: any }> => {
     // Mock implementation for development
     return { data: null };
   }

@@ -87,7 +87,7 @@ export const Calendar: React.FC = () => {
       );
       setAppointments(appointmentData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load appointments');
+      setError(err instanceof Error ? err.message : t('failed_to_load_appointments'));
       console.error('Error loading appointments:', err);
     } finally {
       setLoading(false);
@@ -155,9 +155,9 @@ export const Calendar: React.FC = () => {
       setAppointments(prev => [...prev, newAppointment]);
       setShowNewAppointmentForm(false);
       setSelectedTimeSlot(null);
-      showNotification('success', 'Success', 'Appointment created successfully');
+      showNotification('success', t('success'), t('appointment_created_successfully'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create appointment');
+      setError(err instanceof Error ? err.message : t('failed_to_create_appointment'));
       console.error('Error creating appointment:', err);
     } finally {
       setAppointmentLoading(false);
@@ -171,9 +171,9 @@ export const Calendar: React.FC = () => {
       const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, appointmentData);
       setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
       setSelectedAppointment(updatedAppointment);
-      showNotification('success', 'Success', 'Appointment updated successfully');
+      showNotification('success', t('success'), t('appointment_updated_successfully'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update appointment');
+      setError(err instanceof Error ? err.message : t('failed_to_update_appointment'));
       console.error('Error updating appointment:', err);
     } finally {
       setAppointmentLoading(false);
@@ -187,9 +187,9 @@ export const Calendar: React.FC = () => {
       const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status });
       setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
       setSelectedAppointment(updatedAppointment);
-      showNotification('success', 'Success', `Appointment ${status.toLowerCase()}`);
+      showNotification('success', t('success'), `${t('appointment')} ${status.toLowerCase()}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update appointment status');
+      setError(err instanceof Error ? err.message : t('failed_to_update_appointment'));
       console.error('Error updating appointment status:', err);
     } finally {
       setAppointmentLoading(false);
@@ -209,9 +209,9 @@ export const Calendar: React.FC = () => {
       await AppointmentService.deleteAppointment(appointmentId);
       setAppointments(prev => prev.filter(apt => apt.id !== appointmentId));
       setSelectedAppointment(null);
-      showNotification('success', 'Success', 'Appointment deleted successfully');
+      showNotification('success', t('success'), t('appointment_deleted_successfully'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete appointment');
+      setError(err instanceof Error ? err.message : t('failed_to_delete_appointment'));
       console.error('Error deleting appointment:', err);
     } finally {
       setAppointmentLoading(false);
@@ -231,9 +231,9 @@ export const Calendar: React.FC = () => {
       const updatedAppointment = await AppointmentService.updateAppointment(appointmentId, { status: 'Cancelled' });
       setAppointments(prev => prev.map(apt => apt.id === appointmentId ? updatedAppointment : apt));
       setSelectedAppointment(updatedAppointment);
-      showNotification('success', 'Success', 'Appointment cancelled');
+      showNotification('success', t('success'), t('appointment_cancelled_successfully'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel appointment');
+      setError(err instanceof Error ? err.message : t('failed_to_cancel_appointment'));
       console.error('Error cancelling appointment:', err);
     } finally {
       setAppointmentLoading(false);
@@ -306,10 +306,10 @@ export const Calendar: React.FC = () => {
       setSelectedPatientForBooking(newPatient);
       setShowCreatePatientForm(false);
       setBookingStep('appointment');
-      showNotification('success', 'Success', 'Patient created successfully');
+      showNotification('success', t('success'), t('patient_created_successfully'));
     } catch (err) {
       console.error('Error creating patient:', err);
-      showNotification('error', 'Error', 'Failed to create patient');
+      showNotification('error', t('error'), t('failed_to_create_patient'));
       // Re-throw the error so PatientForm can handle it appropriately
       throw err;
     }
@@ -338,7 +338,7 @@ export const Calendar: React.FC = () => {
       setPatients(response.data);
     } catch (err) {
       console.error('Error searching patients:', err);
-      showNotification('error', 'Error', 'Failed to search patients');
+      showNotification('error', t('error'), t('failed_to_load_patients'));
     } finally {
       setIsSearchingPatients(false);
     }
@@ -410,12 +410,18 @@ export const Calendar: React.FC = () => {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const dayNames = [t('sunday'), t('monday'), t('tuesday'), t('wednesday'), t('thursday'), t('friday'), t('saturday')];
+    const monthNames = [
+      t('january'), t('february'), t('march'), t('april'), t('may'), t('june'),
+      t('july'), t('august'), t('september'), t('october'), t('november'), t('december')
+    ];
+
+    const dayName = dayNames[date.getDay()];
+    const monthName = monthNames[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+
+    return `${dayName}, ${day} ${monthName} ${year}`;
   };
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -472,12 +478,12 @@ export const Calendar: React.FC = () => {
       setSelectedPatient(patientData);
     } catch (err) {
       console.error('Error loading patient data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load patient data');
-      showNotification('error', 'Error', 'Failed to load patient data');
+      setError(err instanceof Error ? err.message : t('failed_to_load_patient_data'));
+      showNotification('error', t('error'), t('failed_to_load_patient_data'));
     } finally {
       setAppointmentLoading(false);
     }
-  }, [showNotification]);
+  }, [showNotification, t]);
 
   // Handle appointment selection
   useEffect(() => {
@@ -517,7 +523,7 @@ export const Calendar: React.FC = () => {
     <div className="card mb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary-600 mb-2">Calendar</h1>
+          <h1 className="text-3xl font-bold text-primary-600 mb-2">{t('calendar')}</h1>
           <p className="text-neutral-600">{formatDate(currentDate)}</p>
         </div>
 
@@ -534,7 +540,7 @@ export const Calendar: React.FC = () => {
                     : 'text-neutral-600 hover:text-primary-600 hover:bg-white'
                 }`}
               >
-                {viewType.charAt(0).toUpperCase() + viewType.slice(1)}
+                {t(viewType)}
               </button>
             ))}
           </div>
@@ -554,7 +560,7 @@ export const Calendar: React.FC = () => {
             onClick={() => setCurrentDate(new Date())}
             className="btn-secondary"
           >
-            Today
+            {t('today')}
           </button>
           <button
             onClick={() => navigateDate('next')}
@@ -570,7 +576,7 @@ export const Calendar: React.FC = () => {
             className="btn-primary"
           >
             <span className="material-icons-round mr-2">add</span>
-            New Appointment
+            {t('new_appointment')}
           </button>
         </div>
       </div>
@@ -691,7 +697,7 @@ export const Calendar: React.FC = () => {
       setShowRescheduleConfirmation(true);
     } catch (err) {
       console.error('Error loading patient data:', err);
-      showNotification('error', 'Error', 'Failed to load patient data');
+      showNotification('error', t('error'), t('failed_to_load_patient_data'));
     } finally {
       setAppointmentLoading(false);
     }
@@ -705,12 +711,12 @@ export const Calendar: React.FC = () => {
       setAppointmentLoading(true);
       const updatedAppointment = await AppointmentService.updateAppointment(rescheduleData.appointment.id, appointmentData);
       setAppointments(prev => prev.map(apt => apt.id === rescheduleData.appointment.id ? updatedAppointment : apt));
-      showNotification('success', 'Success', 'Appointment rescheduled successfully');
+      showNotification('success', t('success'), t('appointment_rescheduled_successfully'));
       setShowRescheduleConfirmation(false);
       setRescheduleData(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reschedule appointment');
-      showNotification('error', 'Error', 'Failed to reschedule appointment');
+      setError(err instanceof Error ? err.message : t('failed_to_reschedule_appointment'));
+      showNotification('error', t('error'), t('failed_to_reschedule_appointment'));
       console.error('Error rescheduling appointment:', err);
     } finally {
       setAppointmentLoading(false);
@@ -820,7 +826,7 @@ export const Calendar: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  {bookingStep === 'patient' ? 'Select Patient' : 'Book Appointment'}
+                  {bookingStep === 'patient' ? t('select_patient') : t('book_appointment')}
                 </h2>
                 <button
                   onClick={closeNewAppointmentModal}
@@ -839,7 +845,7 @@ export const Calendar: React.FC = () => {
                     }`}>
                       1
                     </div>
-                    <span className="text-sm font-medium">Select Patient</span>
+                    <span className="text-sm font-medium">{t('select_patient')}</span>
                   </div>
                   <div className="flex-1 h-px bg-gray-200"></div>
                   <div className={`flex items-center space-x-2 ${bookingStep === 'appointment' ? 'text-blue-600' : 'text-gray-400'}`}>
@@ -848,7 +854,7 @@ export const Calendar: React.FC = () => {
                     }`}>
                       2
                     </div>
-                    <span className="text-sm font-medium">Book Appointment</span>
+                    <span className="text-sm font-medium">{t('book_appointment')}</span>
                   </div>
                 </div>
               </div>
@@ -861,7 +867,7 @@ export const Calendar: React.FC = () => {
                       {showCreatePatientForm ? (
                         <div>
                           <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-medium text-gray-900">Create New Patient</h3>
+                            <h3 className="text-lg font-medium text-gray-900">{t('create_new_patient')}</h3>
                             <button
                               onClick={() => setShowCreatePatientForm(false)}
                               className="text-gray-400 hover:text-gray-600"
@@ -881,7 +887,7 @@ export const Calendar: React.FC = () => {
                             <div className="relative">
                               <input
                                 type="text"
-                                placeholder="Search patients by name, email, or phone..."
+                                placeholder={t('search_by_name_email')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -899,7 +905,7 @@ export const Calendar: React.FC = () => {
                               className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
                             >
                               <span className="material-icons-round mb-2">add</span>
-                              <div className="text-sm font-medium">Create New Patient</div>
+                              <div className="text-sm font-medium">{t('create_new_patient')}</div>
                             </button>
                           </div>
 
@@ -928,12 +934,12 @@ export const Calendar: React.FC = () => {
                               ))}
                               {patients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  No patients found matching "{searchQuery}"
+                                  {t('no_patients_found')} "{searchQuery}"
                                 </div>
                               )}
                               {patients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  No patients available. Create a new patient to get started.
+                                  {t('no_patients_available')}. {t('create_new_patient')}.
                                 </div>
                               )}
                             </div>
@@ -947,9 +953,9 @@ export const Calendar: React.FC = () => {
                     <div className="min-h-full">
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900">Book Appointment</h3>
+                          <h3 className="text-lg font-medium text-gray-900">{t('book_appointment')}</h3>
                           <p className="text-sm text-gray-600">
-                            for {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
+                            {t('for')} {selectedPatientForBooking.first_name} {selectedPatientForBooking.last_name}
                           </p>
                         </div>
                         <button
@@ -994,10 +1000,10 @@ export const Calendar: React.FC = () => {
         {/* Cancel Appointment Confirmation Dialog */}
         <ConfirmDialog
           isOpen={showCancelConfirm}
-          title="Cancel Appointment"
-          message="Are you sure you want to cancel this appointment? This will change the appointment status to cancelled."
-          confirmText="Cancel Appointment"
-          cancelText="Keep Appointment"
+          title={t('are_you_sure_cancel_appointment')}
+          message={t('are_you_sure_cancel_appointment')}
+          confirmText={t('yes')}
+          cancelText={t('no')}
           type="warning"
           isLoading={appointmentLoading}
           onConfirm={async () => {
@@ -1014,10 +1020,10 @@ export const Calendar: React.FC = () => {
         {/* Delete Appointment Confirmation Dialog */}
         <ConfirmDialog
           isOpen={showDeleteConfirm}
-          title="Delete Appointment"
-          message="Are you sure you want to delete this appointment? This action cannot be undone and will permanently remove the appointment from the system."
-          confirmText="Delete Appointment"
-          cancelText="Keep Appointment"
+          title={t('are_you_sure_delete_appointment')}
+          message={t('are_you_sure_delete_appointment')}
+          confirmText={t('yes')}
+          cancelText={t('no')}
           type="danger"
           isLoading={appointmentLoading}
           onConfirm={async () => {
