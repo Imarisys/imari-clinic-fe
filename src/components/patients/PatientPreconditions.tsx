@@ -5,6 +5,7 @@ import { Modal } from '../common/Modal';
 import { ConfirmationDialog } from '../common/ConfirmationDialog';
 import { PreconditionService, Precondition } from '../../services/preconditionService';
 import { useNotification } from '../../hooks/useNotification';
+import { useTranslation } from '../../context/TranslationContext';
 
 interface PatientPreconditionsProps {
   patientId: string;
@@ -15,6 +16,7 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
   patientId,
   isEditable = true
 }) => {
+  const { t } = useTranslation();
   const [preconditions, setPreconditions] = useState<Precondition[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -31,26 +33,26 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
 
   // Predefined list of common medical preconditions with icons
   const commonPreconditions = [
-    { name: 'Diabetes Type 1', icon: '🩸' },
-    { name: 'Diabetes Type 2', icon: '🩸' },
-    { name: 'Hypertension', icon: '💓' },
-    { name: 'Heart Disease', icon: '❤️' },
-    { name: 'Asthma', icon: '🫁' },
-    { name: 'COPD', icon: '🫁' },
-    { name: 'Allergies', icon: '🤧' },
-    { name: 'Arthritis', icon: '🦴' },
-    { name: 'Depression', icon: '🧠' },
-    { name: 'Anxiety', icon: '😰' },
-    { name: 'Kidney Disease', icon: '🫘' },
-    { name: 'Liver Disease', icon: '🫖' },
-    { name: 'Thyroid Disease', icon: '🦋' },
-    { name: 'Osteoporosis', icon: '🦴' },
-    { name: 'High Cholesterol', icon: '🧈' },
-    { name: 'Migraine', icon: '🤕' },
-    { name: 'Epilepsy', icon: '⚡' },
-    { name: 'Cancer History', icon: '🎗️' },
-    { name: 'Blood Clotting Disorder', icon: '🩸' },
-    { name: 'Autoimmune Disease', icon: '🛡️' }
+    { name: t('diabetes_type_1'), icon: '🩸' },
+    { name: t('diabetes_type_2'), icon: '🩸' },
+    { name: t('hypertension'), icon: '💓' },
+    { name: t('heart_disease'), icon: '❤️' },
+    { name: t('asthma'), icon: '🫁' },
+    { name: t('copd'), icon: '🫁' },
+    { name: t('allergies'), icon: '🤧' },
+    { name: t('arthritis'), icon: '🦴' },
+    { name: t('depression'), icon: '🧠' },
+    { name: t('anxiety'), icon: '😰' },
+    { name: t('kidney_disease'), icon: '🫘' },
+    { name: t('liver_disease'), icon: '🫖' },
+    { name: t('thyroid_disease'), icon: '🦋' },
+    { name: t('osteoporosis'), icon: '🦴' },
+    { name: t('high_cholesterol'), icon: '🧈' },
+    { name: t('migraine'), icon: '🤕' },
+    { name: t('epilepsy'), icon: '⚡' },
+    { name: t('cancer_history'), icon: '🎗️' },
+    { name: t('blood_clotting_disorder'), icon: '🩸' },
+    { name: t('autoimmune_disease'), icon: '🛡️' }
   ];
 
   // Load preconditions when component mounts or patientId changes
@@ -69,7 +71,7 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       setPreconditions(response.data);
     } catch (error) {
       console.error('Failed to load preconditions:', error);
-      showNotification('error', 'Error', 'Failed to load medical preconditions');
+      showNotification('error', t('error'), t('failed_to_load_medical_preconditions'));
     } finally {
       setIsLoading(false);
     }
@@ -82,7 +84,7 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       : customCondition.trim();
 
     if (!conditionName) {
-      showNotification('warning', 'Warning', 'Please select or enter a condition name');
+      showNotification('warning', t('warning'), t('please_select_or_enter_condition_name'));
       return;
     }
 
@@ -107,10 +109,10 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       setSelectedDate(new Date().toISOString().split('T')[0]);
       setShowAddModal(false);
 
-      showNotification('success', 'Success', 'Medical condition added successfully');
+      showNotification('success', t('success'), t('medical_condition_added_successfully'));
     } catch (error) {
       console.error('Failed to add precondition:', error);
-      showNotification('error', 'Error', 'Failed to add medical condition');
+      showNotification('error', t('error'), t('failed_to_add_medical_condition'));
     } finally {
       setIsUpdating(false);
     }
@@ -139,10 +141,10 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       setPreconditionToEdit(null);
       setShowEditModal(false);
 
-      showNotification('success', 'Success', 'Medical condition updated successfully');
+      showNotification('success', t('success'), t('medical_condition_updated_successfully'));
     } catch (error) {
       console.error('Failed to update precondition:', error);
-      showNotification('error', 'Error', 'Failed to update medical condition');
+      showNotification('error', t('error'), t('failed_to_update_medical_condition'));
     } finally {
       setIsUpdating(false);
     }
@@ -161,10 +163,10 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       setShowDeleteConfirm(false);
       setPreconditionToDelete(null);
 
-      showNotification('success', 'Success', 'Medical condition deleted successfully');
+      showNotification('success', t('success'), t('medical_condition_deleted_successfully'));
     } catch (error) {
       console.error('Failed to delete precondition:', error);
-      showNotification('error', 'Error', 'Failed to delete medical condition');
+      showNotification('error', t('error'), t('failed_to_delete_medical_condition'));
     } finally {
       setIsUpdating(false);
     }
@@ -209,7 +211,7 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <h3 className="text-lg font-semibold text-gray-900">
-            Medical Preconditions
+            {t('medical_preconditions')}
           </h3>
         </div>
         {isEditable && (
@@ -223,7 +225,7 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <span className="text-white mr-1">+</span>
-            Add Medical Precondition
+            {t('add_medical_precondition')}
           </Button>
         )}
       </div>
@@ -231,13 +233,13 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
       {isLoading ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-2xl mb-2">⏳</div>
-          <p className="text-sm">Loading medical preconditions...</p>
+          <p className="text-sm">{t('loading_medical_preconditions')}</p>
         </div>
       ) : preconditions.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-2">📋</div>
           <p className="text-sm">
-            No medical preconditions recorded
+            {t('no_medical_preconditions_recorded')}
           </p>
         </div>
       ) : (
@@ -292,14 +294,14 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
           setShowAddModal(false);
           resetAddForm();
         }}
-        title="Add Medical Preconditions"
+        title={t('add_medical_preconditions')}
         size="lg"
       >
         <div className="space-y-6">
           {/* Date Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date Diagnosed
+              {t('date_diagnosed')}
             </label>
             <Input
               type="date"
@@ -312,23 +314,23 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
           {/* Precondition Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precondition
+              {t('precondition')}
             </label>
             <Input
               value={customCondition}
               onChange={(e) => setCustomCondition(e.target.value)}
-              placeholder="Enter medical condition name..."
+              placeholder={t('enter_medical_condition_name')}
               className="w-full"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Select from suggestions below or type a custom condition
+              {t('select_from_suggestions_or_type_custom')}
             </p>
           </div>
 
           {/* Common Preconditions */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Select Common Conditions
+              {t('select_common_conditions')}
             </label>
             <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
               <div className="space-y-1">
@@ -351,12 +353,12 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
+              {t('notes_optional')}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes about the condition..."
+              placeholder={t('additional_notes_about_condition')}
               rows={3}
               className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -372,14 +374,14 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
               variant="secondary"
               disabled={isUpdating}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleAddPrecondition}
               disabled={isUpdating || (selectedPreconditions.length === 0 && !customCondition.trim())}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isUpdating ? 'Adding...' : 'Add Condition'}
+              {isUpdating ? t('adding') : t('add_condition')}
             </Button>
           </div>
         </div>
@@ -392,30 +394,30 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
           setShowEditModal(false);
           resetEditForm();
         }}
-        title="Edit Medical Precondition"
+        title={t('edit_medical_precondition')}
         size="md"
       >
         <div className="space-y-4">
           {/* Precondition Field */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precondition
+              {t('precondition')}
             </label>
             <Input
               value={customCondition}
               onChange={(e) => setCustomCondition(e.target.value)}
-              placeholder="Enter medical condition name..."
+              placeholder={t('enter_medical_condition_name')}
               className="w-full"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Select from suggestions above or type a custom condition
+              {t('select_from_suggestions_or_type_custom')}
             </p>
           </div>
 
           {/* Date */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date Diagnosed
+              {t('date_diagnosed')}
             </label>
             <Input
               type="date"
@@ -428,12 +430,12 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
           {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
+              {t('notes_optional')}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes about the condition..."
+              placeholder={t('additional_notes_about_condition')}
               rows={3}
               className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -449,14 +451,14 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
               variant="secondary"
               disabled={isUpdating}
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleEditPrecondition}
               disabled={isUpdating || !customCondition.trim()}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {isUpdating ? 'Updating...' : 'Update Condition'}
+              {isUpdating ? t('updating') : t('update_condition')}
             </Button>
           </div>
         </div>
@@ -467,10 +469,10 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleDeletePrecondition}
-        title="Delete Medical Precondition"
-        message="Are you sure you want to delete this medical precondition? This action cannot be undone."
-        confirmButtonText="Delete"
-        cancelButtonText="Cancel"
+        title={t('delete_medical_precondition')}
+        message={t('delete_medical_precondition_confirmation')}
+        confirmButtonText={t('delete')}
+        cancelButtonText={t('cancel')}
         variant="danger"
         isLoading={isUpdating}
       />
