@@ -91,11 +91,17 @@ export const Patients: React.FC = () => {
   const { showNotification } = useNotification();
   const location = useLocation();
 
-  // ESC key listener for edit mode
+  // ESC key listener for edit mode and preview modal
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && viewMode === 'edit') {
-        setViewMode('detail');
+      if (event.key === 'Escape') {
+        if (previewModal.isOpen) {
+          // Close preview modal if it's open
+          setPreviewModal({ isOpen: false, file: null, imageUrl: null });
+        } else if (viewMode === 'edit') {
+          // Exit edit mode if no modal is open
+          setViewMode('detail');
+        }
       }
     };
 
@@ -104,7 +110,7 @@ export const Patients: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [viewMode]);
+  }, [viewMode, previewModal.isOpen]);
 
 
   // Reset to grid view when navigating to patients page
@@ -1538,31 +1544,69 @@ export const Patients: React.FC = () => {
           </Modal>
         )}
 
-        {/* File Preview Modal */}
+        {/* File Preview Modal - Custom Full-Screen Modal */}
         {previewModal.isOpen && previewModal.file && (
-          <Modal
-            isOpen={previewModal.isOpen}
-            onClose={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
-            title={t('file_preview')}
-            size="lg"
-          >
-            <div className="flex items-center justify-center">
-              {PatientFileService.isImageFile(previewModal.file) ? (
-                <img
-                  src={previewModal.imageUrl || ''}
-                  alt={previewModal.file.filename}
-                  className="max-w-full max-h-[80vh] object-contain rounded-lg"
-                />
-              ) : (
-                <div className="text-center">
-                  <span className="material-icons-round text-6xl text-gray-300">
-                    {PatientFileService.getFileIcon(previewModal.file)}
-                  </span>
-                  <p className="mt-4 text-gray-500">{t('preview_not_available')}</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95">
+            {/* Full-screen backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-95 transition-opacity duration-300"
+              onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+            />
+
+            {/* Maximized modal content with margins */}
+            <div className="relative w-[95vw] h-[95vh] flex flex-col bg-black bg-opacity-80 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-black bg-opacity-70 text-white relative z-10 flex-shrink-0">
+                <div className="flex items-center space-x-3">
+                  <span className="material-icons-round text-white text-2xl">image</span>
+                  <h2 className="text-xl font-semibold truncate max-w-md">{previewModal.file.filename}</h2>
                 </div>
-              )}
+                <div className="flex items-center space-x-2">
+                  {/* Download button */}
+                  <button
+                    onClick={() => previewModal.file && handleFileDownload(previewModal.file)}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title={t('download_file')}
+                  >
+                    <span className="material-icons-round">download</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('download')}</span>
+                  </button>
+                  {/* Close button */}
+                  <button
+                    onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title={t('close_preview')}
+                  >
+                    <span className="material-icons-round">close</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('close')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Image container - takes up remaining space */}
+              <div className="flex-1 flex items-center justify-center p-6 relative min-h-0">
+                {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
+                  <img
+                    src={previewModal.imageUrl}
+                    alt={previewModal.file.filename}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    style={{ maxHeight: 'calc(95vh - 160px)', maxWidth: 'calc(95vw - 48px)' }}
+                  />
+                ) : (
+                  <div className="text-center text-white">
+                    <span className="material-icons-round text-8xl text-white mb-6 block opacity-70">image_not_supported</span>
+                    <p className="text-2xl mb-2">{t('no_preview_available')}</p>
+                    <p className="text-lg opacity-70 mt-4">{t('click_download_to_view')}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="px-6 py-4 bg-black bg-opacity-70 text-white text-center relative z-10 flex-shrink-0">
+                <p className="text-sm opacity-70">{t('preview_modal_instructions')}</p>
+              </div>
             </div>
-          </Modal>
+          </div>
         )}
       </DashboardLayout>
     );
