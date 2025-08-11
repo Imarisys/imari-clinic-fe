@@ -141,15 +141,6 @@ export const PatientForm: React.FC<PatientFormProps> = ({
 
   return (
     <div className={`${fullWidth ? 'w-full' : 'card max-w-4xl mx-auto'}`}>
-      <div className={`${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''} mb-6`}>
-        <h2 className="text-2xl font-bold text-primary-600 mb-2">
-          {isEditing ? t('edit_patient') : t('add_new_patient')}
-        </h2>
-        <p className="text-neutral-600">
-          {isEditing ? t('update_patient_information') : t('enter_patient_details')}
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className={`space-y-6 ${fullWidth ? 'bg-white rounded-lg shadow-sm border border-gray-200 p-8' : ''}`}>
         {/* Personal Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
