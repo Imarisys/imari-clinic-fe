@@ -552,5 +552,8 @@
   "geriatric_care": "Geriatric Care",
   "mental_health": "Mental Health",
   "sports_medicine": "Sports Medicine",
-  "wellness": "Wellness"
+  "wellness": "Wellness",
+  "preview_not_available": "Preview Not Available",
+  "file_preview": "File Preview"
+
 }

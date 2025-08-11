@@ -612,5 +612,7 @@
   "live_preview_title": "Aperçu en direct",
   "clinic_name_sample": "Nom de la clinique",
   "layout_preview_desc": "Cet aperçu montre à quoi ressemblera votre mise en page. Les changements prennent effet immédiatement.",
-  "loading_settings_msg": "Chargement des paramètres..."
+  "loading_settings_msg": "Chargement des paramètres...",
+  "preview_not_available": "Aperçu non disponible",
+  "file_preview": "Aperçu du fichier"
 }
