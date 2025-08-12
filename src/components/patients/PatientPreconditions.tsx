@@ -266,20 +266,26 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
               </div>
               {isEditable && (
                 <div className="flex items-center space-x-2 ml-4">
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon="edit"
                     onClick={() => openEditModal(precondition)}
                     disabled={isUpdating}
-                    className="p-2 text-neutral-400 hover:text-blue-600 transition-colors duration-300 disabled:opacity-50"
+                    title={t('edit_precondition')}
                   >
-                    <span className="material-icons-round text-lg">edit</span>
-                  </button>
-                  <button
+                    {t('edit')}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon="delete"
                     onClick={() => confirmDelete(precondition.id)}
                     disabled={isUpdating}
-                    className="p-2 text-neutral-400 hover:text-red-600 transition-colors duration-300 disabled:opacity-50"
+                    title={t('delete_precondition')}
                   >
-                    <span className="material-icons-round text-lg">delete</span>
-                  </button>
+                    {t('delete')}
+                  </Button>
                 </div>
               )}
             </div>

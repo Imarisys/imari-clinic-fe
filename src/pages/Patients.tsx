@@ -1076,30 +1076,32 @@ export const Patients: React.FC = () => {
 
                               {/* Action Buttons for Upcoming Appointments */}
                               <div className="flex items-center space-x-2">
-                                <button
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     console.log('Edit appointment:', appointment.id);
                                     // TODO: Implement edit appointment functionality
                                   }}
-                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title={t('edit_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">edit</span>
                                   {t('edit')}
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  icon="delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     console.log('Delete appointment:', appointment.id);
                                     // TODO: Implement delete appointment functionality
                                   }}
-                                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title={t('delete_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">delete</span>
                                   {t('delete')}
-                                </button>
+                                </Button>
                               </div>
                             </div>
 
@@ -1217,29 +1219,32 @@ export const Patients: React.FC = () => {
                               {/* Action Buttons for Past Appointments */}
                               <div className="flex items-center space-x-2">
                                 {appointment.status === 'Completed' && (
-                                  <button
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    icon="description"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       console.log('View consultation details:', appointment.id);
+                                      // TODO: Implement view consultation details functionality
                                     }}
-                                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
                                     title={t('view_details')}
                                   >
-                                    <span className="material-icons-round text-sm mr-1">description</span>
                                     {t('details')}
-                                  </button>
+                                  </Button>
                                 )}
-                                <button
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     console.log('Edit appointment:', appointment.id);
                                   }}
-                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title={t('edit')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">edit</span>
                                   {t('edit')}
-                                </button>
+                                </Button>
                               </div>
                             </div>
 

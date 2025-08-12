@@ -554,6 +554,14 @@
   "sports_medicine": "Sports Medicine",
   "wellness": "Wellness",
   "preview_not_available": "Preview Not Available",
-  "file_preview": "File Preview"
-
+  "file_preview": "File Preview",
+  "delete_precondition": "Delete Precondition",
+  "edit_precondition": "Edit Precondition",
+  "details": "Details",
+  "medical_details": "Medical Details",
+  "vital_signs": "Vital Signs",
+  "diagnosis": "Diagnosis",
+  "treatment_plan": "Treatment Plan",
+  "prescription": "Prescription",
+  "no_medical_data_available": "No medical data available for this appointment"
 }

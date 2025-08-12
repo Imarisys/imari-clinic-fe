@@ -614,5 +614,9 @@
   "layout_preview_desc": "Cet aperçu montre à quoi ressemblera votre mise en page. Les changements prennent effet immédiatement.",
   "loading_settings_msg": "Chargement des paramètres...",
   "preview_not_available": "Aperçu non disponible",
-  "file_preview": "Aperçu du fichier"
+  "file_preview": "Aperçu du fichier",
+  "delete_precondition": "Supprimer l'antécédent médical",
+  "edit_precondition": "Modifier l'antécédent médical",
+  "medical_details": "Détails médicaux",
+  "no_medical_data_available": "Aucune donnée médicale disponible"
 }
