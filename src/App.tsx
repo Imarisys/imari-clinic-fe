@@ -7,6 +7,7 @@ import { Patients } from './pages/Patients';
 import { SettingsPage } from './pages/Settings';
 import { Reports } from './pages/Reports';
 import { AppointmentStart } from './pages/AppointmentStart';
+import { AppointmentDetails } from './pages/AppointmentDetails';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { TranslationProvider } from './context/TranslationContext';
@@ -59,6 +60,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <AppointmentStart />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/appointment/:appointmentId/details"
+        element={
+          <ProtectedRoute>
+            <AppointmentDetails />
           </ProtectedRoute>
         }
       />
