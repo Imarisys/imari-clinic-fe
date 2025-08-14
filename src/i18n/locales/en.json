@@ -568,5 +568,6 @@
   "try_different_search": "Try a different search",
   "delete_appointment_confirmation": "Are you sure you want to delete this appointment? This action cannot be undone.",
   "failed_to_update_appointment_status": "Failed to update appointment status",
-  "cancelling": "Cancelling..."
+  "cancelling": "Cancelling...",
+  "failed_to_load_medical_data": "Failed to load medical data"
 }

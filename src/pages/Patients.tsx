@@ -96,6 +96,12 @@ export const Patients: React.FC = () => {
   const [showDeleteAppointmentConfirm, setShowDeleteAppointmentConfirm] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
 
+  // Appointment details modal state
+  const [showAppointmentDetailsModal, setShowAppointmentDetailsModal] = useState(false);
+  const [selectedAppointmentForDetails, setSelectedAppointmentForDetails] = useState<any>(null);
+  const [appointmentMedicalData, setAppointmentMedicalData] = useState<any>(null);
+  const [loadingMedicalData, setLoadingMedicalData] = useState(false);
+
   const { showNotification } = useNotification();
   const location = useLocation();
 
@@ -596,6 +602,27 @@ export const Patients: React.FC = () => {
     } finally {
       setAppointmentLoading(false);
     }
+  };
+
+  // Load appointment medical data
+  const loadAppointmentMedicalData = async (appointmentId: string) => {
+    setLoadingMedicalData(true);
+    try {
+      const medicalData = await AppointmentService.getMedicalData(appointmentId);
+      setAppointmentMedicalData(medicalData);
+    } catch (error) {
+      console.error('Error loading appointment medical data:', error);
+      showNotification('error', t('error'), t('failed_to_load_medical_data'));
+    } finally {
+      setLoadingMedicalData(false);
+    }
+  };
+
+  // Handle appointment details button click
+  const handleViewAppointmentDetails = async (appointment: any) => {
+    setSelectedAppointmentForDetails(appointment);
+    setShowAppointmentDetailsModal(true);
+    await loadAppointmentMedicalData(appointment.id);
   };
 
   // Remove the filteredPatients filter since we're now using API search
@@ -1293,8 +1320,7 @@ export const Patients: React.FC = () => {
                                     icon="description"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log('View appointment details for completed appointment:', appointment.id);
-                                      // TODO: Implement appointment details functionality
+                                      handleViewAppointmentDetails(appointment);
                                     }}
                                     title={t('appointment_details')}
                                   >
