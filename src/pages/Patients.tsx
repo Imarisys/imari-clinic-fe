@@ -1293,25 +1293,25 @@ export const Patients: React.FC = () => {
                                     icon="description"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log('View consultation details:', appointment.id);
-                                      // TODO: Implement view consultation details functionality
+                                      console.log('View appointment details for completed appointment:', appointment.id);
+                                      // TODO: Implement appointment details functionality
                                     }}
-                                    title={t('view_details')}
+                                    title={t('appointment_details')}
                                   >
-                                    {t('details')}
+                                    {t('appointment_details')}
                                   </Button>
                                 )}
                                 <Button
-                                  variant="secondary"
+                                  variant="danger"
                                   size="sm"
-                                  icon="edit"
+                                  icon="delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleEditAppointment(appointment);
+                                    handleDeleteAppointment(appointment.id);
                                   }}
-                                  title={t('edit')}
+                                  title={t('delete_appointment')}
                                 >
-                                  {t('edit')}
+                                  {t('delete')}
                                 </Button>
                               </div>
                             </div>
