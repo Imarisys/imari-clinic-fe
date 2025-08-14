@@ -636,5 +636,8 @@
     "add_first_vital": "Ajoutez votre premier signe vital pour commencer.",
     "enter_diagnosis": "Entrez le diagnostic",
     "enter_treatment_plan": "Entrez le plan de traitement",
-    "enter_prescription": "Entrez l'ordonnance"
+    "enter_prescription": "Entrez l'ordonnance",
+  "all": "Tous",
+  "no_appointments_found": "Aucun rendez-vous trouvé"
+
 }

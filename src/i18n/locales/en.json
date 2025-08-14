@@ -582,5 +582,7 @@
     "add_first_vital": "Add your first vital sign to get started",
     "enter_diagnosis": "Enter diagnosis",
     "enter_treatment_plan": "Enter treatment plan",
-    "enter_prescription": "Enter prescription details"
+    "enter_prescription": "Enter prescription details",
+  "all": "All",
+  "no_appointments_found": "No appointments found"
 }
