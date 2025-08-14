@@ -624,7 +624,8 @@
   "delete_appointment_confirmation": "Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action ne peut pas être annulée.",
   "failed_to_update_appointment_status": "Échec de la mise à jour du statut du rendez-vous",
   "cancelling": "Annulation...",
-  "failed_to_load_medical_data": "Échec du chargement des données médicales"
+  "failed_to_load_medical_data": "Échec du chargement des données médicales",
+  "medical_data": "Données médicales"
 
 
 }

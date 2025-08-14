@@ -399,6 +399,7 @@
   "medical_preconditions": "Medical Preconditions",
   "add_medical_precondition": "Add Medical Precondition",
   "loading_medical_preconditions": "Loading medical preconditions...",
+  "medical_data": "Medical Data",
   "no_medical_preconditions_recorded": "No medical preconditions recorded",
   "add_medical_preconditions": "Add Medical Preconditions",
   "edit_medical_precondition": "Edit Medical Precondition",
@@ -569,5 +570,6 @@
   "delete_appointment_confirmation": "Are you sure you want to delete this appointment? This action cannot be undone.",
   "failed_to_update_appointment_status": "Failed to update appointment status",
   "cancelling": "Cancelling...",
-  "failed_to_load_medical_data": "Failed to load medical data"
+  "failed_to_load_medical_data": "Failed to load medical data",
+  "medical_data": "Medical Data"
 }

@@ -1755,6 +1755,108 @@ export const Patients: React.FC = () => {
           />
         )}
 
+        {/* Appointment Medical Details (read-only) Modal */}
+        {showAppointmentDetailsModal && selectedAppointmentForDetails && (
+          <Modal
+            isOpen={showAppointmentDetailsModal}
+            onClose={() => {
+              setShowAppointmentDetailsModal(false);
+              setSelectedAppointmentForDetails(null);
+              setAppointmentMedicalData(null);
+            }}
+            title={t('appointment_details')}
+            size="xl"
+          >
+            <div className="space-y-6">
+              {/* Basic Appointment Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-neutral-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">{t('appointment')}</h4>
+                  <p className="text-neutral-800 font-medium">{selectedAppointmentForDetails.title || selectedAppointmentForDetails.appointment_type_name}</p>
+                  <p className="text-neutral-600 text-sm mt-1">{new Date(selectedAppointmentForDetails.date).toLocaleDateString()}</p>
+                  <p className="text-neutral-600 text-sm">
+                    {selectedAppointmentForDetails.start_time?.split('.')[0]} - {selectedAppointmentForDetails.end_time?.split('.')[0]}
+                  </p>
+                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-neutral-200 text-neutral-700">
+                    {selectedAppointmentForDetails.status}
+                  </span>
+                </div>
+                <div className="bg-neutral-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-neutral-700 mb-2">{t('patient')}</h4>
+                  <p className="text-neutral-800 font-medium">{selectedPatient?.first_name} {selectedPatient?.last_name}</p>
+                  {selectedPatient?.email && (
+                    <p className="text-neutral-600 text-sm">{selectedPatient.email}</p>
+                  )}
+                  <p className="text-neutral-600 text-sm">{selectedPatient?.phone}</p>
+                </div>
+              </div>
+
+              {/* Medical Data Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-800 mb-4">{t('medical_data')}</h3>
+                {loadingMedicalData ? (
+                  <div className="flex items-center space-x-3 text-neutral-600">
+                    <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span>{t('loading')}</span>
+                  </div>
+                ) : appointmentMedicalData ? (
+                  <div className="space-y-6">
+                    {appointmentMedicalData.diagnosis && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-1">{t('diagnosis')}</h4>
+                        <p className="text-neutral-800 whitespace-pre-wrap text-sm bg-neutral-50 rounded-lg p-3 border border-neutral-200">{appointmentMedicalData.diagnosis}</p>
+                      </div>
+                    )}
+                    {appointmentMedicalData.treatment_plan && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-1">{t('treatment_plan')}</h4>
+                        <p className="text-neutral-800 whitespace-pre-wrap text-sm bg-neutral-50 rounded-lg p-3 border border-neutral-200">{appointmentMedicalData.treatment_plan}</p>
+                      </div>
+                    )}
+                    {appointmentMedicalData.prescription && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-1">{t('prescription')}</h4>
+                        <p className="text-neutral-800 whitespace-pre-wrap text-sm bg-neutral-50 rounded-lg p-3 border border-neutral-200">{appointmentMedicalData.prescription}</p>
+                      </div>
+                    )}
+                    {appointmentMedicalData.vital_signs && Object.keys(appointmentMedicalData.vital_signs).length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-neutral-700 mb-3">{t('vital_signs')}</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {Object.entries(appointmentMedicalData.vital_signs).map(([key, value]) => (
+                            <div key={key} className="bg-white rounded-lg p-3 border border-neutral-200">
+                              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1">{key.replace(/_/g, ' ')}</p>
+                              <p className="text-sm font-semibold text-neutral-800">{String(value)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!appointmentMedicalData.diagnosis && !appointmentMedicalData.treatment_plan && !appointmentMedicalData.prescription && (!appointmentMedicalData.vital_signs || Object.keys(appointmentMedicalData.vital_signs).length === 0) && (
+                      <p className="text-neutral-600 text-sm italic">{t('no_medical_data_available')}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-neutral-600 text-sm italic">{t('no_medical_data_available')}</p>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowAppointmentDetailsModal(false);
+                    setSelectedAppointmentForDetails(null);
+                    setAppointmentMedicalData(null);
+                  }}
+                >
+                  {t('close')}
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {/* Appointment Deletion Confirmation Dialog */}
         {showDeleteAppointmentConfirm && appointmentToDelete && (
           <ConfirmDialog
