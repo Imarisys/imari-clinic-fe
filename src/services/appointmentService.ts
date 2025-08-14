@@ -87,6 +87,19 @@ export class AppointmentService {
     return time;
   }
 
+  // Helper function to remove null and undefined values from an object
+  private static removeNullValues<T>(obj: T): Partial<T> {
+    const result: Partial<T> = {};
+
+    for (const key in obj) {
+      if (obj[key] !== null && obj[key] !== undefined) {
+        result[key] = obj[key];
+      }
+    }
+
+    return result;
+  }
+
   static async listAppointments(): Promise<Appointment[]> {
     return this.request<Appointment[]>(API_CONFIG.endpoints.appointments.list);
   }
@@ -123,9 +136,12 @@ export class AppointmentService {
       end_time: this.formatTimeToSeconds(appointmentData.end_time),
     };
 
+    // Remove null and undefined values from the request body
+    const cleanedData = this.removeNullValues(formattedData);
+
     return this.request<Appointment>(API_CONFIG.endpoints.appointments.update(id), {
       method: 'PUT',
-      body: JSON.stringify(formattedData),
+      body: JSON.stringify(cleanedData),
     });
   }
 

@@ -622,6 +622,7 @@
   "failed_to_load_appointment": "Échec du chargement du rendez-vous",
   "try_different_search": "Essayez une recherche différente",
   "delete_appointment_confirmation": "Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action ne peut pas être annulée.",
-  "failed_to_update_appointment_status": "Échec de la mise à jour du statut du rendez-vous"
+  "failed_to_update_appointment_status": "Échec de la mise à jour du statut du rendez-vous",
+  "cancelling": "Annulation..."
 
 }
