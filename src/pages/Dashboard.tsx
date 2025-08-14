@@ -201,30 +201,21 @@ export const Dashboard: React.FC = () => {
       title: t('todays_appointments'),
       value: appointmentsLoading ? t('loading') : appointmentsError ? t('error') : appointments.length.toString(),
       icon: "event",
-      bgColor: "bg-primary-50",
+      bgColor: "from-primary-50 to-primary-100",
       iconColor: "bg-primary-500"
     },
     {
       title: t('total_patients'),
       value: patientSummaryLoading ? t('loading') : patientSummaryError ? t('error') : patientSummary?.total_patients?.toString() || "0",
       icon: "people",
-      bgColor: "bg-success-50",
+      bgColor: "from-success-50 to-success-100",
       iconColor: "bg-success-500"
-    },
-    {
-      title: t('weather'),
-      value: weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`,
-      subtitle: weatherLoading ? t('loading') : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
-      icon: "wb_sunny",
-      bgColor: "bg-sky-50",
-      iconColor: "bg-sky-500",
-      customIcon: weatherLoading ? "⏳" : weatherError ? "❌" : getWeatherIcon(getCurrentTemperature())
     },
     {
       title: t('revenue_today'),
       value: `${currency} --`,
       icon: "attach_money",
-      bgColor: "bg-amber-50",
+      bgColor: "from-amber-50 to-amber-100",
       iconColor: "bg-amber-600"
     }
   ];
@@ -398,14 +389,15 @@ export const Dashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
-      {/* Welcome Header - only show on Dashboard */}
-      <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-neutral-800 mb-1">
+      {/* Top Banner with Doctor name (left) and Weather (right) */}
+      <div className="relative overflow-hidden rounded-3xl mb-8 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-6 md:p-8 shadow-lg">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_25%_25%,white,transparent_60%)]" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex-1">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">
               {t('welcome_back_dr', { name: user?.last_name || '' })}
             </h2>
-            <p className="text-neutral-600">
+            <p className="text-primary-100 font-medium">
               {t('today_is', {
                 date: new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
                   weekday: 'long',
@@ -416,24 +408,54 @@ export const Dashboard: React.FC = () => {
               })}
             </p>
           </div>
+          {/* Compact Weather */}
+          <div className="shrink-0 w-full md:w-auto">
+            <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm border border-white/20">
+              <div className="text-5xl leading-none">
+                {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
+              </div>
+              <div>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold">
+                    {weatherLoading ? '--' : weatherError ? '--' : `${getCurrentTemperature()}°C`}
+                  </span>
+                  <span className="material-icons-round text-primary-100 text-lg">thermostat</span>
+                </div>
+                <p className="text-sm text-primary-100 font-medium mt-1">
+                  {weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentWeatherDescription()} • ${weather?.city || 'Sidi Bouzid'}`}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="space-y-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Statistics Cards (enhanced) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {stats.map((stat, index) => (
-            <div key={stat.title} className={`card card-hover slide-up-element ${stat.bgColor} border-0`}
-                 style={{ animationDelay: `${index * 0.1}s` }}>
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${stat.iconColor} shadow-medium`}>
+            <div
+              key={stat.title}
+              className={`relative group rounded-3xl p-6 shadow-medium bg-gradient-to-br ${stat.bgColor} border border-white/0 hover:shadow-lg transition-all overflow-hidden`}
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.9),transparent_60%)]" />
+              <div className="relative flex items-start justify-between mb-4">
+                <div className={`p-3 rounded-2xl ${stat.iconColor} shadow-md shadow-black/10 transform group-hover:scale-110 transition-transform`}>
                   <span className="material-icons-round text-white text-2xl">{stat.icon}</span>
                 </div>
+                <span className="text-xs font-semibold tracking-wide uppercase text-neutral-500/60 bg-white/40 backdrop-blur px-2 py-1 rounded-full hidden md:inline-block">
+                  {t('today') || 'Today'}
+                </span>
               </div>
-              <div>
-                <p className="text-neutral-600 text-sm mb-1">{stat.title}</p>
-                <p className="text-3xl font-bold text-neutral-800">{stat.value}</p>
-                {stat.subtitle && <p className="text-neutral-500 text-sm">{stat.subtitle}</p>}
+              <div className="relative">
+                <p className="text-neutral-600 text-sm font-medium mb-1">{stat.title}</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl font-extrabold text-neutral-800 leading-none">{stat.value}</p>
+                </div>
+              </div>
+              <div className="mt-4 h-1 w-full rounded-full bg-gradient-to-r from-neutral-200 to-neutral-100 overflow-hidden">
+                <div className="h-full w-2/3 bg-gradient-to-r from-primary-400 to-primary-600 rounded-full animate-pulse" />
               </div>
             </div>
           ))}
@@ -579,36 +601,6 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-2">
                   <div className="bg-primary-600 h-2 rounded-full" style={{ width: '77%' }}></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Weather Widget */}
-            <div className="card bg-primary-500 text-white border-0 p-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <span className="material-icons-round text-primary-100 mr-2">location_on</span>
-                  <p className="text-primary-100 text-sm font-medium">
-                    {weatherLoading ? '' : weatherError ? '' : weather?.city || 'Sidi Bouzid'}
-                  </p>
-                </div>
-
-                <div className="mb-4">
-                  <div className="text-6xl mb-2 opacity-90">
-                    {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
-                  </div>
-                  <p className="text-4xl font-bold mb-1">
-                    {weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`}
-                  </p>
-                  <p className="text-primary-100 text-base font-medium">
-                    {weatherLoading ? t('fetching_weather_data') : weatherError ? weatherError : getCurrentWeatherDescription()}
-                  </p>
-                </div>
-
-                <div className="border-t border-primary-400 pt-3 mt-3">
-                  <p className="text-primary-100 text-xs uppercase tracking-wider font-medium">
-                    {t('todays_weather')}
-                  </p>
                 </div>
               </div>
             </div>
