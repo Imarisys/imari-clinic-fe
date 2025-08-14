@@ -26,6 +26,56 @@ const getVitalSignOptions = (t: any) => [
   { name: t('pulse'), unit: t('bpm'), icon: 'favorite', color: 'red' },
 ];
 
+// Add a unified ComingSoon component for consistent design
+const ComingSoonSection: React.FC<{
+  icon: string;
+  title: string;
+  description: string;
+  gradientColors: {
+    from: string;
+    to: string;
+    accent: string;
+    iconBg: string;
+    iconColor: string;
+    buttonBg: string;
+  };
+  t: any; // Use any type to match the translation function
+}> = ({ icon, title, description, gradientColors, t }) => {
+  return (
+    <div className="space-y-4">
+      <div className={`relative overflow-hidden rounded-2xl border border-${gradientColors.accent}-200 bg-gradient-to-br from-${gradientColors.from}-50 via-${gradientColors.to}-50 to-white p-8`}>
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 20% 20%, ${gradientColors.accent.includes('pink') ? 'rgba(236,72,153,0.15)' : 
+                        gradientColors.accent.includes('sky') ? 'rgba(14,165,233,0.18)' : 
+                        gradientColors.accent.includes('green') ? 'rgba(34,197,94,0.15)' : 
+                        'rgba(251,146,60,0.15)'}, transparent 60%)`
+          }}
+        />
+        <div className="flex items-start space-x-4 relative z-10">
+          <div className={`w-14 h-14 rounded-xl bg-${gradientColors.iconBg}-100 flex items-center justify-center shadow-inner`}>
+            <span className={`material-icons-round text-${gradientColors.iconColor}-600 text-3xl`}>{icon}</span>
+          </div>
+          <div className="flex-1">
+            <h3 className={`text-2xl font-bold text-${gradientColors.iconColor}-800 mb-2`}>
+              {title}
+            </h3>
+            <p className="text-neutral-600 leading-relaxed mb-4">
+              {description}
+            </p>
+            <div className={`inline-flex items-center px-4 py-2 rounded-full bg-${gradientColors.buttonBg}-600 text-white text-sm font-medium shadow hover:shadow-md transition-shadow`}>
+              <span className="material-icons-round text-sm mr-1">rocket_launch</span>
+              {t('coming_soon')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  );
+};
+
 export const AppointmentStart: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
@@ -33,7 +83,7 @@ export const AppointmentStart: React.FC = () => {
   const { t } = useTranslation();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
-  const [medicalData, setMedicalData] = useState<AppointmentMedicalData | null>(null);
+  const [_, setMedicalData] = useState<AppointmentMedicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingMedicalData, setSavingMedicalData] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
@@ -42,7 +92,7 @@ export const AppointmentStart: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [isCreatingFollowUp, setIsCreatingFollowUp] = useState(false);
-  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files' | 'dental'>('consultation');
+  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files' | 'dental' | 'gynecology' | 'ophthalmology'>('consultation');
 
   // Medical data fields
   const [diagnosis, setDiagnosis] = useState('');
@@ -669,8 +719,8 @@ export const AppointmentStart: React.FC = () => {
                   <span className="material-icons-round text-green-600 text-sm">medical_services</span>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-neutral-500 font-medium">{t('type')}</p>
-                  <p className="text-sm font-semibold text-neutral-800 truncate max-w-32" title={appointment.appointment_type_name}>
+                  <p className="text-xs text-neutral-500 font-medium">{t('appointment_type')}</p>
+                  <p className="text-sm font-semibold text-neutral-800 truncate max-w-48" title={appointment.appointment_type_name}>
                     {appointment.appointment_type_name}
                   </p>
                 </div>
@@ -756,6 +806,18 @@ export const AppointmentStart: React.FC = () => {
               </button>
 
               <button
+                onClick={() => setActiveTab('files')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'files'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">folder</span>
+                <span>{t('patient_files')}</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('dental')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
                   activeTab === 'dental'
@@ -768,15 +830,27 @@ export const AppointmentStart: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('files')}
+                onClick={() => setActiveTab('gynecology')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
-                  activeTab === 'files'
+                  activeTab === 'gynecology'
                     ? 'text-primary-600 border-primary-500'
                     : 'text-neutral-600 border-transparent hover:text-neutral-800'
                 }`}
               >
-                <span className="material-icons-round">folder</span>
-                <span>{t('patient_files')}</span>
+                <span className="material-icons-round">female</span>
+                <span>{(t as any)('gynecology') || 'Gynecology'}</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('ophthalmology')}
+                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
+                  activeTab === 'ophthalmology'
+                    ? 'text-primary-600 border-primary-500'
+                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
+                }`}
+              >
+                <span className="material-icons-round">visibility</span>
+                <span>{(t as any)('ophthalmology') || 'Ophthalmology'}</span>
               </button>
 
               {/* Save Indicator */}
@@ -961,13 +1035,20 @@ export const AppointmentStart: React.FC = () => {
 
               {/* Dental Tab - New Tab for Dental Information */}
               {activeTab === 'dental' && (
-                <div className="space-y-4">
-                  <DentalChart
-                    patientId={appointment?.patient_id}
-                    appointmentId={appointmentId}
-                    readonly={!isStarted}
-                  />
-                </div>
+                <ComingSoonSection
+                  icon="sentiment_very_satisfied"
+                  title={t('dental_module')}
+                  description={t('dental_coming_soon')}
+                  gradientColors={{
+                    from: 'green',
+                    to: 'emerald',
+                    accent: 'green',
+                    iconBg: 'green',
+                    iconColor: 'green',
+                    buttonBg: 'green'
+                  }}
+                  t={t} // Pass translation function
+                />
               )}
 
               {/* Patient Files Tab */}
@@ -1178,6 +1259,42 @@ export const AppointmentStart: React.FC = () => {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Gynecology Tab */}
+              {activeTab === 'gynecology' && (
+                <ComingSoonSection
+                  icon="female"
+                  title={t('gynecology_module')}
+                  description={t('gynecology_coming_soon')}
+                  gradientColors={{
+                    from: 'pink',
+                    to: 'rose',
+                    accent: 'pink',
+                    iconBg: 'pink',
+                    iconColor: 'pink',
+                    buttonBg: 'pink'
+                  }}
+                  t={t} // Pass translation function
+                />
+              )}
+
+              {/* Ophthalmology Tab */}
+              {activeTab === 'ophthalmology' && (
+                <ComingSoonSection
+                  icon="visibility"
+                  title={t('ophthalmology_module')}
+                  description={t('ophthalmology_coming_soon')}
+                  gradientColors={{
+                    from: 'sky',
+                    to: 'cyan',
+                    accent: 'sky',
+                    iconBg: 'sky',
+                    iconColor: 'sky',
+                    buttonBg: 'sky'
+                  }}
+                  t={t} // Pass translation function
+                />
               )}
             </div>
           </div>

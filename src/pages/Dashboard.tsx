@@ -25,18 +25,15 @@ export const Dashboard: React.FC = () => {
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
-
-  // Add state for patient summary and currency
+  // Restored states
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
   const [patientSummaryLoading, setPatientSummaryLoading] = useState(true);
   const [patientSummaryError, setPatientSummaryError] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string>('$');
-
-  // Working hours from settings
-  const [workingHours, setWorkingHours] = useState({
-    startTime: '08:00',
-    endTime: '17:00'
-  });
+  const [workingHours, setWorkingHours] = useState({ startTime: '08:00', endTime: '17:00' });
+  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+  // Derived displays
+  const totalPatientsDisplay = patientSummaryLoading ? t('loading') : patientSummaryError ? t('error') : patientSummary?.total_patients?.toString() || '0';
 
   // New state variables for appointment scheduling
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
@@ -44,7 +41,6 @@ export const Dashboard: React.FC = () => {
   const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<Patient | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchingPatients, setIsSearchingPatients] = useState(false);
   const [showCreatePatientForm, setShowCreatePatientForm] = useState(false);
   const [appointmentLoading, setAppointmentLoading] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{date: string, time: string, endTime?: string} | null>(null);
@@ -164,81 +160,38 @@ export const Dashboard: React.FC = () => {
     return '🌧��';
   };
 
-  // Map API appointment status to UI status
-  const mapAppointmentStatus = (apiStatus: string): string => {
-    switch (apiStatus) {
-      case 'Booked': return 'confirmed';
-      case 'Completed': return 'completed';
-      case 'Cancelled': return 'cancelled';
-      case 'No Show': return 'no-show';
-      default: return 'pending';
-    }
-  };
-
-  // Format time from API time format to display format
-  const formatTime = (timeString: string): string => {
-    try {
-      const timePart = timeString.split('.')[0]; // Remove microseconds if present
-      const [hours, minutes] = timePart.split(':');
-      return `${hours}:${minutes}`;
-    } catch (error) {
-      return timeString;
-    }
-  };
-
   // Calculate unique patients from today's appointments
   const getUniquePatientCount = (): string => {
     if (appointmentsLoading) return t('loading');
     if (appointmentsError) return t('error');
-
-    const uniquePatientIds = new Set(appointments.map(appointment => appointment.patient_id));
-    return uniquePatientIds.size.toString();
+    const ids = new Set(appointments.map(a => a.patient_id));
+    return ids.size.toString();
   };
 
-  // Update first stats card to show actual appointment count
-  const stats = [
-    {
-      title: t('todays_appointments'),
-      value: appointmentsLoading ? t('loading') : appointmentsError ? t('error') : appointments.length.toString(),
-      icon: "event",
-      bgColor: "bg-primary-50",
-      iconColor: "bg-primary-500"
-    },
-    {
-      title: t('total_patients'),
-      value: patientSummaryLoading ? t('loading') : patientSummaryError ? t('error') : patientSummary?.total_patients?.toString() || "0",
-      icon: "people",
-      bgColor: "bg-success-50",
-      iconColor: "bg-success-500"
-    },
-    {
-      title: t('weather'),
-      value: weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`,
-      subtitle: weatherLoading ? t('loading') : weatherError ? weatherError : `${getCurrentWeatherDescription()} in ${weather?.city || 'Sidi Bouzid'}`,
-      icon: "wb_sunny",
-      bgColor: "bg-sky-50",
-      iconColor: "bg-sky-500",
-      customIcon: weatherLoading ? "⏳" : weatherError ? "❌" : getWeatherIcon(getCurrentTemperature())
-    },
-    {
-      title: t('revenue_today'),
-      value: `${currency} --`,
-      icon: "attach_money",
-      bgColor: "bg-amber-50",
-      iconColor: "bg-amber-600"
-    }
+  // Determine next upcoming appointment based on current time (HH:MM comparison)
+  const getUpcomingAppointment = () => {
+    if (!appointments || appointments.length === 0) return null;
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const parseMinutes = (time: string) => {
+      try { const [h,m] = time.split(':'); return parseInt(h)*60 + parseInt(m);} catch { return 0; }
+    };
+    const future = appointments
+      .map(a => ({ a, mins: parseMinutes(a.start_time) }))
+      .filter(x => x.mins >= nowMinutes)
+      .sort((a,b)=>a.mins-b.mins);
+    return future.length ? future[0].a : null;
+  };
+  const upcomingAppointment = getUpcomingAppointment();
+
+  // Stats chips data
+  const statChips = [
+    { key: 'appointments', label: t('todays_appointments'), value: appointmentsLoading ? t('loading') : appointmentsError ? t('error') : appointments.length.toString(), icon: 'event' },
+    { key: 'unique_patients', label: t('total_patients'), value: totalPatientsDisplay, icon: 'people' },
+    { key: 'unique_today', label: t('patients') || 'Patients (Today)', value: getUniquePatientCount(), icon: 'groups' },
+    { key: 'revenue', label: t('revenue_today'), value: `${currency} --`, icon: 'attach_money' },
+    { key: 'hours', label: 'Working Hours', value: `${workingHours.startTime} - ${workingHours.endTime}` , icon: 'schedule' }
   ];
-
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-success-500';
-      case 'in-progress': return 'bg-primary-500';
-      case 'waiting': return 'bg-warning-500';
-      case 'pending': return 'bg-neutral-400';
-      default: return 'bg-neutral-400';
-    }
-  };
 
   // Handle adding a new patient
   const handleAddPatient = async (patientData: PatientCreate | PatientUpdate) => {
@@ -256,12 +209,6 @@ export const Dashboard: React.FC = () => {
       console.error('Failed to create patient:', error);
       // Handle error (e.g., show notification)
     }
-  };
-
-  // Handle the create patient button click inside the modal
-  const handleCreatePatientClick = () => {
-    // This function intentionally left empty as the form handles the submission
-    // The PatientForm component will call handleAddPatient when the form is submitted
   };
 
   // Handle creating an appointment
@@ -305,51 +252,6 @@ export const Dashboard: React.FC = () => {
     }, 300);
   };
 
-  // Handle patient creation
-  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
-    try {
-      // Create clean data object with only non-empty fields
-      const createData: any = {
-        first_name: patientData.first_name || '',
-        last_name: patientData.last_name || '',
-        phone: patientData.phone || '',
-        gender: patientData.gender || 'male',
-      };
-
-      // Only add optional fields if they have values
-      if (patientData.email && patientData.email.trim()) {
-        createData.email = patientData.email.trim();
-      }
-      if (patientData.date_of_birth && patientData.date_of_birth.trim()) {
-        createData.date_of_birth = patientData.date_of_birth.trim();
-      }
-      if (patientData.street && patientData.street.trim()) {
-        createData.street = patientData.street.trim();
-      }
-      if (patientData.city && patientData.city.trim()) {
-        createData.city = patientData.city.trim();
-      }
-      if (patientData.state && patientData.state.trim()) {
-        createData.state = patientData.state.trim();
-      }
-      if (patientData.zip_code && patientData.zip_code.trim()) {
-        createData.zip_code = patientData.zip_code.trim();
-      }
-
-      const newPatient = await PatientService.createPatient(createData);
-      setPatients(prev => [...prev, newPatient]);
-      setSelectedPatientForBooking(newPatient);
-      setShowCreatePatientForm(false);
-      setBookingStep('appointment');
-      showNotification('success', 'Success', 'Patient created successfully');
-    } catch (err) {
-      console.error('Error creating patient:', err);
-      showNotification('error', 'Error', 'Failed to create patient');
-      // Re-throw the error so PatientForm can handle it appropriately
-      throw err;
-    }
-  };
-
   // Search patients using API
   const searchPatients = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -385,27 +287,57 @@ export const Dashboard: React.FC = () => {
   // Remove the filteredPatients filter since we're now using API search
   const displayedPatients = patients;
 
-  // Handle starting an appointment
-  const handleStartAppointment = async (appointmentId: string) => {
-    const updated = await AppointmentService.updateAppointmentStatus(appointmentId, 'Booked'); // Change to 'Booked' or 'Completed' as needed
-    setAppointments(prev =>
-      prev.map(appt =>
-        appt.id === appointmentId ? { ...appt, status: updated.status } : appt
-      )
-    );
-    showNotification('success', 'Appointment Started', `Appointment #${appointmentId} is now In Progress.`);
+  // Time formatting helper (restored)
+  const formatTime = (timeString: string): string => {
+    try {
+      const timePart = timeString.split('.')[0];
+      const [h, m] = timePart.split(':');
+      return `${h}:${m}`;
+    } catch {
+      return timeString;
+    }
   };
 
+  // Handle creating a patient inside booking flow (restored)
+  const handleCreatePatient = async (patientData: PatientCreate | PatientUpdate): Promise<void> => {
+    try {
+      const createData: any = {
+        first_name: patientData.first_name || '',
+        last_name: patientData.last_name || '',
+        phone: patientData.phone || '',
+        gender: patientData.gender || 'male'
+      };
+      if (patientData.email?.trim()) createData.email = patientData.email.trim();
+      if (patientData.date_of_birth?.trim()) createData.date_of_birth = patientData.date_of_birth.trim();
+      if (patientData.street?.trim()) createData.street = patientData.street.trim();
+      if (patientData.city?.trim()) createData.city = patientData.city.trim();
+      if (patientData.state?.trim()) createData.state = patientData.state.trim();
+      if (patientData.zip_code?.trim()) createData.zip_code = patientData.zip_code.trim();
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
+      setSelectedPatientForBooking(newPatient);
+      setShowCreatePatientForm(false);
+      setBookingStep('appointment');
+      showNotification('success', 'Success', 'Patient created successfully');
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      showNotification('error', 'Error', 'Failed to create patient');
+      throw err;
+    }
+  };
+
+  // Add Patient Modal
   return (
     <DashboardLayout>
-      {/* Welcome Header - only show on Dashboard */}
-      <div className="bg-white rounded-3xl p-6 mb-8 shadow-medium border border-neutral-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-neutral-800 mb-1">
+      {/* Top Banner with Doctor name (left) and Weather (right) */}
+      <div className="relative overflow-hidden rounded-3xl mb-8 bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 text-white p-6 md:p-8 shadow-lg">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_25%_25%,white,transparent_60%)]" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex-1">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">
               {t('welcome_back_dr', { name: user?.last_name || '' })}
             </h2>
-            <p className="text-neutral-600">
+            <p className="text-primary-100 font-medium">
               {t('today_is', {
                 date: new Date().toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
                   weekday: 'long',
@@ -416,42 +348,102 @@ export const Dashboard: React.FC = () => {
               })}
             </p>
           </div>
+          {/* Compact Weather */}
+          <div className="shrink-0 w-full md:w-auto">
+            <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm border border-white/20">
+              <div className="text-5xl leading-none">
+                {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
+              </div>
+              <div>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold">
+                    {weatherLoading ? '--' : weatherError ? '--' : `${getCurrentTemperature()}°C`}
+                  </span>
+                  <span className="material-icons-round text-primary-100 text-lg">thermostat</span>
+                </div>
+                <p className="text-sm text-primary-100 font-medium mt-1">
+                  {weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentWeatherDescription()} • ${weather?.city || 'Sidi Bouzid'}`}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="space-y-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <div key={stat.title} className={`card card-hover slide-up-element ${stat.bgColor} border-0`}
-                 style={{ animationDelay: `${index * 0.1}s` }}>
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-2xl ${stat.iconColor} shadow-medium`}>
-                  <span className="material-icons-round text-white text-2xl">{stat.icon}</span>
-                </div>
+        {/* Stats Chips Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+          {statChips.map(chip => (
+            <div key={chip.key} className="group relative overflow-hidden rounded-2xl bg-white border border-neutral-100 shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-neutral-500 text-xs font-medium tracking-wide truncate">{chip.label}</span>
+                <span className="material-icons-round text-primary-500 text-base opacity-70 group-hover:opacity-100 transition-opacity">{chip.icon}</span>
               </div>
-              <div>
-                <p className="text-neutral-600 text-sm mb-1">{stat.title}</p>
-                <p className="text-3xl font-bold text-neutral-800">{stat.value}</p>
-                {stat.subtitle && <p className="text-neutral-500 text-sm">{stat.subtitle}</p>}
-              </div>
+              <div className="text-2xl md:text-3xl font-bold text-neutral-800 leading-none">{chip.value}</div>
+              <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-5 bg-[radial-gradient(circle_at_70%_30%,#2563eb,transparent_60%)] transition-opacity" />
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Appointments */}
-          <div className="lg:col-span-2">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+          {/* Schedule (single consolidated panel spans 2 columns) */}
+          <div className="xl:col-span-2">
+            {/* Schedule List Panel (now sole 'Today's Schedule' area) */}
             <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-neutral-800">{t('todays_schedule')}</h3>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                <h3 className="text-xl font-bold text-neutral-800 flex items-center gap-2">
+                  <span className="material-icons-round text-primary-500">list_alt</span>{t('todays_schedule')}
+                </h3>
                 <button
-                  className="btn-secondary text-sm"
                   onClick={() => navigate('/calendar')}
+                  className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors self-start md:self-auto"
                 >
-                  <span className="material-icons-round mr-2 text-lg">calendar_today</span>
-                  {t('view_calendar')}
+                  <span className="material-icons-round text-sm mr-1">calendar_today</span>{t('view_calendar')}
                 </button>
+              </div>
+
+              {/* Inline upcoming / summary section */}
+              <div className="mb-6 bg-neutral-50 border border-neutral-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex-1">
+                  {upcomingAppointment ? (
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center border border-primary-200">
+                        <span className="material-icons-round text-primary-500 text-xl">schedule</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-primary-600 mb-0.5">Next</p>
+                        <p className="text-sm font-medium text-neutral-800 truncate">{upcomingAppointment.patient_first_name} {upcomingAppointment.patient_last_name}</p>
+                        <p className="text-xs text-neutral-500">
+                          {formatTime(upcomingAppointment.start_time)} - {formatTime(upcomingAppointment.end_time)} • {upcomingAppointment.type}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-neutral-600 font-medium flex items-center gap-2">
+                      <span className="material-icons-round text-neutral-400 text-base">event_busy</span>
+                      {t('no_appointments_scheduled_today')}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-100 text-primary-700 font-medium">
+                    <span className="material-icons-round text-sm">event</span>
+                    {appointmentsLoading ? t('loading') : appointmentsError ? t('error') : `${appointments.length} ${t('appointments')}`}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success-100 text-success-700 font-medium">
+                    <span className="material-icons-round text-sm">groups</span>
+                    {getUniquePatientCount()} {t('patients')}
+                  </span>
+                  {upcomingAppointment && upcomingAppointment.status === 'Booked' && (
+                    <button
+                      onClick={() => navigate(`/appointment/${upcomingAppointment.id}/start`)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium shadow-sm transition-colors"
+                    >
+                      <span className="material-icons-round text-sm">play_arrow</span>{t('start')}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -472,55 +464,47 @@ export const Dashboard: React.FC = () => {
                   </div>
                 ) : (
                   appointments.map((appointment, index) => (
-                    <div key={appointment.id} className={`bg-neutral-50 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 slide-up-element border border-neutral-100`}
-                         style={{ animationDelay: `${index * 0.1}s` }}>
-                      <div className="flex items-center space-x-4">
+                    <div key={appointment.id} className={`bg-neutral-50 rounded-xl p-4 hover:bg-white hover:shadow-sm transition-all duration-300 slide-up-element border border-neutral-100`}
+                         style={{ animationDelay: `${index * 0.04}s` }}>
+                      <div className="flex items-center gap-4">
                         <div className="flex-shrink-0">
-                          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center border border-primary-200">
-                            <span className="text-primary-600 font-semibold text-sm">{formatTime(appointment.start_time)}</span>
+                          <div className="w-14 h-14 bg-primary-100 rounded-xl flex flex-col items-center justify-center border border-primary-200 text-center">
+                            <span className="text-primary-600 font-semibold text-sm leading-tight">{formatTime(appointment.start_time)}</span>
+                            <span className="text-neutral-400 text-[10px]">{formatTime(appointment.end_time)}</span>
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-neutral-800 truncate">
+                          <p className="font-semibold text-neutral-800 truncate text-sm md:text-base">
                             {appointment.patient_first_name} {appointment.patient_last_name}
                           </p>
-                          <p className="text-neutral-600 text-sm">{appointment.type}</p>
-                          <div className="flex items-center mt-1 space-x-2">
-                            <span className="material-icons-round text-neutral-400 text-sm">schedule</span>
-                            <span className="text-xs text-neutral-500">
-                              {formatTime(appointment.start_time)} - {formatTime(appointment.end_time)}
-                            </span>
+                          <p className="text-neutral-600 text-xs md:text-sm">{appointment.type}</p>
+                          <div className="flex items-center mt-1 gap-3 text-[11px] text-neutral-500">
+                            <span className="flex items-center gap-1"><span className="material-icons-round text-[14px] text-neutral-400">event</span>{appointment.status}</span>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <div className={`px-3 py-1 rounded-full text-white text-xs font-medium ${getStatusColor(mapAppointmentStatus(appointment.status))}`}>
-                            {appointment.status}
-                          </div>
+                        <div className="flex flex-col gap-2 items-end">
                           {appointment.status === 'Booked' && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
-                              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                              className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
                             >
-                              <span className="material-icons-round text-sm">play_arrow</span>
-                              <span>{t('start')}</span>
+                              <span className="material-icons-round text-xs">play_arrow</span>{t('start')}
                             </button>
                           )}
                           {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
-                              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
                             >
-                              <span className="material-icons-round text-sm">play_circle</span>
-                              <span>{t('resume')}</span>
+                              <span className="material-icons-round text-xs">play_circle</span>{t('resume')}
                             </button>
                           )}
                           {appointment.status === 'Completed' && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
+                              className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
                             >
-                              <span className="material-icons-round text-sm">visibility</span>
-                              <span>{t('view')}</span>
+                              <span className="material-icons-round text-xs">visibility</span>{t('view')}
                             </button>
                           )}
                         </div>
@@ -532,83 +516,39 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Actions & Overview */}
+          {/* Side Panels */}
           <div className="space-y-6">
             {/* Quick Actions */}
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-6">{t('quick_actions')}</h3>
-              <div className="space-y-3">
-                <button className="w-full btn-primary text-left" onClick={() => setIsAddPatientModalOpen(true)}>
-                  <span className="material-icons-round mr-3">person_add</span>
-                  {t('add_new_patient')}
+              <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2"><span className="material-icons-round text-primary-500">flash_on</span>{t('quick_actions')}</h3>
+              <div className="grid grid-cols-1 gap-3">
+                <button className="w-full px-4 py-3 rounded-xl border border-primary-200 bg-primary-50 hover:bg-primary-100 text-primary-700 font-medium text-sm flex items-center gap-2 transition-colors" onClick={() => setIsAddPatientModalOpen(true)}>
+                  <span className="material-icons-round text-base">person_add</span>{t('add_new_patient')}
                 </button>
-                <button className="w-full btn-secondary text-left" onClick={() => setShowNewAppointmentForm(true)}>
-                  <span className="material-icons-round mr-3">event</span>
-                  {t('schedule_appointment')}
+                <button className="w-full px-4 py-3 rounded-xl border border-neutral-300 hover:border-primary-400 hover:bg-neutral-50 text-neutral-700 font-medium text-sm flex items-center gap-2 transition-colors" onClick={() => setShowNewAppointmentForm(true)}>
+                  <span className="material-icons-round text-base">event</span>{t('schedule_appointment')}
                 </button>
-                <button className="w-full btn-accent text-left">
-                  <span className="material-icons-round mr-3">description</span>
-                  {t('generate_report')}
+                <button className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium text-sm flex items-center gap-2 transition-colors">
+                  <span className="material-icons-round text-base">description</span>{t('generate_report')}
                 </button>
               </div>
             </div>
 
             {/* Activity Overview */}
             <div className="card">
-              <h3 className="text-xl font-bold text-neutral-800 mb-6">{t('activity_overview')}</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">{t('appointments_completed')}</span>
-                  <span className="font-semibold text-success-600">8/12</span>
+              <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2"><span className="material-icons-round text-primary-500">insights</span>{t('activity_overview')}</h3>
+              <div className="space-y-5">
+                <div>
+                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('appointments_completed')}</span><span className="font-semibold text-success-600">8/12</span></div>
+                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-2/3 bg-success-500" /></div>
                 </div>
-                <div className="w-full bg-neutral-200 rounded-full h-2">
-                  <div className="bg-success-500 h-2 rounded-full" style={{ width: '66%' }}></div>
+                <div>
+                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('patient_satisfaction')}</span><span className="font-semibold text-primary-600">4.8/5</span></div>
+                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-[96%] bg-primary-500" /></div>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">{t('patient_satisfaction')}</span>
-                  <span className="font-semibold text-primary-600">4.8/5</span>
-                </div>
-                <div className="w-full bg-neutral-200 rounded-full h-2">
-                  <div className="bg-primary-500 h-2 rounded-full" style={{ width: '96%' }}></div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-600">{t('revenue_target')}</span>
-                  <span className="font-semibold text-primary-600">$2.3K/$3K</span>
-                </div>
-                <div className="w-full bg-neutral-200 rounded-full h-2">
-                  <div className="bg-primary-600 h-2 rounded-full" style={{ width: '77%' }}></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Weather Widget */}
-            <div className="card bg-primary-500 text-white border-0 p-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <span className="material-icons-round text-primary-100 mr-2">location_on</span>
-                  <p className="text-primary-100 text-sm font-medium">
-                    {weatherLoading ? '' : weatherError ? '' : weather?.city || 'Sidi Bouzid'}
-                  </p>
-                </div>
-
-                <div className="mb-4">
-                  <div className="text-6xl mb-2 opacity-90">
-                    {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
-                  </div>
-                  <p className="text-4xl font-bold mb-1">
-                    {weatherLoading ? t('loading') : weatherError ? t('error') : `${getCurrentTemperature()}°C`}
-                  </p>
-                  <p className="text-primary-100 text-base font-medium">
-                    {weatherLoading ? t('fetching_weather_data') : weatherError ? weatherError : getCurrentWeatherDescription()}
-                  </p>
-                </div>
-
-                <div className="border-t border-primary-400 pt-3 mt-3">
-                  <p className="text-primary-100 text-xs uppercase tracking-wider font-medium">
-                    {t('todays_weather')}
-                  </p>
+                <div>
+                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('revenue_target')}</span><span className="font-semibold text-primary-600">$2.3K/$3K</span></div>
+                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-[77%] bg-primary-600" /></div>
                 </div>
               </div>
             </div>
@@ -645,7 +585,6 @@ export const Dashboard: React.FC = () => {
                   <span className="material-icons-round">close</span>
                 </button>
               </div>
-
               {/* Step indicator */}
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center space-x-4">
@@ -668,8 +607,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Content - Fixed height container for consistency */}
+              {/* Content */}
               <div className="h-[600px] overflow-y-auto">
                 <div className="p-6">
                   {bookingStep === 'patient' && (
@@ -707,7 +645,6 @@ export const Dashboard: React.FC = () => {
                               </span>
                             </div>
                           </div>
-
                           {/* Create new patient button */}
                           <div className="mb-6">
                             <button
@@ -718,8 +655,7 @@ export const Dashboard: React.FC = () => {
                               <div className="text-sm font-medium">{t('create_new_patient')}</div>
                             </button>
                           </div>
-
-                          {/* Patient list - flexible height */}
+                          {/* Patient list */}
                           <div className="flex-1 min-h-0">
                             <div className="space-y-3 h-full overflow-y-auto">
                               {displayedPatients.map((patient) => (
@@ -795,7 +731,7 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </div> {/* end space-y-8 wrapper */}
     </DashboardLayout>
   );
 };
