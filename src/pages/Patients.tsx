@@ -13,17 +13,19 @@ import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
+import { AppointmentDetail } from '../components/patients/AppointmentDetail';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
+import { Appointment, AppointmentCreate, AppointmentUpdate } from '../types/Appointment';
+import { PatientFileRead } from '../types/PatientFile';
+import { useNotification } from '../context/NotificationContext';
+import { SettingsService } from '../services/settingsService';
 import { PatientService } from '../services/patientService';
 import { PreconditionService } from '../services/preconditionService';
 import { PatientFileService } from '../services/patientFileService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
-import { Appointment, AppointmentCreate } from '../types/Appointment';
-import { PatientFileRead } from '../types/PatientFile';
-import { useNotification } from '../context/NotificationContext';
-import { SettingsService } from '../services/settingsService';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
 type PatientDetailTab = 'upcoming' | 'past' | 'files' | 'preconditions';
@@ -87,6 +89,12 @@ export const Patients: React.FC = () => {
     startTime: '08:00',
     endTime: '17:00'
   });
+
+  // Appointment management state
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showAppointmentDetail, setShowAppointmentDetail] = useState(false);
+  const [showDeleteAppointmentConfirm, setShowDeleteAppointmentConfirm] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
 
   const { showNotification } = useNotification();
   const location = useLocation();
@@ -526,6 +534,68 @@ export const Patients: React.FC = () => {
       age--;
     }
     return age;
+  };
+
+  // Appointment management handlers
+  const handleEditAppointment = async (appointment: Appointment) => {
+    try {
+      // Fetch the full appointment details
+      const fullAppointment = await AppointmentService.getAppointment(appointment.id);
+      setSelectedAppointment(fullAppointment);
+      setShowAppointmentDetail(true);
+    } catch (error) {
+      console.error('Error loading appointment details:', error);
+      showNotification('error', t('error'), t('failed_to_load_appointment'));
+    }
+  };
+
+  const handleDeleteAppointment = (appointmentId: string) => {
+    setAppointmentToDelete(appointmentId);
+    setShowDeleteAppointmentConfirm(true);
+  };
+
+  const performDeleteAppointment = async (appointmentId: string) => {
+    setAppointmentLoading(true);
+    try {
+      await AppointmentService.deleteAppointment(appointmentId);
+
+      // Refresh patient appointments
+      if (selectedPatient) {
+        await loadPatientAppointments(selectedPatient.id);
+      }
+
+      showNotification('success', t('success'), t('appointment_deleted_successfully'));
+      setShowDeleteAppointmentConfirm(false);
+      setAppointmentToDelete(null);
+    } catch (err) {
+      console.error('Error deleting appointment:', err);
+      showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_delete_appointment'));
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  const handleAppointmentUpdate = async (appointmentData: AppointmentUpdate) => {
+    if (!selectedAppointment) return;
+
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(selectedAppointment.id, appointmentData);
+
+      // Refresh patient appointments
+      if (selectedPatient) {
+        await loadPatientAppointments(selectedPatient.id);
+      }
+
+      showNotification('success', t('success'), t('appointment_updated_successfully'));
+      setShowAppointmentDetail(false);
+      setSelectedAppointment(null);
+    } catch (err) {
+      console.error('Error updating appointment:', err);
+      showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment'));
+    } finally {
+      setAppointmentLoading(false);
+    }
   };
 
   // Remove the filteredPatients filter since we're now using API search
@@ -1082,8 +1152,7 @@ export const Patients: React.FC = () => {
                                   icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Edit appointment:', appointment.id);
-                                    // TODO: Implement edit appointment functionality
+                                    handleEditAppointment(appointment);
                                   }}
                                   title={t('edit_appointment')}
                                 >
@@ -1095,8 +1164,7 @@ export const Patients: React.FC = () => {
                                   icon="delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Delete appointment:', appointment.id);
-                                    // TODO: Implement delete appointment functionality
+                                    handleDeleteAppointment(appointment.id);
                                   }}
                                   title={t('delete_appointment')}
                                 >
@@ -1239,7 +1307,7 @@ export const Patients: React.FC = () => {
                                   icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Edit appointment:', appointment.id);
+                                    handleEditAppointment(appointment);
                                   }}
                                   title={t('edit')}
                                 >
@@ -1613,6 +1681,83 @@ export const Patients: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Appointment Detail Modal for Editing */}
+        {showAppointmentDetail && selectedAppointment && selectedPatient && (
+          <Modal
+            isOpen={showAppointmentDetail}
+            onClose={() => {
+              setShowAppointmentDetail(false);
+              setSelectedAppointment(null);
+            }}
+            title={t('edit_appointment')}
+            size="xl"
+          >
+            <AppointmentDetail
+              appointment={selectedAppointment}
+              patient={selectedPatient}
+              onEdit={handleAppointmentUpdate}
+              onCancel={async () => {
+                // Handle cancel appointment functionality
+                try {
+                  await AppointmentService.updateAppointment(selectedAppointment.id, { status: 'Cancelled' });
+                  if (selectedPatient) {
+                    await loadPatientAppointments(selectedPatient.id);
+                  }
+                  showNotification('success', t('success'), t('appointment_cancelled_successfully'));
+                  setShowAppointmentDetail(false);
+                  setSelectedAppointment(null);
+                } catch (err) {
+                  console.error('Error cancelling appointment:', err);
+                  showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_cancel_appointment'));
+                }
+              }}
+              onUpdateStatus={async (status) => {
+                // Handle status update
+                try {
+                  await AppointmentService.updateAppointment(selectedAppointment.id, { status });
+                  if (selectedPatient) {
+                    await loadPatientAppointments(selectedPatient.id);
+                  }
+                  showNotification('success', t('success'), t('appointment_status_updated_successfully'));
+                  setShowAppointmentDetail(false);
+                  setSelectedAppointment(null);
+                } catch (err) {
+                  console.error('Error updating appointment status:', err);
+                  showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment_status'));
+                }
+              }}
+              onDelete={async () => {
+                // Handle delete appointment
+                handleDeleteAppointment(selectedAppointment.id);
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              }}
+              onClose={() => {
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              }}
+              isLoading={appointmentLoading}
+            />
+          </Modal>
+        )}
+
+        {/* Appointment Deletion Confirmation Dialog */}
+        {showDeleteAppointmentConfirm && appointmentToDelete && (
+          <ConfirmDialog
+            isOpen={showDeleteAppointmentConfirm}
+            onCancel={() => {
+              setShowDeleteAppointmentConfirm(false);
+              setAppointmentToDelete(null);
+            }}
+            onConfirm={() => performDeleteAppointment(appointmentToDelete)}
+            title={t('delete_appointment')}
+            message={t('delete_appointment_confirmation')}
+            confirmText={t('delete')}
+            cancelText={t('cancel')}
+            isLoading={appointmentLoading}
+          />
+        )}
       </DashboardLayout>
     );
   }
@@ -1637,9 +1782,9 @@ export const Patients: React.FC = () => {
       const patientWithHistory = await PatientService.getPatientWithAppointments(patient.id);
       setSelectedPatientWithHistory(patientWithHistory);
       setViewMode('history');
-    } catch (error) {
-      console.error('Error loading patient history:', error);
-      showNotification('error', t('failed_to_load_history'), t('unable_to_load_patient_history'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load patient history');
+      console.error('Error loading patient history:', err);
     } finally {
       setIsLoading(false);
     }
@@ -1649,21 +1794,21 @@ export const Patients: React.FC = () => {
     <DashboardLayout>
       {renderHeader()}
 
-      {/* Patient List / Grid View */}
+      {/* Patient List / Grid */}
       <div className="fade-in-element">
         {viewMode === 'grid' && (
           <>
-            {patients.length === 0 && !isLoading && (
+            {displayedPatients.length === 0 && !isLoading && (
               <div className="text-center py-8">
                 <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 7 9-7M4 7h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
                 </svg>
                 <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_patients_found')}</h4>
-                <p className="text-gray-500">{t('start_by_adding_patient')}</p>
+                <p className="text-gray-500">{t('try_different_search')}</p>
               </div>
             )}
 
-            {patients.length > 0 && renderGridView()}
+            {displayedPatients.length > 0 && renderGridView()}
           </>
         )}
 
@@ -1672,4 +1817,3 @@ export const Patients: React.FC = () => {
     </DashboardLayout>
   );
 };
-

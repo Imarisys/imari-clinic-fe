@@ -618,5 +618,10 @@
   "delete_precondition": "Supprimer l'antécédent médical",
   "edit_precondition": "Modifier l'antécédent médical",
   "medical_details": "Détails médicaux",
-  "no_medical_data_available": "Aucune donnée médicale disponible"
+  "no_medical_data_available": "Aucune donnée médicale disponible",
+  "failed_to_load_appointment": "Échec du chargement du rendez-vous",
+  "try_different_search": "Essayez une recherche différente",
+  "delete_appointment_confirmation": "Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action ne peut pas être annulée.",
+  "failed_to_update_appointment_status": "Échec de la mise à jour du statut du rendez-vous"
+
 }
