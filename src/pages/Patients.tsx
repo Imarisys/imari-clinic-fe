@@ -1684,62 +1684,49 @@ export const Patients: React.FC = () => {
 
         {/* Appointment Detail Modal for Editing */}
         {showAppointmentDetail && selectedAppointment && selectedPatient && (
-          <Modal
-            isOpen={showAppointmentDetail}
+          <AppointmentDetail
+            appointment={selectedAppointment}
+            patient={selectedPatient}
+            onEdit={handleAppointmentUpdate}
+            onCancel={async () => {
+              try {
+                await AppointmentService.updateAppointment(selectedAppointment.id, { status: 'Cancelled' });
+                if (selectedPatient) {
+                  await loadPatientAppointments(selectedPatient.id);
+                }
+                showNotification('success', t('success'), t('appointment_cancelled_successfully'));
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              } catch (err) {
+                console.error('Error cancelling appointment:', err);
+                showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_cancel_appointment'));
+              }
+            }}
+            onUpdateStatus={async (status) => {
+              try {
+                await AppointmentService.updateAppointment(selectedAppointment.id, { status });
+                if (selectedPatient) {
+                  await loadPatientAppointments(selectedPatient.id);
+                }
+                showNotification('success', t('success'), t('appointment_status_updated_successfully'));
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              } catch (err) {
+                console.error('Error updating appointment status:', err);
+                showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment_status'));
+              }
+            }}
+            onDelete={async () => {
+              handleDeleteAppointment(selectedAppointment.id);
+              setShowAppointmentDetail(false);
+              setSelectedAppointment(null);
+            }}
             onClose={() => {
               setShowAppointmentDetail(false);
               setSelectedAppointment(null);
             }}
-            title={t('edit_appointment')}
-            size="xl"
-          >
-            <AppointmentDetail
-              appointment={selectedAppointment}
-              patient={selectedPatient}
-              onEdit={handleAppointmentUpdate}
-              onCancel={async () => {
-                // Handle cancel appointment functionality
-                try {
-                  await AppointmentService.updateAppointment(selectedAppointment.id, { status: 'Cancelled' });
-                  if (selectedPatient) {
-                    await loadPatientAppointments(selectedPatient.id);
-                  }
-                  showNotification('success', t('success'), t('appointment_cancelled_successfully'));
-                  setShowAppointmentDetail(false);
-                  setSelectedAppointment(null);
-                } catch (err) {
-                  console.error('Error cancelling appointment:', err);
-                  showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_cancel_appointment'));
-                }
-              }}
-              onUpdateStatus={async (status) => {
-                // Handle status update
-                try {
-                  await AppointmentService.updateAppointment(selectedAppointment.id, { status });
-                  if (selectedPatient) {
-                    await loadPatientAppointments(selectedPatient.id);
-                  }
-                  showNotification('success', t('success'), t('appointment_status_updated_successfully'));
-                  setShowAppointmentDetail(false);
-                  setSelectedAppointment(null);
-                } catch (err) {
-                  console.error('Error updating appointment status:', err);
-                  showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment_status'));
-                }
-              }}
-              onDelete={async () => {
-                // Handle delete appointment
-                handleDeleteAppointment(selectedAppointment.id);
-                setShowAppointmentDetail(false);
-                setSelectedAppointment(null);
-              }}
-              onClose={() => {
-                setShowAppointmentDetail(false);
-                setSelectedAppointment(null);
-              }}
-              isLoading={appointmentLoading}
-            />
-          </Modal>
+            isLoading={appointmentLoading}
+          />
         )}
 
         {/* Appointment Deletion Confirmation Dialog */}
