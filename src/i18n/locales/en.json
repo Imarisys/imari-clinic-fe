@@ -571,5 +571,16 @@
   "failed_to_update_appointment_status": "Failed to update appointment status",
   "cancelling": "Cancelling...",
   "failed_to_load_medical_data": "Failed to load medical data",
-  "medical_data": "Medical Data"
+  "medical_data": "Medical Data",
+    "title": "Title",
+    "add_vital": "Add Vital Sign",
+    "vital_sign_name": "Vital Sign Name",
+    "enter_vital_name": "Enter vital sign name",
+    "enter_value": "Enter value",
+    "enter_unit": "Enter unit",
+    "no_vital_signs_recorded": "No vital signs recorded",
+    "add_first_vital": "Add your first vital sign to get started",
+    "enter_diagnosis": "Enter diagnosis",
+    "enter_treatment_plan": "Enter treatment plan",
+    "enter_prescription": "Enter prescription details"
 }

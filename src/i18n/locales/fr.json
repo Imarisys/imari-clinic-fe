@@ -625,7 +625,16 @@
   "failed_to_update_appointment_status": "Échec de la mise à jour du statut du rendez-vous",
   "cancelling": "Annulation...",
   "failed_to_load_medical_data": "Échec du chargement des données médicales",
-  "medical_data": "Données médicales"
-
-
+  "medical_data": "Données médicales",
+    "title": "Titre",
+    "add_vital": "Ajouter un signe vital",
+    "vital_sign_name": "Nom du signe vital",
+    "enter_vital_name": "Entrez le nom du signe vital",
+    "enter_value": "Entrez la valeur",
+    "enter_unit": "Entrez l'unité",
+    "no_vital_signs_recorded": "Aucun signe vital enregistré",
+    "add_first_vital": "Ajoutez votre premier signe vital pour commencer.",
+    "enter_diagnosis": "Entrez le diagnostic",
+    "enter_treatment_plan": "Entrez le plan de traitement",
+    "enter_prescription": "Entrez l'ordonnance"
 }
