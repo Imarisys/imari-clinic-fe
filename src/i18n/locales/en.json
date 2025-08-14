@@ -584,5 +584,21 @@
     "enter_treatment_plan": "Enter treatment plan",
     "enter_prescription": "Enter prescription details",
   "all": "All",
-  "no_appointments_found": "No appointments found"
+  "no_appointments_found": "No appointments found",
+  "dental_chart_coming_soon": "Dental chart features are coming soon.",
+  "gynecology": "Gynecology",
+  "ophthalmology": "Ophthalmology",
+  "gynecology_module": "Gynecology Module",
+  "gynecology_coming_soon": "A comprehensive gynecology consultation workspace with specialized vitals, obstetric history, menstrual tracking, and more is coming soon.",
+  "ophthalmology_module": "Ophthalmology Module",
+  "ophthalmology_coming_soon": "A full eye exam interface with visual acuity charts, refraction inputs, intraocular pressure logging and imaging integration is on the way.",
+  "dental_module": "Dental Module",
+  "dental_coming_soon": "Interactive dental charts, treatment planning, and comprehensive oral health tracking features are coming soon.",
+  "coming_soon": "Coming Soon",
+  "reschedule_appointment": "Reschedule Appointment",
+    "reschedule_appointment_title": "Reschedule Appointment",
+  "previously": "Previously",
+    "confirm_reschedule": "Confirm Reschedule",
+    "moving_appointment_to": "Moving appointment to",
+    "summary_of_changes": "Summary of Changes"
 }

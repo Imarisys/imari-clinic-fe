@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, AppointmentUpdate } from '../../types/Appointment';
 import { Patient } from '../../types/Patient';
+import { useTranslation } from '../../context/TranslationContext';
 
 interface RescheduleConfirmationProps {
   appointment: Appointment;
@@ -23,6 +24,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
   onCancel,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const [startTime, setStartTime] = useState(newStartTime);
   const [endTime, setEndTime] = useState(newEndTime);
   const [date, setDate] = useState(newDate);
@@ -76,7 +78,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-scale-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Reschedule Appointment</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('reschedule_appointment')}</h2>
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -100,7 +102,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
           <div className="space-y-4 mb-6">
             {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('date')}</label>
               <input
                 type="date"
                 value={date}
@@ -110,14 +112,14 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
               />
               {originalDate !== date && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Previously: {formatDisplayDate(originalDate)}
+                  {t('previously')}: {formatDisplayDate(originalDate)}
                 </p>
               )}
             </div>
 
             {/* Start Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('start_time')}</label>
               <input
                 type="time"
                 value={formatDisplayTime(startTime)}
@@ -127,14 +129,14 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
               />
               {originalStartTime !== startTime && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Previously: {formatDisplayTime(originalStartTime)}
+                  {t('previously')}: {formatDisplayTime(originalStartTime)}
                 </p>
               )}
             </div>
 
             {/* End Time */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('end_time')}</label>
               <input
                 type="time"
                 value={formatDisplayTime(endTime)}
@@ -144,7 +146,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
               />
               {originalEndTime !== endTime && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Previously: {formatDisplayTime(originalEndTime)}
+                  {t('previously')}: {formatDisplayTime(originalEndTime)}
                 </p>
               )}
             </div>
@@ -152,9 +154,9 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
 
           {/* Summary */}
           <div className="bg-primary-50 rounded-lg p-4 mb-6">
-            <h4 className="text-sm font-medium text-primary-900 mb-2">Summary of Changes</h4>
+            <h4 className="text-sm font-medium text-primary-900 mb-2">{t('summary_of_changes')}</h4>
             <div className="text-sm text-primary-800">
-              <p>Moving appointment to:</p>
+              <p>{t('moving_appointment_to')}:</p>
               <p className="font-medium">
                 {formatDisplayDate(date)} at {formatDisplayTime(startTime)} - {formatDisplayTime(endTime)}
               </p>
@@ -168,7 +170,7 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
               className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               disabled={isLoading}
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               onClick={handleConfirm}
@@ -178,10 +180,10 @@ export const RescheduleConfirmation: React.FC<RescheduleConfirmationProps> = ({
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Saving...
+                  {t('saving')}...
                 </div>
               ) : (
-                'Confirm Reschedule'
+                t('confirm_reschedule')
               )}
             </button>
           </div>

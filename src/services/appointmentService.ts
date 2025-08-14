@@ -90,13 +90,13 @@ export class AppointmentService {
   // Helper function to remove null and undefined values from an object
   private static removeNullValues<T>(obj: T): Partial<T> {
     const result: Partial<T> = {};
-
+    
     for (const key in obj) {
       if (obj[key] !== null && obj[key] !== undefined) {
         result[key] = obj[key];
       }
     }
-
+    
     return result;
   }
 
