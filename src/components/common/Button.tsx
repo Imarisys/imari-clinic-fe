@@ -7,7 +7,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: string;
   iconPosition?: 'left' | 'right';
   loading?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode; // Make optional to allow icon-only buttons
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -64,7 +64,15 @@ export const Button: React.FC<ButtonProps> = ({
         </div>
       );
     }
-
+    // Icon only
+    if (children === undefined || children === null || children === '') {
+      return (
+        <>
+          {renderIcon('left')}
+          {renderIcon('right')}
+        </>
+      );
+    }
     return (
       <>
         {renderIcon('left')}

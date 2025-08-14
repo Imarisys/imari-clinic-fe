@@ -85,7 +85,13 @@ export const Calendar: React.FC = () => {
         startDate.toISOString().split('T')[0],
         days
       );
-      setAppointments(appointmentData);
+
+      // Filter out cancelled appointments
+      const activeAppointments = appointmentData.filter(appointment =>
+        appointment.status !== 'Cancelled'
+      );
+
+      setAppointments(activeAppointments);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failed_to_load_appointments'));
       console.error('Error loading appointments:', err);

@@ -284,6 +284,26 @@
         }
       }
     },
+    "/api/v1/patients/export": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Export Patients Csv",
+        "description": "Export all patients to CSV format",
+        "operationId": "export_patients_csv_api_v1_patients_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/patients/{patient_id}": {
       "get": {
         "tags": [
@@ -2448,7 +2468,14 @@
       "AppointmentUpdate": {
         "properties": {
           "date": {
-            "type": "null",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Date"
           },
           "start_time": {
@@ -2456,6 +2483,9 @@
               {
                 "type": "string",
                 "format": "time"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2468,6 +2498,9 @@
               {
                 "type": "string",
                 "format": "time"
+              },
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3834,6 +3867,11 @@
             "$ref": "#/components/schemas/Language",
             "default": "en"
           },
+          "layout_position": {
+            "type": "string",
+            "title": "Layout Position",
+            "default": "sidebar"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -4025,6 +4063,17 @@
                 "type": "null"
               }
             ]
+          },
+          "layout_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Position"
           }
         },
         "type": "object",

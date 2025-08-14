@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../context/TranslationContext';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PatientList } from '../components/patients/PatientList';
@@ -13,17 +13,19 @@ import { Notification } from '../components/common/Notification';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { Modal } from '../components/common/Modal';
 import { Pagination } from '../components/common/Pagination';
+import { AppointmentDetail } from '../components/patients/AppointmentDetail';
+import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { Patient, PatientCreate, PatientUpdate, PatientSummary, PatientWithAppointments } from '../types/Patient';
+import { Appointment, AppointmentCreate, AppointmentUpdate } from '../types/Appointment';
+import { PatientFileRead } from '../types/PatientFile';
+import { useNotification } from '../context/NotificationContext';
+import { SettingsService } from '../services/settingsService';
 import { PatientService } from '../services/patientService';
 import { PreconditionService } from '../services/preconditionService';
 import { PatientFileService } from '../services/patientFileService';
 import { AppointmentService } from '../services/appointmentService';
 import { AppointmentTypeService, AppointmentType } from '../services/appointmentTypeService';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
-import { Appointment, AppointmentCreate } from '../types/Appointment';
-import { PatientFileRead } from '../types/PatientFile';
-import { useNotification } from '../context/NotificationContext';
-import { SettingsService } from '../services/settingsService';
 
 type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
 type PatientDetailTab = 'upcoming' | 'past' | 'files' | 'preconditions';
@@ -56,6 +58,20 @@ export const Patients: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // File management state - Add these new state variables
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileViewMode, setFileViewMode] = useState<'grid' | 'list'>('grid');
+  const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({});
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    file: PatientFileRead | null;
+    imageUrl: string | null;
+  }>({
+    isOpen: false,
+    file: null,
+    imageUrl: null
+  });
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPatients, setTotalPatients] = useState(0);
@@ -74,14 +90,27 @@ export const Patients: React.FC = () => {
     endTime: '17:00'
   });
 
+  // Appointment management state
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showAppointmentDetail, setShowAppointmentDetail] = useState(false);
+  const [showDeleteAppointmentConfirm, setShowDeleteAppointmentConfirm] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+
   const { showNotification } = useNotification();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // ESC key listener for edit mode
+  // ESC key listener for edit mode and preview modal
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && viewMode === 'edit') {
-        setViewMode('detail');
+      if (event.key === 'Escape') {
+        if (previewModal.isOpen) {
+          // Close preview modal if it's open
+          setPreviewModal({ isOpen: false, file: null, imageUrl: null });
+        } else if (viewMode === 'edit') {
+          // Exit edit mode if no modal is open
+          setViewMode('detail');
+        }
       }
     };
 
@@ -90,7 +119,7 @@ export const Patients: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [viewMode]);
+  }, [viewMode, previewModal.isOpen]);
 
 
   // Reset to grid view when navigating to patients page
@@ -224,11 +253,117 @@ export const Patients: React.FC = () => {
     try {
       const response = await PatientFileService.getPatientFiles(patientId);
       setPatientFiles(response.files);
+
+      // Fetch thumbnails for image files
+      fetchThumbnails(response.files, patientId);
     } catch (error) {
       console.error('Error loading patient files:', error);
       setPatientFiles([]);
     } finally {
       setLoadingFiles(false);
+    }
+  };
+
+  // Function to fetch thumbnails for image files
+  const fetchThumbnails = async (files: PatientFileRead[], patientId: string) => {
+    const imageFiles = files.filter(file => PatientFileService.isImageFile(file));
+
+    // Fetch thumbnails in parallel for all image files
+    const thumbnailPromises = imageFiles.map(async (file) => {
+      try {
+        const thumbnailUrl = await PatientFileService.getThumbnailBlob(patientId, file.id);
+        return { fileId: file.id, thumbnailUrl };
+      } catch (error) {
+        console.error(`Failed to fetch thumbnail for file ${file.id}:`, error);
+        return { fileId: file.id, thumbnailUrl: null };
+      }
+    });
+
+    const thumbnailResults = await Promise.all(thumbnailPromises);
+
+    // Update thumbnail URLs state
+    const newThumbnailUrls: Record<string, string> = {};
+    thumbnailResults.forEach(({ fileId, thumbnailUrl }) => {
+      if (thumbnailUrl) {
+        newThumbnailUrls[fileId] = thumbnailUrl;
+      }
+    });
+
+    setThumbnailUrls(newThumbnailUrls);
+  };
+
+  // Function to handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedPatient?.id) return;
+
+    try {
+      setUploadingFile(true);
+      const fileData = { file };
+      await PatientFileService.uploadPatientFile(selectedPatient.id, fileData);
+      showNotification('success', t('success'), t('file_uploaded_successfully'));
+      loadPatientFiles(selectedPatient.id); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      showNotification('error', t('error'), t('failed_to_upload_file'));
+    } finally {
+      setUploadingFile(false);
+      // Reset the input
+      event.target.value = '';
+    }
+  };
+
+  // Function to handle file preview
+  const handleFilePreview = async (file: PatientFileRead) => {
+    if (!selectedPatient?.id) return;
+
+    if (PatientFileService.isImageFile(file)) {
+      // For images, show full-size image in modal popup using preview URL
+      try {
+        const previewUrl = PatientFileService.getPreviewUrl(selectedPatient.id, file.id);
+        setPreviewModal({
+          isOpen: true,
+          file: file,
+          imageUrl: previewUrl
+        });
+      } catch (error) {
+        console.error('Failed to load image preview:', error);
+        showNotification('error', t('error'), t('failed_to_load_image_preview'));
+      }
+    } else {
+      // For non-images, open preview URL in new window
+      const previewUrl = PatientFileService.getPreviewUrl(selectedPatient.id, file.id);
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  // Function to handle file download
+  const handleFileDownload = async (file: PatientFileRead) => {
+    if (!selectedPatient?.id) return;
+
+    try {
+      await PatientFileService.downloadFile(selectedPatient.id, file.id, file.filename);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      showNotification('error', t('error'), t('failed_to_download_file'));
+    }
+  };
+
+  // Function to handle file deletion
+  const handleFileDelete = async (file: PatientFileRead) => {
+    if (!selectedPatient?.id) return;
+
+    if (!window.confirm(t('confirm_delete_file', { filename: file.filename }))) {
+      return;
+    }
+
+    try {
+      await PatientFileService.deletePatientFile(selectedPatient.id, file.id);
+      showNotification('success', t('success'), t('file_deleted_successfully'));
+      loadPatientFiles(selectedPatient.id); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      showNotification('error', t('error'), t('failed_to_delete_file'));
     }
   };
 
@@ -401,6 +536,137 @@ export const Patients: React.FC = () => {
     }
     return age;
   };
+
+  // Appointment management handlers
+  const handleEditAppointment = async (appointment: Appointment) => {
+    try {
+      // Fetch the full appointment details
+      const fullAppointment = await AppointmentService.getAppointment(appointment.id);
+      setSelectedAppointment(fullAppointment);
+      setShowAppointmentDetail(true);
+    } catch (error) {
+      console.error('Error loading appointment details:', error);
+      showNotification('error', t('error'), t('failed_to_load_appointment'));
+    }
+  };
+
+  const handleDeleteAppointment = (appointmentId: string) => {
+    setAppointmentToDelete(appointmentId);
+    setShowDeleteAppointmentConfirm(true);
+  };
+
+  const performDeleteAppointment = async (appointmentId: string) => {
+    setAppointmentLoading(true);
+    try {
+      await AppointmentService.deleteAppointment(appointmentId);
+
+      // Refresh patient appointments
+      if (selectedPatient) {
+        await loadPatientAppointments(selectedPatient.id);
+      }
+
+      showNotification('success', t('success'), t('appointment_deleted_successfully'));
+      setShowDeleteAppointmentConfirm(false);
+      setAppointmentToDelete(null);
+    } catch (err) {
+      console.error('Error deleting appointment:', err);
+      showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_delete_appointment'));
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  const handleAppointmentUpdate = async (appointmentData: AppointmentUpdate) => {
+    if (!selectedAppointment) return;
+
+    setAppointmentLoading(true);
+    try {
+      const updatedAppointment = await AppointmentService.updateAppointment(selectedAppointment.id, appointmentData);
+
+      // Refresh patient appointments
+      if (selectedPatient) {
+        await loadPatientAppointments(selectedPatient.id);
+      }
+
+      showNotification('success', t('success'), t('appointment_updated_successfully'));
+      setShowAppointmentDetail(false);
+      setSelectedAppointment(null);
+    } catch (err) {
+      console.error('Error updating appointment:', err);
+      showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment'));
+    } finally {
+      setAppointmentLoading(false);
+    }
+  };
+
+  // Load patient appointments for statistics
+  const loadPatientAppointmentsForStatistics = async () => {
+    if (!selectedPatient) return;
+
+    setAppointmentsLoading(true);
+    try {
+      const patientWithHistory = await PatientService.getPatientWithAppointments(selectedPatient.id);
+      setPatientAppointments(patientWithHistory.appointments || []);
+    } catch (error) {
+      console.error('Error loading patient appointments:', error);
+      setPatientAppointments([]);
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  // Load patient files
+  const loadPatientFilesForStatistics = async () => {
+    if (!selectedPatient) return;
+
+    setLoadingFiles(true);
+    try {
+      const response = await PatientFileService.getPatientFiles(selectedPatient.id);
+      setPatientFiles(response.files);
+
+      // Fetch thumbnails for image files
+      fetchThumbnails(response.files, selectedPatient.id);
+    } catch (error) {
+      console.error('Error loading patient files:', error);
+      setPatientFiles([]);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Load patient preconditions
+  const loadPatientPreconditionsForStatistics = async () => {
+    if (!selectedPatient) return;
+
+    setLoadingPreconditions(true);
+    try {
+      // Use the new PreconditionService instead of PatientService
+      const response = await PreconditionService.getPatientPreconditions(selectedPatient.id);
+      setPatientPreconditions(response.data || []);
+    } catch (error) {
+      console.error('Error loading patient preconditions:', error);
+      setPatientPreconditions([]);
+    } finally {
+      setLoadingPreconditions(false);
+    }
+  };
+
+  // Load all statistics data for the selected patient
+  const loadAllStatisticsData = async () => {
+    await Promise.all([
+      loadPatientAppointmentsForStatistics(),
+      loadPatientFilesForStatistics(),
+      loadPatientPreconditionsForStatistics()
+    ]);
+  };
+
+  // Load patient data when a patient is selected
+  useEffect(() => {
+    if (selectedPatient) {
+      // Load all data for the selected patient
+      loadAllStatisticsData();
+    }
+  }, [selectedPatient]);
 
   // Remove the filteredPatients filter since we're now using API search
   const displayedPatients = patients;
@@ -950,30 +1216,30 @@ export const Patients: React.FC = () => {
 
                               {/* Action Buttons for Upcoming Appointments */}
                               <div className="flex items-center space-x-2">
-                                <button
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Edit appointment:', appointment.id);
-                                    // TODO: Implement edit appointment functionality
+                                    handleEditAppointment(appointment);
                                   }}
-                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title={t('edit_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">edit</span>
                                   {t('edit')}
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  icon="delete"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Delete appointment:', appointment.id);
-                                    // TODO: Implement delete appointment functionality
+                                    handleDeleteAppointment(appointment.id);
                                   }}
-                                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs transition-all duration-300"
                                   title={t('delete_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">delete</span>
                                   {t('delete')}
-                                </button>
+                                </Button>
                               </div>
                             </div>
 
@@ -1091,29 +1357,43 @@ export const Patients: React.FC = () => {
                               {/* Action Buttons for Past Appointments */}
                               <div className="flex items-center space-x-2">
                                 {appointment.status === 'Completed' && (
-                                  <button
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    icon="description"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log('View consultation details:', appointment.id);
+                                      navigate(`/appointment/${appointment.id}/details`);
                                     }}
-                                    className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs transition-all duration-300"
-                                    title={t('view_details')}
+                                    title={t('appointment_details')}
                                   >
-                                    <span className="material-icons-round text-sm mr-1">description</span>
-                                    {t('details')}
-                                  </button>
+                                    {t('appointment_details')}
+                                  </Button>
                                 )}
-                                <button
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon="edit"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Edit appointment:', appointment.id);
+                                    handleEditAppointment(appointment);
                                   }}
-                                  className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs transition-all duration-300"
-                                  title={t('edit')}
+                                  title={t('edit_appointment')}
                                 >
-                                  <span className="material-icons-round text-sm mr-1">edit</span>
                                   {t('edit')}
-                                </button>
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  icon="delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteAppointment(appointment.id);
+                                  }}
+                                  title={t('delete_appointment')}
+                                >
+                                  {t('delete')}
+                                </Button>
                               </div>
                             </div>
 
@@ -1150,50 +1430,204 @@ export const Patients: React.FC = () => {
             )}
 
             {activePatientTab === 'files' && (
-              <div>
-                <h4 className="text-lg font-semibold text-neutral-800 mb-4">{t('patient_files')}</h4>
-                {loadingFiles ? (
-                  <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="space-y-4">
+                <div className="bg-neutral-50 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-neutral-800">{t('patient_files')}</h4>
+                    <div className="flex items-center space-x-2">
+                      {/* File Upload Button */}
+                      <label className="flex items-center space-x-2 bg-primary-50 text-primary-600 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors border border-primary-200 cursor-pointer">
+                        <span className="material-icons-round text-sm">upload_file</span>
+                        <span className="text-sm font-medium">
+                          {uploadingFile ? t('uploading') : t('upload_file')}
+                        </span>
+                        <input
+                          type="file"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                          className="hidden"
+                          accept="*/*"
+                        />
+                      </label>
+
+                      {/* View Mode Toggle */}
+                      <button
+                        onClick={() => setFileViewMode(fileViewMode === 'grid' ? 'list' : 'grid')}
+                        className="flex items-center space-x-2 bg-white text-neutral-600 px-3 py-2 rounded-lg hover:bg-neutral-100 transition-colors border border-neutral-200"
+                      >
+                        <span className="material-icons-round text-sm">
+                          {fileViewMode === 'grid' ? 'view_list' : 'grid_view'}
+                        </span>
+                        <span className="text-sm font-medium">{fileViewMode === 'grid' ? t('list') : t('grid')}</span>
+                      </button>
+                    </div>
                   </div>
-                ) : patientFiles.length === 0 ? (
-                  <div className="text-center py-8">
-                    <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v4l4 4m-4-4H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2v-6a2 2 0 00-2-2h-4z" />
-                    </svg>
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_patient_files_found')}</h4>
-                    <p className="text-gray-500">{t('upload_files_to_get_started')}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {patientFiles.map((file) => (
-                      <div key={file.id} className="p-4 rounded-lg bg-white shadow-sm border border-gray-200 flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="material-icons-round text-3xl text-blue-500">
-                            {file.file_type === 'document' ? 'description' : 'image'}
-                          </span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{file.filename}</p>
-                            <p className="text-xs text-gray-500">{file.file_size} bytes • {new Date(file.upload_date).toLocaleDateString()}</p>
+
+                  {loadingFiles ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-neutral-600">{t('loading_files')}</p>
+                    </div>
+                  ) : fileViewMode === 'grid' ? (
+                    /* Grid View */
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                      {patientFiles.map((file) => (
+                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-lg group cursor-pointer">
+                          <div className="flex flex-col items-center space-y-3">
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-20 h-20 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                <img
+                                  src={thumbnailUrls[file.id]}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-2xl">${PatientFileService.getFileIcon(file)}</span>`;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="material-icons-round text-blue-600 text-2xl group-hover:text-primary-600 transition-colors">
+                                  {PatientFileService.getFileIcon(file)}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* File Info */}
+                            <div className="text-center w-full space-y-1">
+                              <p className="text-sm font-semibold text-neutral-800 truncate w-full leading-tight" title={file.filename}>
+                                {file.filename}
+                              </p>
+                              <p className="text-xs text-neutral-500 font-medium">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              {file.description && (
+                                <p className="text-xs text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 mt-3 transition-opacity duration-200">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                title={PatientFileService.isImageFile(file) ? t('preview_image') : t('open_file')}
+                              >
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                title={t('download_file')}
+                              >
+                                <span className="material-icons-round text-base">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                title={t('delete_file')}
+                              >
+                                <span className="material-icons-round text-base">delete</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex-shrink-0">
-                          <button
-                            onClick={() => {
-                              // Handle file download/view - you may need to implement this based on your file service
-                              console.log('View file:', file.minio_object_name);
-                            }}
-                            className="text-blue-600 hover:underline text-sm"
-                          >
-                            {t('view')}
-                          </button>
+                      ))}
+                    </div>
+                  ) : (
+                    /* List View */
+                    <div className="space-y-3">
+                      {patientFiles.map((file) => (
+                        <div key={file.id} className="bg-white rounded-xl p-4 border-2 border-neutral-100 hover:border-primary-200 transition-all hover:shadow-md group">
+                          <div className="flex items-center space-x-4">
+                            {/* File Icon/Thumbnail */}
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-primary-50 group-hover:to-primary-100 transition-all duration-200 relative overflow-hidden flex-shrink-0 border border-blue-100 group-hover:border-primary-200 shadow-sm">
+                              {PatientFileService.isImageFile(file) && thumbnailUrls[file.id] ? (
+                                <img
+                                  src={thumbnailUrls[file.id]}
+                                  alt={file.filename}
+                                  className="w-full h-full object-cover rounded-xl transition-transform group-hover:scale-105"
+                                  onError={(e) => {
+                                    // Fallback to icon if thumbnail fails
+                                    const target = e.target as HTMLImageElement;
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = `<span class="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">${PatientFileService.getFileIcon(file)}</span>`;
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span className="material-icons-round text-blue-600 text-xl group-hover:text-primary-600 transition-colors">
+                                  {PatientFileService.getFileIcon(file)}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* File Details */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-neutral-800 truncate leading-tight">{file.filename}</p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-neutral-500 font-medium">
+                                  {file.file_type.toUpperCase()}
+                                </p>
+                              </div>
+                              {file.description && (
+                                <p className="text-sm text-neutral-600 mt-1 italic truncate leading-tight" title={file.description}>
+                                  {file.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Upload Date */}
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-sm text-neutral-600 font-medium">
+                                {new Date(file.upload_date).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-neutral-400">
+                                {new Date(file.upload_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 flex-shrink-0 opacity-100 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleFilePreview(file)}
+                                className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-all hover:scale-105 shadow-sm border border-blue-100"
+                                title={PatientFileService.isImageFile(file) ? t('preview_image') : t('open_file')}
+                              >
+                                <span className="material-icons-round text-base">
+                                  {PatientFileService.isImageFile(file) ? 'visibility' : 'open_in_new'}
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDownload(file)}
+                                className="w-9 h-9 bg-green-50 text-green-600 rounded-xl flex items-center justify-center hover:bg-green-100 transition-all hover:scale-105 shadow-sm border border-green-100"
+                                title={t('download_file')}
+                              >
+                                <span className="material-icons-round text-base">download</span>
+                              </button>
+                              <button
+                                onClick={() => handleFileDelete(file)}
+                                className="w-9 h-9 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-all hover:scale-105 shadow-sm border border-red-100"
+                                title={t('delete_file')}
+                              >
+                                <span className="material-icons-round text-base">delete</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1263,6 +1697,136 @@ export const Patients: React.FC = () => {
             />
           </Modal>
         )}
+
+        {/* File Preview Modal - Custom Full-Screen Modal */}
+        {previewModal.isOpen && previewModal.file && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-95">
+            {/* Full-screen backdrop */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-95 transition-opacity duration-300"
+              onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+            />
+
+            {/* Maximized modal content with margins */}
+            <div className="relative w-[95vw] h-[95vh] flex flex-col bg-black bg-opacity-80 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-black bg-opacity-70 text-white relative z-10 flex-shrink-0">
+                <div className="flex items-center space-x-3">
+                  <span className="material-icons-round text-white text-2xl">image</span>
+                  <h2 className="text-xl font-semibold truncate max-w-md">{previewModal.file.filename}</h2>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {/* Download button */}
+                  <button
+                    onClick={() => previewModal.file && handleFileDownload(previewModal.file)}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title={t('download_file')}
+                  >
+                    <span className="material-icons-round">download</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('download')}</span>
+                  </button>
+                  {/* Close button */}
+                  <button
+                    onClick={() => setPreviewModal({ isOpen: false, file: null, imageUrl: null })}
+                    className="p-3 text-white hover:bg-white hover:bg-opacity-20 rounded-xl transition-all duration-200 flex items-center space-x-2"
+                    title={t('close_preview')}
+                  >
+                    <span className="material-icons-round">close</span>
+                    <span className="text-sm font-medium hidden sm:block">{t('close')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Image container - takes up remaining space */}
+              <div className="flex-1 flex items-center justify-center p-6 relative min-h-0">
+                {PatientFileService.isImageFile(previewModal.file) && previewModal.imageUrl ? (
+                  <img
+                    src={previewModal.imageUrl}
+                    alt={previewModal.file.filename}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    style={{ maxHeight: 'calc(95vh - 160px)', maxWidth: 'calc(95vw - 48px)' }}
+                  />
+                ) : (
+                  <div className="text-center text-white">
+                    <span className="material-icons-round text-8xl text-white mb-6 block opacity-70">image_not_supported</span>
+                    <p className="text-2xl mb-2">{t('no_preview_available')}</p>
+                    <p className="text-lg opacity-70 mt-4">{t('click_download_to_view')}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="px-6 py-4 bg-black bg-opacity-70 text-white text-center relative z-10 flex-shrink-0">
+                <p className="text-sm opacity-70">{t('preview_modal_instructions')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Appointment Detail Modal for Editing */}
+        {showAppointmentDetail && selectedAppointment && selectedPatient && (
+          <AppointmentDetail
+            appointment={selectedAppointment}
+            patient={selectedPatient}
+            onEdit={handleAppointmentUpdate}
+            onCancel={async () => {
+              try {
+                await AppointmentService.updateAppointment(selectedAppointment.id, { status: 'Cancelled' });
+                if (selectedPatient) {
+                  await loadPatientAppointments(selectedPatient.id);
+                }
+                showNotification('success', t('success'), t('appointment_cancelled_successfully'));
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              } catch (err) {
+                console.error('Error cancelling appointment:', err);
+                showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_cancel_appointment'));
+              }
+            }}
+            onUpdateStatus={async (status) => {
+              try {
+                await AppointmentService.updateAppointment(selectedAppointment.id, { status });
+                if (selectedPatient) {
+                  await loadPatientAppointments(selectedPatient.id);
+                }
+                showNotification('success', t('success'), t('appointment_status_updated_successfully'));
+                setShowAppointmentDetail(false);
+                setSelectedAppointment(null);
+              } catch (err) {
+                console.error('Error updating appointment status:', err);
+                showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_update_appointment_status'));
+              }
+            }}
+            onDelete={async () => {
+              handleDeleteAppointment(selectedAppointment.id);
+              setShowAppointmentDetail(false);
+              setSelectedAppointment(null);
+            }}
+            onClose={() => {
+              setShowAppointmentDetail(false);
+              setSelectedAppointment(null);
+            }}
+            isLoading={appointmentLoading}
+          />
+        )}
+
+
+        {/* Appointment Deletion Confirmation Dialog */}
+        {showDeleteAppointmentConfirm && appointmentToDelete && (
+          <ConfirmDialog
+            isOpen={showDeleteAppointmentConfirm}
+            onCancel={() => {
+              setShowDeleteAppointmentConfirm(false);
+              setAppointmentToDelete(null);
+            }}
+            onConfirm={() => performDeleteAppointment(appointmentToDelete)}
+            title={t('delete_appointment')}
+            message={t('delete_appointment_confirmation')}
+            confirmText={t('delete')}
+            cancelText={t('cancel')}
+            isLoading={appointmentLoading}
+          />
+        )}
       </DashboardLayout>
     );
   }
@@ -1287,9 +1851,9 @@ export const Patients: React.FC = () => {
       const patientWithHistory = await PatientService.getPatientWithAppointments(patient.id);
       setSelectedPatientWithHistory(patientWithHistory);
       setViewMode('history');
-    } catch (error) {
-      console.error('Error loading patient history:', error);
-      showNotification('error', t('failed_to_load_history'), t('unable_to_load_patient_history'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load patient history');
+      console.error('Error loading patient history:', err);
     } finally {
       setIsLoading(false);
     }
@@ -1299,21 +1863,21 @@ export const Patients: React.FC = () => {
     <DashboardLayout>
       {renderHeader()}
 
-      {/* Patient List / Grid View */}
+      {/* Patient List / Grid */}
       <div className="fade-in-element">
         {viewMode === 'grid' && (
           <>
-            {patients.length === 0 && !isLoading && (
+            {displayedPatients.length === 0 && !isLoading && (
               <div className="text-center py-8">
                 <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7l9 7 9-7M4 7h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
                 </svg>
                 <h4 className="text-lg font-medium text-gray-900 mb-2">{t('no_patients_found')}</h4>
-                <p className="text-gray-500">{t('start_by_adding_patient')}</p>
+                <p className="text-gray-500">{t('try_different_search')}</p>
               </div>
             )}
 
-            {patients.length > 0 && renderGridView()}
+            {displayedPatients.length > 0 && renderGridView()}
           </>
         )}
 

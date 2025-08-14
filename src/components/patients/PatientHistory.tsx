@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../../context/TranslationContext';
 import { PatientWithAppointments } from '../../types/Patient';
 import { Appointment, AppointmentStatus } from '../../types/Appointment';
+import { AppointmentMedicalData, VitalSign } from '../../types/Medical';
 import { PatientService } from '../../services/patientService';
+import { AppointmentService } from '../../services/appointmentService';
 import { Button } from '../common/Button';
 import { PatientPreconditions } from './PatientPreconditions';
 
@@ -71,16 +73,24 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [patientData, setPatientData] = useState<PatientWithAppointments>(patient);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [medicalData, setMedicalData] = useState<AppointmentMedicalData | null>(null);
+  const [loadingMedical, setLoadingMedical] = useState(false);
+  const [showMedicalDetails, setShowMedicalDetails] = useState(false);
 
   // Add ESC key functionality for the appointment detail modal
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedAppointment) {
-        setSelectedAppointment(null);
+      if (e.key === 'Escape') {
+        if (showMedicalDetails) {
+          setShowMedicalDetails(false);
+          setMedicalData(null);
+        } else if (selectedAppointment) {
+          setSelectedAppointment(null);
+        }
       }
     };
 
-    if (selectedAppointment) {
+    if (selectedAppointment || showMedicalDetails) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
     }
@@ -89,7 +99,7 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [selectedAppointment]);
+  }, [selectedAppointment, showMedicalDetails]);
 
   useEffect(() => {
     const loadPatientHistory = async () => {
@@ -140,6 +150,46 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleShowMedicalDetails = async (appointmentId: string) => {
+    console.log('Details button clicked for appointment:', appointmentId);
+    setLoadingMedical(true);
+    try {
+      console.log('Fetching medical data from API...');
+      const medical = await AppointmentService.getMedicalData(appointmentId);
+      console.log('Medical data received:', medical);
+      setMedicalData(medical);
+      setShowMedicalDetails(true);
+    } catch (error) {
+      console.error('Error loading medical data:', error);
+      // If no medical data found, still show the modal but with empty data
+      setMedicalData(null);
+      setShowMedicalDetails(true);
+    } finally {
+      setLoadingMedical(false);
+    }
+  };
+
+  const renderVitalSigns = (vitalSigns: Record<string, any> | null) => {
+    if (!vitalSigns) return null;
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Object.entries(vitalSigns).map(([key, value]) => (
+          <div key={key} className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700 capitalize">
+                {key.replace(/_/g, ' ')}
+              </span>
+              <span className="text-lg font-semibold text-gray-900">
+                {value}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -254,6 +304,27 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">{t('appointment_history')}</h3>
                 <p className="text-gray-500 mt-1">{t('view_all_patient_appointments')}</p>
+                {/* Debug: Show modal directly */}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Test button clicked - showing modal directly');
+                    setShowMedicalDetails(true);
+                    setMedicalData({
+                      appointment_id: 'test',
+                      patient_id: 'test',
+                      date: new Date().toISOString(),
+                      diagnosis: 'Test diagnosis',
+                      treatment_plan: 'Test treatment plan',
+                      prescription: 'Test prescription',
+                      vital_signs: { heart_rate: '72', blood_pressure: '120/80' }
+                    });
+                  }}
+                  className="mb-4"
+                >
+                  Test Medical Modal
+                </Button>
               </div>
 
               {isLoading ? (
@@ -274,11 +345,10 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                   {sortedAppointments.map((appointment, index) => (
                     <div
                       key={appointment.id}
-                      className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedAppointment(appointment)}
+                      className="p-6 hover:bg-gray-50 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 cursor-pointer" onClick={() => setSelectedAppointment(appointment)}>
                           <div className="flex items-center space-x-3">
                             <h4 className="text-lg font-medium text-gray-900">
                               {appointment.title}
@@ -308,9 +378,35 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                             <p className="mt-2 text-sm text-gray-600">{appointment.notes}</p>
                           )}
                         </div>
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+                        <div className="flex items-center space-x-2 ml-4">
+                          {appointment.status === 'Completed' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('Button clicked!', appointment.id); // Add this debug line
+                                handleShowMedicalDetails(appointment.id);
+                              }}
+                              disabled={loadingMedical}
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                            >
+                              {loadingMedical ? (
+                                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                <>
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  {t('details')}
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          <svg className="w-5 h-5 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" onClick={() => setSelectedAppointment(appointment)}>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -367,6 +463,102 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Medical Details Modal */}
+      {showMedicalDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {t('medical_details')}
+                </h3>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowMedicalDetails(false);
+                    setMedicalData(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {medicalData ? (
+                <div className="space-y-6">
+                  {/* Vital Signs */}
+                  {medicalData.vital_signs && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                        {t('vital_signs')}
+                      </h4>
+                      {renderVitalSigns(medicalData.vital_signs)}
+                    </div>
+                  )}
+
+                  {/* Diagnosis */}
+                  {medicalData.diagnosis && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        {t('diagnosis')}
+                      </h4>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-700 whitespace-pre-wrap">{medicalData.diagnosis}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Treatment Plan */}
+                  {medicalData.treatment_plan && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        {t('treatment_plan')}
+                      </h4>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-700 whitespace-pre-wrap">{medicalData.treatment_plan}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prescription */}
+                  {medicalData.prescription && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        {t('prescription')}
+                      </h4>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <p className="text-gray-700 whitespace-pre-wrap">{medicalData.prescription}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No data message */}
+                  {!medicalData.vital_signs && !medicalData.diagnosis && !medicalData.treatment_plan && !medicalData.prescription && (
+                    <div className="text-center py-8">
+                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-gray-500">{t('no_medical_data_available')}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-500">{t('no_medical_data_available')}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

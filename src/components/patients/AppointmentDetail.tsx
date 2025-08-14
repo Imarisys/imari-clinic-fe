@@ -494,10 +494,19 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
 
                 <Button
                   variant="danger"
-                  onClick={handleDelete}
+                  onClick={async () => {
+                    setIsCancelLoading(true);
+                    try {
+                      await onCancel();
+                    } catch (error) {
+                      console.error('Error cancelling appointment:', error);
+                    } finally {
+                      setIsCancelLoading(false);
+                    }
+                  }}
                   disabled={isLoading || isCancelLoading}
                 >
-                  {isCancelLoading ? t('deleting') : t('cancel_appointment')}
+                  {isCancelLoading ? t('cancelling') : t('cancel_appointment')}
                 </Button>
 
                 <Button

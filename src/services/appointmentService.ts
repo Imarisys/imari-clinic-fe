@@ -31,6 +31,75 @@ export class AppointmentService {
     return response.json();
   }
 
+  // Helper function to format date to YYYY-MM-DD
+  private static formatDate(date: string | null | undefined): string | null {
+    if (!date) return null;
+
+    // If it's already in YYYY-MM-DD format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+
+    // Handle datetime strings (extract date part)
+    if (date.includes('T')) {
+      return date.split('T')[0];
+    }
+
+    // Try to parse as Date and format
+    try {
+      const dateObj = new Date(date);
+      if (!isNaN(dateObj.getTime())) {
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+    } catch (error) {
+      console.error('Error parsing date:', error);
+    }
+
+    return date;
+  }
+
+  // Helper function to format time from HH:MM to HH:MM:SS
+  private static formatTimeToSeconds(time: string | null | undefined): string | null {
+    if (!time) return null;
+
+    // Handle datetime strings (extract time part)
+    if (time.includes('T')) {
+      time = time.split('T')[1];
+    }
+
+    // Remove microseconds and extra colons if present (e.g., "06:15:00:00.000000" -> "06:15:00")
+    if (time.includes('.')) {
+      time = time.split('.')[0];
+    }
+
+    // Split by colon and take only first 3 parts (HH:MM:SS)
+    const parts = time.split(':');
+    if (parts.length >= 2) {
+      const hours = parts[0].padStart(2, '0');
+      const minutes = parts[1].padStart(2, '0');
+      const seconds = parts.length >= 3 ? parts[2].padStart(2, '0') : '00';
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    return time;
+  }
+
+  // Helper function to remove null and undefined values from an object
+  private static removeNullValues<T>(obj: T): Partial<T> {
+    const result: Partial<T> = {};
+
+    for (const key in obj) {
+      if (obj[key] !== null && obj[key] !== undefined) {
+        result[key] = obj[key];
+      }
+    }
+
+    return result;
+  }
+
   static async listAppointments(): Promise<Appointment[]> {
     return this.request<Appointment[]>(API_CONFIG.endpoints.appointments.list);
   }
@@ -44,16 +113,35 @@ export class AppointmentService {
   }
 
   static async createAppointment(appointmentData: AppointmentCreate): Promise<Appointment> {
+    // Format date and time fields as expected by the API
+    const formattedData: AppointmentCreate = {
+      ...appointmentData,
+      date: this.formatDate(appointmentData.date) || appointmentData.date,
+      start_time: this.formatTimeToSeconds(appointmentData.start_time) || appointmentData.start_time,
+      end_time: this.formatTimeToSeconds(appointmentData.end_time) || appointmentData.end_time,
+    };
+
     return this.request<Appointment>(API_CONFIG.endpoints.appointments.create, {
       method: 'POST',
-      body: JSON.stringify(appointmentData),
+      body: JSON.stringify(formattedData),
     });
   }
 
   static async updateAppointment(id: string, appointmentData: AppointmentUpdate): Promise<Appointment> {
+    // Format date and time fields as expected by the API
+    const formattedData: AppointmentUpdate = {
+      ...appointmentData,
+      date: this.formatDate(appointmentData.date),
+      start_time: this.formatTimeToSeconds(appointmentData.start_time),
+      end_time: this.formatTimeToSeconds(appointmentData.end_time),
+    };
+
+    // Remove null and undefined values from the request body
+    const cleanedData = this.removeNullValues(formattedData);
+
     return this.request<Appointment>(API_CONFIG.endpoints.appointments.update(id), {
       method: 'PUT',
-      body: JSON.stringify(appointmentData),
+      body: JSON.stringify(cleanedData),
     });
   }
 
