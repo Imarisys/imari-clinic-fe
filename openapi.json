@@ -284,26 +284,6 @@
         }
       }
     },
-    "/api/v1/patients/export": {
-      "get": {
-        "tags": [
-          "patients"
-        ],
-        "summary": "Export Patients Csv",
-        "description": "Export all patients to CSV format",
-        "operationId": "export_patients_csv_api_v1_patients_export_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/patients/{patient_id}": {
       "get": {
         "tags": [

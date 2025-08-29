@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useTranslation } from '../context/TranslationContext';
 import { useNotification } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Modal } from '../components/common/Modal';
@@ -10,10 +11,12 @@ import { Settings as SettingsType, SettingsFieldValues } from '../types/Settings
 import { SettingsService } from '../services/settingsService';
 import { AppointmentTypeService, AppointmentType, AppointmentTypeCreate } from '../services/appointmentTypeService';
 import { authService } from '../services/authService';
+import { formatCurrency } from '../utils/currencyFormatter';
 
 export const SettingsPage: React.FC = () => {
   const { t, language: currentUILanguage, setLanguage: setUILanguage } = useTranslation();
   const { showNotification } = useNotification();
+  const { currentTheme, setTheme, themes } = useTheme();
 
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [fieldValues, setFieldValues] = useState<SettingsFieldValues | null>(null);
@@ -479,16 +482,6 @@ export const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {appointmentTypes.map((type) => {
                 const selectedIcon = availableIcons.find(icon => icon.value === type.icon) || availableIcons[0];
-                // Use proper currency symbol based on backend settings
-                const getCurrencySymbol = (currency: string) => {
-                  switch (currency) {
-                    case 'USD': return '$ ';
-                    case 'EUR': return '€ ';
-                    case 'GBP': return '£ ';
-                    default: return currency + ' ';
-                  }
-                };
-                const currencySymbol = getCurrencySymbol(settings?.display_currency || 'USD');
 
                 return (
                   <div
@@ -510,7 +503,7 @@ export const SettingsPage: React.FC = () => {
                           <h4 className="font-semibold text-gray-800">{type.name}</h4>
                           <p className="text-sm text-gray-600">{type.duration_minutes} minutes</p>
                           <p className="text-sm font-medium text-green-600">
-                            {currencySymbol}{type.cost.toFixed(2)}
+                            {formatCurrency(type.cost)}
                           </p>
                         </div>
                       </div>
@@ -914,6 +907,32 @@ export const SettingsPage: React.FC = () => {
                 This preview shows how your layout will appear. Changes take effect immediately.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Theme Selection Section */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="material-icons-round text-primary-600 mr-2">palette</span>
+            Theme Settings
+          </h3>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+            <select
+              value={currentTheme.id}
+              onChange={(e) => {
+                setTheme(e.target.value);
+                showNotification('success', 'Success', 'Theme changed successfully');
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              {themes.map((theme) => (
+                <option key={theme.id} value={theme.id}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

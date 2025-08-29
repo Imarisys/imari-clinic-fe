@@ -11,6 +11,7 @@ import { AppointmentDetails } from './pages/AppointmentDetails';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { TranslationProvider } from './context/TranslationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AppLoadingSpinner } from './components/common/AppLoadingSpinner';
 import { HealthCheckService } from './services/healthCheckService';
 import './styles/globals.css';
@@ -147,7 +148,9 @@ function App() {
       <AuthProvider>
         <Router>
           <NotificationProvider>
-            <AppRoutes />
+            <ThemeProvider>
+              <AppRoutes />
+            </ThemeProvider>
           </NotificationProvider>
         </Router>
       </AuthProvider>
