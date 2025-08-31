@@ -1035,20 +1035,12 @@ export const AppointmentStart: React.FC = () => {
 
               {/* Dental Tab - New Tab for Dental Information */}
               {activeTab === 'dental' && (
-                <ComingSoonSection
-                  icon="sentiment_very_satisfied"
-                  title={t('dental_module')}
-                  description={t('dental_coming_soon')}
-                  gradientColors={{
-                    from: 'green',
-                    to: 'emerald',
-                    accent: 'green',
-                    iconBg: 'green',
-                    iconColor: 'green',
-                    buttonBg: 'green'
-                  }}
-                  t={t} // Pass translation function
-                />
+                <div className="space-y-4">
+                  <DentalChart
+                    patientId={appointment.patient_id}
+                    readonly={!isStarted || appointment?.status === 'Completed'}
+                  />
+                </div>
               )}
 
               {/* Patient Files Tab */}
