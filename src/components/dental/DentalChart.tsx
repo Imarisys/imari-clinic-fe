@@ -53,9 +53,7 @@ const DENTAL_CONDITIONS = [
   { id: 'filling', name: 'Filling', color: '#6B7280', icon: 'build' },
   { id: 'crown', name: 'Crown', color: '#8B5CF6', icon: 'stars' },
   { id: 'root_canal', name: 'Root Canal', color: '#EF4444', icon: 'healing' },
-  { id: 'extraction', name: 'Extraction', color: '#DC2626', icon: 'clear' },
   { id: 'implant', name: 'Implant', color: '#059669', icon: 'precision_manufacturing' },
-  { id: 'bridge', name: 'Bridge', color: '#7C3AED', icon: 'link' },
   { id: 'missing', name: 'Missing', color: '#374151', icon: 'close' }
 ];
 
@@ -67,7 +65,6 @@ const TREATMENT_TYPES = [
   { id: 'root_canal', name: 'Root Canal', color: '#EF4444' },
   { id: 'extraction', name: 'Extraction', color: '#DC2626' },
   { id: 'implant', name: 'Implant', color: '#059669' },
-  { id: 'bridge', name: 'Bridge', color: '#7C3AED' },
   { id: 'orthodontics', name: 'Orthodontics', color: '#F59E0B' },
   { id: 'whitening', name: 'Whitening', color: '#10B981' }
 ];
@@ -217,6 +214,26 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     }));
   };
 
+  // Apply root canal to the tooth: clear other conditions/surfaces and set overall condition to root canal
+  const applyRootCanalToTooth = (toothNumber: number) => {
+    setToothSurfaces(prev => {
+      const next = { ...prev };
+      delete next[toothNumber];
+      return next;
+    });
+    setTeethData(prev => ({
+      ...prev,
+      [toothNumber]: {
+        ...(prev[toothNumber] || { number: toothNumber }),
+        number: toothNumber,
+        condition: 'root_canal',
+        treatment: prev[toothNumber]?.treatment,
+        notes: prev[toothNumber]?.notes,
+        surfaces: undefined
+      }
+    }));
+  };
+
   // Click on a tooth surface to apply/toggle the active condition (respect clear and implant modes)
   const handleOverlayClick = (e: React.MouseEvent, toothNumber: number, surface: string) => {
     e.stopPropagation();
@@ -241,8 +258,57 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       applyMissingToTooth(toothNumber);
       return;
     }
+    if (activeCondition === 'root_canal') {
+      // Apply root canal to all root surfaces
+      const quadrant = getToothQuadrant(toothNumber);
+      const isUpperJaw = quadrant === 'upperRight' || quadrant === 'upperLeft';
+
+      setToothSurfaces(prev => {
+        const nextForTooth = { ...(prev[toothNumber] || {}) };
+
+        if (isUpperJaw) {
+          // Upper jaw (rotated 180°): root area appears at bottom visually, but maps to upper surfaces in code
+          nextForTooth['upperLeft'] = 'root_canal';
+          nextForTooth['upperCenter'] = 'root_canal';
+          nextForTooth['upperRight'] = 'root_canal';
+        } else {
+          // Lower jaw: root area is at the bottom visually, so use lower surfaces
+          nextForTooth['lowerLeft'] = 'root_canal';
+          nextForTooth['lowerCenter'] = 'root_canal';
+          nextForTooth['lowerRight'] = 'root_canal';
+        }
+
+        return { ...prev, [toothNumber]: nextForTooth };
+      });
+      return;
+    }
+    if (activeCondition === 'crown') {
+      // Apply crown to all crown surfaces - opposite side of root canal
+      const quadrant = getToothQuadrant(toothNumber);
+      const isUpperJaw = quadrant === 'upperRight' || quadrant === 'upperLeft';
+
+      setToothSurfaces(prev => {
+        const nextForTooth = { ...(prev[toothNumber] || {}) };
+
+        if (isUpperJaw) {
+          // Upper jaw (rotated 180°): crown area appears at top visually, but maps to lower surfaces in code
+          nextForTooth['lowerLeft'] = 'crown';
+          nextForTooth['lowerCenter'] = 'crown';
+          nextForTooth['lowerRight'] = 'crown';
+        } else {
+          // Lower jaw: crown area is at the top visually, so use upper surfaces
+          nextForTooth['upperLeft'] = 'crown';
+          nextForTooth['upperCenter'] = 'crown';
+          nextForTooth['upperRight'] = 'crown';
+        }
+
+        return { ...prev, [toothNumber]: nextForTooth };
+      });
+      return;
+    }
     if (!activeCondition) return; // no condition selected -> ignore
-    // default surface behavior
+
+    // default surface behavior - all conditions (including caries and filling) can be applied to any surface
     setToothSurfaces(prev => {
       const current = prev[toothNumber]?.[surface];
       const nextCond = current === activeCondition ? undefined : activeCondition;
@@ -250,6 +316,15 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       if (nextCond) nextForTooth[surface] = nextCond; else delete nextForTooth[surface];
       return { ...prev, [toothNumber]: nextForTooth };
     });
+  };
+
+  // Helper function to determine tooth quadrant
+  const getToothQuadrant = (toothNumber: number): string => {
+    if (toothNumber >= 11 && toothNumber <= 18) return 'upperRight';
+    if (toothNumber >= 21 && toothNumber <= 28) return 'upperLeft';
+    if (toothNumber >= 31 && toothNumber <= 38) return 'lowerLeft';
+    if (toothNumber >= 41 && toothNumber <= 48) return 'lowerRight';
+    return 'unknown';
   };
 
   // Open/click on a tooth
@@ -269,7 +344,30 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       applyMissingToTooth(toothNumber);
       return;
     }
-    // Only open dialog in planning mode
+    if (!planningMode && activeCondition === 'root_canal') {
+      // Apply root canal to all root surfaces
+      const quadrant = getToothQuadrant(toothNumber);
+      const isUpperJaw = quadrant === 'upperRight' || quadrant === 'upperLeft';
+
+      setToothSurfaces(prev => {
+        const nextForTooth = { ...(prev[toothNumber] || {}) };
+
+        if (isUpperJaw) {
+          // Upper jaw (rotated 180°): root area appears at bottom visually, but maps to upper surfaces in code
+          nextForTooth['upperLeft'] = 'root_canal';
+          nextForTooth['upperCenter'] = 'root_canal';
+          nextForTooth['upperRight'] = 'root_canal';
+        } else {
+          // Lower jaw: root area is at the bottom visually, so use lower surfaces
+          nextForTooth['lowerLeft'] = 'root_canal';
+          nextForTooth['lowerCenter'] = 'root_canal';
+          nextForTooth['lowerRight'] = 'root_canal';
+        }
+
+        return { ...prev, [toothNumber]: nextForTooth };
+      });
+      return;
+    }
     if (!planningMode) return;
     const td = teethData[toothNumber];
     setSelectedTooth(toothNumber);
@@ -373,14 +471,16 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                  }}
               />
 
-              {/* Tooth Surface Overlays - Properly contained within tooth boundaries */}
-              <div className="absolute inset-0" style={{ padding: '2px', borderRadius: '8px', overflow: 'hidden' }}>
-                {/* Upper Half - Properly positioned within tooth boundaries */}
+              {/* Tooth Surface Overlays - Full edge-to-edge coverage */}
+              <div className="absolute inset-0" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                {/* Upper Half - Extended from top to middle of tooth */}
                 <div
                   className="flex w-full absolute"
                   style={{
-                    ...(isUpperJaw ? { bottom: 6 } : { top: 6 }),
-                    height: `${Math.max(12, Math.round(toothSize.h * 0.32))}px`
+                    top: 0,
+                    height: `${Math.round(toothSize.h * 0.5)}px`,
+                    left: 0,
+                    right: 0
                   }}
                 >
                   {isUpperJaw ? (
@@ -448,12 +548,14 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                   )}
                 </div>
 
-                {/* Lower Half - Properly positioned within tooth boundaries */}
+                {/* Lower Half - From middle to bottom */}
                 <div
                   className="flex w-full absolute"
                   style={{
-                    ...(isUpperJaw ? { top: 6 } : { bottom: 6 }),
-                    height: `${Math.max(12, Math.round(toothSize.h * 0.32))}px`
+                    bottom: 0,
+                    height: `${Math.round(toothSize.h * 0.5)}px`,
+                    left: 0,
+                    right: 0
                   }}
                 >
                   {isUpperJaw ? (
