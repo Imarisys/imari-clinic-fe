@@ -259,23 +259,49 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       return;
     }
     if (activeCondition === 'root_canal') {
-      // Apply root canal to all root surfaces
+      // Apply root canal to all root surfaces - with toggle functionality
       const quadrant = getToothQuadrant(toothNumber);
       const isUpperJaw = quadrant === 'upperRight' || quadrant === 'upperLeft';
 
       setToothSurfaces(prev => {
         const nextForTooth = { ...(prev[toothNumber] || {}) };
 
+        // Check if root canal is already applied to any of the target surfaces
+        let isAlreadyApplied = false;
         if (isUpperJaw) {
-          // Upper jaw (rotated 180°): root area appears at bottom visually, but maps to upper surfaces in code
-          nextForTooth['upperLeft'] = 'root_canal';
-          nextForTooth['upperCenter'] = 'root_canal';
-          nextForTooth['upperRight'] = 'root_canal';
+          isAlreadyApplied = nextForTooth['upperLeft'] === 'root_canal' ||
+                            nextForTooth['upperCenter'] === 'root_canal' ||
+                            nextForTooth['upperRight'] === 'root_canal';
         } else {
-          // Lower jaw: root area is at the bottom visually, so use lower surfaces
-          nextForTooth['lowerLeft'] = 'root_canal';
-          nextForTooth['lowerCenter'] = 'root_canal';
-          nextForTooth['lowerRight'] = 'root_canal';
+          isAlreadyApplied = nextForTooth['lowerLeft'] === 'root_canal' ||
+                            nextForTooth['lowerCenter'] === 'root_canal' ||
+                            nextForTooth['lowerRight'] === 'root_canal';
+        }
+
+        if (isAlreadyApplied) {
+          // Remove root canal (toggle off)
+          if (isUpperJaw) {
+            delete nextForTooth['upperLeft'];
+            delete nextForTooth['upperCenter'];
+            delete nextForTooth['upperRight'];
+          } else {
+            delete nextForTooth['lowerLeft'];
+            delete nextForTooth['lowerCenter'];
+            delete nextForTooth['lowerRight'];
+          }
+        } else {
+          // Apply root canal (toggle on)
+          if (isUpperJaw) {
+            // Upper jaw (rotated 180°): root area appears at bottom visually, but maps to upper surfaces in code
+            nextForTooth['upperLeft'] = 'root_canal';
+            nextForTooth['upperCenter'] = 'root_canal';
+            nextForTooth['upperRight'] = 'root_canal';
+          } else {
+            // Lower jaw: root area is at the bottom visually, so use lower surfaces
+            nextForTooth['lowerLeft'] = 'root_canal';
+            nextForTooth['lowerCenter'] = 'root_canal';
+            nextForTooth['lowerRight'] = 'root_canal';
+          }
         }
 
         return { ...prev, [toothNumber]: nextForTooth };
@@ -283,23 +309,49 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       return;
     }
     if (activeCondition === 'crown') {
-      // Apply crown to all crown surfaces - opposite side of root canal
+      // Apply crown to all crown surfaces - with toggle functionality
       const quadrant = getToothQuadrant(toothNumber);
       const isUpperJaw = quadrant === 'upperRight' || quadrant === 'upperLeft';
 
       setToothSurfaces(prev => {
         const nextForTooth = { ...(prev[toothNumber] || {}) };
 
+        // Check if crown is already applied to any of the target surfaces
+        let isAlreadyApplied = false;
         if (isUpperJaw) {
-          // Upper jaw (rotated 180°): crown area appears at top visually, but maps to lower surfaces in code
-          nextForTooth['lowerLeft'] = 'crown';
-          nextForTooth['lowerCenter'] = 'crown';
-          nextForTooth['lowerRight'] = 'crown';
+          isAlreadyApplied = nextForTooth['lowerLeft'] === 'crown' ||
+                            nextForTooth['lowerCenter'] === 'crown' ||
+                            nextForTooth['lowerRight'] === 'crown';
         } else {
-          // Lower jaw: crown area is at the top visually, so use upper surfaces
-          nextForTooth['upperLeft'] = 'crown';
-          nextForTooth['upperCenter'] = 'crown';
-          nextForTooth['upperRight'] = 'crown';
+          isAlreadyApplied = nextForTooth['upperLeft'] === 'crown' ||
+                            nextForTooth['upperCenter'] === 'crown' ||
+                            nextForTooth['upperRight'] === 'crown';
+        }
+
+        if (isAlreadyApplied) {
+          // Remove crown (toggle off)
+          if (isUpperJaw) {
+            delete nextForTooth['lowerLeft'];
+            delete nextForTooth['lowerCenter'];
+            delete nextForTooth['lowerRight'];
+          } else {
+            delete nextForTooth['upperLeft'];
+            delete nextForTooth['upperCenter'];
+            delete nextForTooth['upperRight'];
+          }
+        } else {
+          // Apply crown (toggle on)
+          if (isUpperJaw) {
+            // Upper jaw (rotated 180°): crown area appears at top visually, but maps to lower surfaces in code
+            nextForTooth['lowerLeft'] = 'crown';
+            nextForTooth['lowerCenter'] = 'crown';
+            nextForTooth['lowerRight'] = 'crown';
+          } else {
+            // Lower jaw: crown area is at the top visually, so use upper surfaces
+            nextForTooth['upperLeft'] = 'crown';
+            nextForTooth['upperCenter'] = 'crown';
+            nextForTooth['upperRight'] = 'crown';
+          }
         }
 
         return { ...prev, [toothNumber]: nextForTooth };
