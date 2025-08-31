@@ -102,7 +102,6 @@ export const DentalChart: React.FC<DentalChartProps> = ({
 
   const [teethData, setTeethData] = useState<Record<number, ToothData>>({});
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
-  const [selectedCondition, setSelectedCondition] = useState<string>('caries');
   const [selectedTreatment, setSelectedTreatment] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [toothSurfaces, setToothSurfaces] = useState<ToothSurfaceData>({});
@@ -113,6 +112,12 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   // const [containerWidth, setContainerWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200);
   // Zoom factor (user-controlled). 1 = default. Range 0.7x - 2.0x
   const [zoom, setZoom] = useState<number>(1);
+  // Planning mode: when enabled, clicking a tooth opens the treatment planning dialog
+  const [planningMode, setPlanningMode] = useState<boolean>(false);
+  // Clear mode: when enabled, clicking a tooth restores it to the initial state
+  const [clearMode, setClearMode] = useState<boolean>(false);
+  // New: plan summary modal visibility
+  const [showPlanSummary, setShowPlanSummary] = useState<boolean>(false);
 
   // Removed ResizeObserver-based effect; sizes are no longer tied to screen width
   // useEffect(() => { /* removed */ }, []);
@@ -122,18 +127,122 @@ export const DentalChart: React.FC<DentalChartProps> = ({
   // Helper to get color by condition id
   const getConditionColor = (id?: string) => {
     if (!id) return 'transparent';
+    // Do not color for implants; image swap represents implant
+    if (id === 'implant') return 'transparent';
     return DENTAL_CONDITIONS.find(c => c.id === id)?.color ?? 'transparent';
   };
 
   // Surface color based on assigned surface condition
   const getToothSurfaceColor = (toothNumber: number, surface: string): string => {
     const cond = toothSurfaces[toothNumber]?.[surface];
+    if (cond === 'implant') return 'transparent'; // do not color implant surfaces
     return getConditionColor(cond);
   };
 
-  // Click on a tooth surface to apply/toggle the active condition
-  const handleSurfaceClick = (toothNumber: number, surface: string) => {
+  // Overall tooth color indicator (transparent for implant via getConditionColor)
+  const getToothColor = (toothNumber: number) => {
+    const cond = teethData[toothNumber]?.condition;
+    return getConditionColor(cond);
+  };
+
+  // Save changes for selected tooth (planning mode saves only planned treatment and notes)
+  const updateToothData = () => {
+    if (selectedTooth == null) return;
+    setTeethData(prev => ({
+      ...prev,
+      [selectedTooth]: {
+        ...(prev[selectedTooth] || { number: selectedTooth, condition: prev[selectedTooth]?.condition || '' }),
+        number: selectedTooth,
+        treatment: selectedTreatment || undefined,
+        notes: notes || undefined,
+        surfaces: prev[selectedTooth]?.surfaces
+      }
+    }));
+    setSelectedTooth(null);
+  };
+
+  // Clear a tooth to its initial state (remove condition, surfaces, treatment, notes)
+  const clearTooth = (toothNumber: number) => {
+    setTeethData(prev => {
+      const next = { ...prev };
+      delete next[toothNumber];
+      return next;
+    });
+    setToothSurfaces(prev => {
+      const next = { ...prev };
+      delete next[toothNumber];
+      return next;
+    });
+  };
+
+  // Apply implant to the tooth: clear other conditions/surfaces and set overall condition to implant
+  const applyImplantToTooth = (toothNumber: number) => {
+    // Clear any surfaces
+    setToothSurfaces(prev => {
+      const next = { ...prev };
+      delete next[toothNumber];
+      return next;
+    });
+    // Set overall condition to implant while preserving treatment/notes if present
+    setTeethData(prev => ({
+      ...prev,
+      [toothNumber]: {
+        ...(prev[toothNumber] || { number: toothNumber }),
+        number: toothNumber,
+        condition: 'implant',
+        treatment: prev[toothNumber]?.treatment,
+        notes: prev[toothNumber]?.notes,
+        surfaces: undefined
+      }
+    }));
+  };
+
+  // Apply missing to the tooth: clear other conditions/surfaces and set overall condition to missing
+  const applyMissingToTooth = (toothNumber: number) => {
+    setToothSurfaces(prev => {
+      const next = { ...prev };
+      delete next[toothNumber];
+      return next;
+    });
+    setTeethData(prev => ({
+      ...prev,
+      [toothNumber]: {
+        ...(prev[toothNumber] || { number: toothNumber }),
+        number: toothNumber,
+        condition: 'missing',
+        treatment: prev[toothNumber]?.treatment,
+        notes: prev[toothNumber]?.notes,
+        surfaces: undefined
+      }
+    }));
+  };
+
+  // Click on a tooth surface to apply/toggle the active condition (respect clear and implant modes)
+  const handleOverlayClick = (e: React.MouseEvent, toothNumber: number, surface: string) => {
+    e.stopPropagation();
     if (readonly) return;
+    // In plan mode, clicking anywhere on the tooth should open the planning dialog
+    if (planningMode) {
+      const td = teethData[toothNumber];
+      setSelectedTooth(toothNumber);
+      setSelectedTreatment(td?.treatment || '');
+      setNotes(td?.notes || '');
+      return;
+    }
+    if (clearMode) {
+      clearTooth(toothNumber);
+      return;
+    }
+    if (activeCondition === 'implant') {
+      applyImplantToTooth(toothNumber);
+      return;
+    }
+    if (activeCondition === 'missing') {
+      applyMissingToTooth(toothNumber);
+      return;
+    }
+    if (!activeCondition) return; // no condition selected -> ignore
+    // default surface behavior
     setToothSurfaces(prev => {
       const current = prev[toothNumber]?.[surface];
       const nextCond = current === activeCondition ? undefined : activeCondition;
@@ -143,35 +252,29 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     });
   };
 
-  // Overall tooth color indicator
-  const getToothColor = (toothNumber: number) => {
-    const cond = teethData[toothNumber]?.condition;
-    return getConditionColor(cond);
-  };
-
-  // Open modal for a tooth
+  // Open/click on a tooth
   const handleToothClick = (toothNumber: number) => {
+    if (readonly) return;
+    // Clear mode takes precedence
+    if (clearMode) {
+      clearTooth(toothNumber);
+      return;
+    }
+    // If implant or missing is the active condition and we're not in planning mode, apply to whole tooth
+    if (!planningMode && activeCondition === 'implant') {
+      applyImplantToTooth(toothNumber);
+      return;
+    }
+    if (!planningMode && activeCondition === 'missing') {
+      applyMissingToTooth(toothNumber);
+      return;
+    }
+    // Only open dialog in planning mode
+    if (!planningMode) return;
     const td = teethData[toothNumber];
     setSelectedTooth(toothNumber);
-    setSelectedCondition(td?.condition || activeCondition || 'caries');
     setSelectedTreatment(td?.treatment || '');
     setNotes(td?.notes || '');
-  };
-
-  // Save changes for selected tooth
-  const updateToothData = () => {
-    if (selectedTooth == null) return;
-    setTeethData(prev => ({
-      ...prev,
-      [selectedTooth]: {
-        number: selectedTooth,
-        condition: selectedCondition,
-        treatment: selectedTreatment || undefined,
-        notes: notes || undefined,
-        surfaces: toothSurfaces[selectedTooth] || undefined
-      }
-    }));
-    setSelectedTooth(null);
   };
 
   const getToothImageSize = (toothType: string) => {
@@ -209,6 +312,13 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     const isMissing = toothData?.condition === 'missing' ||
       Object.values(toothSurfaces[toothNumber] || {}).some(condition => condition === 'missing');
 
+    // Determine condition dot color (skip for implants)
+    const indicatorColor = getToothColor(toothNumber);
+    const showIndicator = indicatorColor !== 'transparent';
+
+    // Planned treatment frame color
+    const plannedColor = toothData?.treatment ? TREATMENT_TYPES.find(t => t.id === toothData.treatment)?.color : undefined;
+
     return (
       <div className="relative flex flex-col items-center">
         {/* FDI Number */}
@@ -240,7 +350,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 height: `${toothSize.h}px`,
                 borderRadius: '8px',
                 padding: '2px',
-                border: '2px solid #9CA3AF'
+                border: `2px solid ${plannedColor ?? '#9CA3AF'}`
               }}
             >
               <span className="material-icons-round text-gray-600 text-lg">close</span>
@@ -259,7 +369,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                   height: `${toothSize.h}px`,
                    borderRadius: '8px',
                    padding: '2px',
-                   border: '2px solid #ffffff'
+                   border: `2px solid ${plannedColor ?? '#ffffff'}`
                  }}
               />
 
@@ -273,7 +383,6 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                     height: `${Math.max(12, Math.round(toothSize.h * 0.32))}px`
                   }}
                 >
-                  {/* Surface areas - reverse order for upper jaw to account for rotation */}
                   {isUpperJaw ? (
                     <>
                       {/* Upper jaw - reversed order due to 180° rotation */}
@@ -283,10 +392,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperRight'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperRight') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperRight');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperRight')}
                         title="Upper Right Surface - Click to change condition"
                       />
                       <div
@@ -295,10 +401,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperCenter'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperCenter') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperCenter');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperCenter')}
                         title="Upper Center Surface - Click to change condition"
                       />
                       <div
@@ -307,10 +410,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperLeft'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperLeft') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperLeft');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperLeft')}
                         title="Upper Left Surface - Click to change condition"
                       />
                     </>
@@ -323,10 +423,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperLeft'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperLeft') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperLeft');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperLeft')}
                         title="Upper Left Surface - Click to change condition"
                       />
                       <div
@@ -335,10 +432,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperCenter'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperCenter') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperCenter');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperCenter')}
                         title="Upper Center Surface - Click to change condition"
                       />
                       <div
@@ -347,10 +441,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'upperRight'),
                           opacity: getToothSurfaceColor(toothNumber, 'upperRight') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'upperRight');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'upperRight')}
                         title="Upper Right Surface - Click to change condition"
                       />
                     </>
@@ -365,7 +456,6 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                     height: `${Math.max(12, Math.round(toothSize.h * 0.32))}px`
                   }}
                 >
-                  {/* Surface areas - reverse order for upper jaw to account for rotation */}
                   {isUpperJaw ? (
                     <>
                       {/* Upper jaw - reversed order due to 180° rotation */}
@@ -375,10 +465,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerRight'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerRight') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerRight');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerRight')}
                         title="Lower Right Surface - Click to change condition"
                       />
                       <div
@@ -387,10 +474,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerCenter'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerCenter') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerCenter');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerCenter')}
                         title="Lower Center Surface - Click to change condition"
                       />
                       <div
@@ -399,10 +483,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerLeft'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerLeft') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerLeft');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerLeft')}
                         title="Lower Left Surface - Click to change condition"
                       />
                     </>
@@ -415,10 +496,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerLeft'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerLeft') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerLeft');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerLeft')}
                         title="Lower Left Surface - Click to change condition"
                       />
                       <div
@@ -427,10 +505,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerCenter'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerCenter') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerCenter');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerCenter')}
                         title="Lower Center Surface - Click to change condition"
                       />
                       <div
@@ -439,10 +514,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                           backgroundColor: getToothSurfaceColor(toothNumber, 'lowerRight'),
                           opacity: getToothSurfaceColor(toothNumber, 'lowerRight') !== 'transparent' ? 0.6 : 0
                         }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSurfaceClick(toothNumber, 'lowerRight');
-                        }}
+                        onClick={(e) => handleOverlayClick(e, toothNumber, 'lowerRight')}
                         title="Lower Right Surface - Click to change condition"
                       />
                     </>
@@ -452,11 +524,11 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             </>
           )}
 
-          {/* Condition indicator */}
-          {toothData && (
+          {/* Condition indicator - exclude for missing teeth */}
+          {toothData && showIndicator && !isMissing && (
             <div
               className="absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm"
-              style={{ backgroundColor: getToothColor(toothNumber) }}
+              style={{ backgroundColor: indicatorColor }}
             />
           )}
         </div>
@@ -482,7 +554,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      {/* Zoom Controls */}
+      {/* Controls: Zoom */}
       <div className="flex items-center justify-end mb-3 gap-3">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Zoom</span>
@@ -523,17 +595,24 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         </div>
       </div>
 
-      {/* Horizontal Condition Selector */}
+      {/* Horizontal Condition Selector with inline controls */}
       <div className="bg-gray-50 rounded-lg p-3 mb-4">
-        <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center">
-          <span className="material-icons-round text-blue-600 mr-2 text-base">palette</span>
-          Select Condition
-        </h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold text-gray-800 flex items-center">
+            <span className="material-icons-round text-blue-600 mr-2 text-base">palette</span>
+            Select Condition
+          </h4>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           {DENTAL_CONDITIONS.map(condition => (
             <button
               key={condition.id}
-              onClick={() => setActiveCondition(condition.id)}
+              onClick={() => {
+                setActiveCondition(condition.id);
+                if (planningMode) setPlanningMode(false);
+                if (clearMode) setClearMode(false);
+              }}
               disabled={readonly}
               className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm transition-all border ${
                 activeCondition === condition.id
@@ -544,14 +623,72 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             >
               <span
                 className="inline-block w-3 h-3 rounded-full border border-white shadow-sm"
-                style={{ backgroundColor: condition.color }}
+                style={{ backgroundColor: condition.id === 'implant' ? 'transparent' : condition.color }}
               />
               <span className="font-medium">{condition.name}</span>
             </button>
           ))}
+
+          {/* Clear all chip inline */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !clearMode;
+              setClearMode(next);
+              if (next) {
+                setActiveCondition('');
+                setPlanningMode(false);
+              }
+            }}
+            disabled={readonly}
+            className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm transition-all border ${
+              clearMode
+                ? 'bg-red-100 border-red-300 text-red-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title="Click, then select a tooth to clear it to initial state"
+          >
+            <span className="material-icons-round text-sm">restart_alt</span>
+            <span className="font-medium">Clear all</span>
+          </button>
+
+          {/* View plan button */}
+          <button
+            type="button"
+            onClick={() => setShowPlanSummary(true)}
+            className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm transition-all border bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+            title="View all planned treatments and notes"
+          >
+            <span className="material-icons-round text-sm">visibility</span>
+            <span className="font-medium">View plan</span>
+          </button>
+
+          {/* Plan mode toggle (separate from View plan) */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !planningMode;
+              setPlanningMode(next);
+              if (next) {
+                setActiveCondition('');
+                setClearMode(false);
+              }
+            }}
+            disabled={readonly}
+            className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm transition-all border ${
+              planningMode
+                ? 'bg-green-100 border-green-300 text-green-700'
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title="Enable to click a tooth and plan a treatment"
+          >
+            <span className="material-icons-round text-sm">event_note</span>
+            <span className="font-medium">Plan mode</span>
+          </button>
         </div>
+
         <div className="mt-2 text-xs text-gray-600">
-          Select a condition, then click on tooth surfaces to apply.
+          Select a condition and click tooth surfaces to apply. Or toggle Plan mode, then click a tooth to plan. Use View plan to see all planned items, and Clear all to reset a tooth.
         </div>
       </div>
 
@@ -611,27 +748,11 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         )}
       </div>
 
-      {/* Tooth Selection Modal */}
-      {selectedTooth && !readonly && (
+      {/* Tooth Selection Modal - planning mode only */}
+      {selectedTooth && !readonly && planningMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Tooth {selectedTooth}</h3>
-
-            {/* Condition Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-              <select
-                value={selectedCondition}
-                onChange={(e) => setSelectedCondition(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                {DENTAL_CONDITIONS.map(condition => (
-                  <option key={condition.id} value={condition.id}>
-                    {condition.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <h3 className="text-lg font-semibold mb-4">Plan treatment for tooth {selectedTooth}</h3>
 
             {/* Treatment Selection */}
             <div className="mb-4">
@@ -675,6 +796,66 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Summary Modal */}
+      {showPlanSummary && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Planned treatments</h3>
+              <button
+                type="button"
+                onClick={() => setShowPlanSummary(false)}
+                className="p-2 rounded hover:bg-gray-100"
+                aria-label="Close plan summary"
+              >
+                <span className="material-icons-round">close</span>
+              </button>
+            </div>
+
+            {/* Summary list */}
+            <div className="max-h-[60vh] overflow-y-auto">
+              {Object.keys(teethData)
+                .map(k => parseInt(k, 10))
+                .filter(tn => teethData[tn]?.treatment || teethData[tn]?.notes)
+                .sort((a, b) => a - b)
+                .map(toothNumber => {
+                  const td = teethData[toothNumber];
+                  const treatmentName = td?.treatment ? (TREATMENT_TYPES.find(t => t.id === td.treatment)?.name || td.treatment) : 'No treatment';
+                  return (
+                    <div key={toothNumber} className="border border-gray-200 rounded-lg p-3 mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-semibold text-gray-800">Tooth {toothNumber}</div>
+                        <div className="text-sm text-blue-700 font-medium">{treatmentName}</div>
+                      </div>
+                      {td?.notes && (
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap">{td.notes}</div>
+                      )}
+                    </div>
+                  );
+                })}
+
+              {Object.keys(teethData).filter(k => {
+                const tn = parseInt(k, 10);
+                return teethData[tn]?.treatment || teethData[tn]?.notes;
+              }).length === 0 && (
+                <div className="text-sm text-gray-600">No planned treatments yet.</div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPlanSummary(false)}
+                className="px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Close
               </button>
             </div>
           </div>
