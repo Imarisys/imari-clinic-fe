@@ -1,4 +1,29 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../../context/TranslationContext';
+
+// Type definitions for dental chart
+interface ToothData {
+  number: number;
+  condition: string;
+  treatment?: string;
+  notes?: string;
+  surfaces?: Record<string, string>; // Surface name to condition mapping
+}
+
+interface ToothSurfaceData {
+  [toothNumber: number]: Record<string, string>; // tooth -> surface -> condition
+}
+
+interface DentalChartProps {
+  patientId?: string;
+  appointmentId?: string;
+  readonly?: boolean;
+}
+
+interface ToothProps {
+  toothNumber: number;
+  quadrant: string;
+}
 
 // FDI numbering system (11-18, 21-28, 31-38, 41-48)
 const FDI_NUMBERS = {
@@ -47,53 +72,35 @@ const getToothImage = (toothType: string, hasImplant: boolean): string => {
   }
 };
 
-// Dental conditions
-const DENTAL_CONDITIONS = [
-  { id: 'caries', name: 'Caries', color: '#F59E0B', icon: 'warning' },
-  { id: 'filling', name: 'Filling', color: '#6B7280', icon: 'build' },
-  { id: 'crown', name: 'Crown', color: '#8B5CF6', icon: 'stars' },
-  { id: 'root_canal', name: 'Root Canal', color: '#EF4444', icon: 'healing' },
-  { id: 'implant', name: 'Implant', color: '#059669', icon: 'precision_manufacturing' },
-  { id: 'missing', name: 'Missing', color: '#374151', icon: 'close' }
-];
-
-// Treatment types
-const TREATMENT_TYPES = [
-  { id: 'cleaning', name: 'Cleaning', color: '#06B6D4' },
-  { id: 'filling', name: 'Filling', color: '#6B7280' },
-  { id: 'crown', name: 'Crown', color: '#8B5CF6' },
-  { id: 'root_canal', name: 'Root Canal', color: '#EF4444' },
-  { id: 'extraction', name: 'Extraction', color: '#DC2626' },
-  { id: 'implant', name: 'Implant', color: '#059669' },
-  { id: 'orthodontics', name: 'Orthodontics', color: '#F59E0B' },
-  { id: 'whitening', name: 'Whitening', color: '#10B981' }
-];
-
-interface ToothData {
-  number: number;
-  condition: string;
-  treatment?: string;
-  notes?: string;
-  surfaces?: Record<string, string>; // Surface name to condition mapping
-}
-
-interface ToothSurfaceData {
-  [toothNumber: number]: Record<string, string>; // tooth -> surface -> condition
-}
-
-interface DentalChartProps {
-  patientId?: string;
-  appointmentId?: string;
-  readonly?: boolean;
-}
-
-interface ToothProps { toothNumber: number; quadrant: string }
-
 export const DentalChart: React.FC<DentalChartProps> = ({
   patientId,
   appointmentId,
   readonly = false
 }) => {
+  const { t } = useTranslation();
+
+  // Dental conditions - now using translations
+  const DENTAL_CONDITIONS = [
+    { id: 'caries', name: t('caries'), color: '#F59E0B', icon: 'warning' },
+    { id: 'filling', name: t('filling'), color: '#6B7280', icon: 'build' },
+    { id: 'crown', name: t('crown'), color: '#8B5CF6', icon: 'stars' },
+    { id: 'root_canal', name: t('root_canal'), color: '#EF4444', icon: 'healing' },
+    { id: 'implant', name: t('implant'), color: '#059669', icon: 'precision_manufacturing' },
+    { id: 'missing', name: t('missing'), color: '#374151', icon: 'close' }
+  ];
+
+  // Treatment types - now using translations
+  const TREATMENT_TYPES = [
+    { id: 'cleaning', name: t('cleaning'), color: '#06B6D4' },
+    { id: 'filling', name: t('filling'), color: '#6B7280' },
+    { id: 'crown', name: t('crown'), color: '#8B5CF6' },
+    { id: 'root_canal', name: t('root_canal'), color: '#EF4444' },
+    { id: 'extraction', name: t('extraction'), color: '#DC2626' },
+    { id: 'implant', name: t('implant'), color: '#059669' },
+    { id: 'orthodontics', name: t('orthodontics'), color: '#F59E0B' },
+    { id: 'whitening', name: t('whitening'), color: '#10B981' }
+  ];
+
   // TODO: Implement data persistence with patientId and appointmentId
   console.log('DentalChart initialized for patient:', patientId, 'appointment:', appointmentId);
 
@@ -711,12 +718,12 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       {/* Controls: Zoom */}
       <div className="flex items-center justify-end mb-3 gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Zoom</span>
+          <span className="text-sm text-gray-600">{t('zoom')}</span>
           <button
             type="button"
             onClick={() => setZoom(z => clamp(0.7, parseFloat((z - 0.1).toFixed(2)), 2.0))}
             className="p-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-            title="Zoom out"
+            title={t('zoom') + ' out'}
           >
             <span className="material-icons-round text-base">remove</span>
           </button>
@@ -734,7 +741,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             type="button"
             onClick={() => setZoom(z => clamp(0.7, parseFloat((z + 0.1).toFixed(2)), 2.0))}
             className="p-1 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
-            title="Zoom in"
+            title={t('zoom') + ' in'}
           >
             <span className="material-icons-round text-base">add</span>
           </button>
@@ -754,7 +761,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-sm font-semibold text-gray-800 flex items-center">
             <span className="material-icons-round text-blue-600 mr-2 text-base">palette</span>
-            Select Condition
+            {t('select_condition')}
           </h4>
         </div>
 
@@ -800,10 +807,10 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 ? 'bg-red-100 border-red-300 text-red-700'
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
-            title="Click, then select a tooth to clear it to initial state"
+            title={t('clear_tooth')}
           >
             <span className="material-icons-round text-sm">restart_alt</span>
-            <span className="font-medium">Clear all</span>
+            <span className="font-medium">{t('clear_all')}</span>
           </button>
 
           {/* View plan button */}
@@ -811,10 +818,10 @@ export const DentalChart: React.FC<DentalChartProps> = ({
             type="button"
             onClick={() => setShowPlanSummary(true)}
             className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm transition-all border bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-            title="View all planned treatments and notes"
+            title={t('view_plan')}
           >
             <span className="material-icons-round text-sm">visibility</span>
-            <span className="font-medium">View plan</span>
+            <span className="font-medium">{t('view_plan')}</span>
           </button>
 
           {/* Plan mode toggle (separate from View plan) */}
@@ -834,15 +841,15 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 ? 'bg-green-100 border-green-300 text-green-700'
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
-            title="Enable to click a tooth and plan a treatment"
+            title={t('planning_mode')}
           >
             <span className="material-icons-round text-sm">event_note</span>
-            <span className="font-medium">Plan mode</span>
+            <span className="font-medium">{t('planning_mode')}</span>
           </button>
         </div>
 
         <div className="mt-2 text-xs text-gray-600">
-          Select a condition and click tooth surfaces to apply. Or toggle Plan mode, then click a tooth to plan. Use View plan to see all planned items, and Clear all to reset a tooth.
+          {t('select_condition_instructions')}
         </div>
       </div>
 
@@ -887,7 +894,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       <div className="mt-6 bg-yellow-50 rounded-lg p-4 border border-yellow-200">
         <h4 className="font-semibold text-yellow-800 mb-2 flex items-center">
           <span className="material-icons-round text-yellow-600 mr-2">note_alt</span>
-          Doctor notes
+          {t('doctor_notes_section')}
         </h4>
         <textarea
           value={doctorNotes}
@@ -895,10 +902,10 @@ export const DentalChart: React.FC<DentalChartProps> = ({
           disabled={readonly}
           rows={3}
           className="w-full px-3 py-2 border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-          placeholder="Enter overall dental notes, findings, and plan"
+          placeholder={t('enter_dental_notes_placeholder')}
         />
         {readonly && (
-          <p className="text-xs text-neutral-500 mt-2">Start appointment to edit notes.</p>
+          <p className="text-xs text-neutral-500 mt-2">{t('start_appointment_to_edit')}</p>
         )}
       </div>
 
@@ -906,17 +913,17 @@ export const DentalChart: React.FC<DentalChartProps> = ({
       {selectedTooth && !readonly && planningMode && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Plan treatment for tooth {selectedTooth}</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('plan_treatment_for_tooth')} {selectedTooth}</h3>
 
             {/* Treatment Selection */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Planned Treatment</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('planned_treatment')}</label>
               <select
                 value={selectedTreatment}
                 onChange={(e) => setSelectedTreatment(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">No treatment planned</option>
+                <option value="">{t('no_treatment_planned')}</option>
                 {TREATMENT_TYPES.map(treatment => (
                   <option key={treatment.id} value={treatment.id}>
                     {treatment.name}
@@ -927,13 +934,13 @@ export const DentalChart: React.FC<DentalChartProps> = ({
 
             {/* Notes */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('notes')}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Additional notes about this tooth..."
+                placeholder={t('additional_notes_about_tooth')}
               />
             </div>
 
@@ -943,13 +950,13 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 onClick={updateToothData}
                 className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Save
+                {t('save')}
               </button>
               <button
                 onClick={() => setSelectedTooth(null)}
                 className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -961,14 +968,14 @@ export const DentalChart: React.FC<DentalChartProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Planned treatments</h3>
+              <h3 className="text-lg font-semibold">{t('planned_treatments')}</h3>
               <button
                 type="button"
                 onClick={() => setShowPlanSummary(false)}
                 className="p-2 rounded hover:bg-gray-100"
-                aria-label="Close plan summary"
+                aria-label={t('close_plan_summary')}
               >
-                <span className="material-icons-round">close</span>
+                <span className="material-icons-round">{t('close')}</span>
               </button>
             </div>
 
@@ -980,11 +987,11 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 .sort((a, b) => a - b)
                 .map(toothNumber => {
                   const td = teethData[toothNumber];
-                  const treatmentName = td?.treatment ? (TREATMENT_TYPES.find(t => t.id === td.treatment)?.name || td.treatment) : 'No treatment';
+                  const treatmentName = td?.treatment ? (TREATMENT_TYPES.find(t => t.id === td.treatment)?.name || td.treatment) : t('no_treatment');
                   return (
                     <div key={toothNumber} className="border border-gray-200 rounded-lg p-3 mb-3">
                       <div className="flex items-center justify-between mb-1">
-                        <div className="font-semibold text-gray-800">Tooth {toothNumber}</div>
+                        <div className="font-semibold text-gray-800">{t('tooth')} {toothNumber}</div>
                         <div className="text-sm text-blue-700 font-medium">{treatmentName}</div>
                       </div>
                       {td?.notes && (
@@ -998,7 +1005,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 const tn = parseInt(k, 10);
                 return teethData[tn]?.treatment || teethData[tn]?.notes;
               }).length === 0 && (
-                <div className="text-sm text-gray-600">No planned treatments yet.</div>
+                <div className="text-sm text-gray-600">{t('no_planned_treatments_yet')}</div>
               )}
             </div>
 
@@ -1009,7 +1016,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
                 onClick={() => setShowPlanSummary(false)}
                 className="px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                Close
+                {t('close')}
               </button>
             </div>
           </div>

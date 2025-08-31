@@ -296,6 +296,20 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  // Helper function to translate day names
+  const translateDayName = (day: string): string => {
+    const dayTranslations: { [key: string]: string } = {
+      'Monday': t('monday'),
+      'Tuesday': t('tuesday'),
+      'Wednesday': t('wednesday'),
+      'Thursday': t('thursday'),
+      'Friday': t('friday'),
+      'Saturday': t('saturday'),
+      'Sunday': t('sunday')
+    };
+    return dayTranslations[day] || day;
+  };
+
   const renderGeneralTab = () => {
     if (!settings) return null;
 
@@ -421,7 +435,7 @@ export const SettingsPage: React.FC = () => {
                       : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
                   }`}
                 >
-                  {day.charAt(0).toUpperCase() + day.slice(1)}
+                  {translateDayName(day)}
                 </button>
               ))}
             </div>
