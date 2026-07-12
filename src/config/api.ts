@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
-  baseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000',
+  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
   endpoints: {
     auth: {
       login: '/api/v1/auth/login',
