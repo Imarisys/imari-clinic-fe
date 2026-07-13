@@ -7,8 +7,9 @@ import { SettingsService, settingsEventDispatcher } from '../../services/setting
 interface NavItem {
   path: string;
   icon: string;
-  labelKey: keyof typeof import('../../i18n/locales/en.json');
+  labelKey: string;
   color: string;
+  roles?: Array<'doctor' | 'secretary'>;
 }
 
 interface SidebarProps {
@@ -16,37 +17,13 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const navItems: NavItem[] = [
-  {
-    path: '/dashboard',
-    icon: 'dashboard',
-    labelKey: 'dashboard',
-    color: 'bg-blue-500'
-  },
-  {
-    path: '/calendar',
-    icon: 'calendar_today',
-    labelKey: 'calendar',
-    color: 'bg-green-500'
-  },
-  {
-    path: '/patients',
-    icon: 'people',
-    labelKey: 'patients',
-    color: 'bg-purple-500'
-  },
-  {
-    path: '/reports',
-    icon: 'bar_chart',
-    labelKey: 'reports',
-    color: 'bg-orange-500'
-  },
-  {
-    path: '/settings',
-    icon: 'settings',
-    labelKey: 'settings',
-    color: 'bg-gray-500'
-  },
+const allNavItems: NavItem[] = [
+  { path: '/dashboard', icon: 'dashboard', labelKey: 'dashboard', color: 'bg-blue-500' },
+  { path: '/calendar', icon: 'calendar_today', labelKey: 'calendar', color: 'bg-green-500' },
+  { path: '/patients', icon: 'people', labelKey: 'patients', color: 'bg-purple-500' },
+  { path: '/billing', icon: 'payments', labelKey: 'billing', color: 'bg-emerald-500' },
+  { path: '/reports', icon: 'bar_chart', labelKey: 'reports', color: 'bg-orange-500', roles: ['doctor'] },
+  { path: '/settings', icon: 'settings', labelKey: 'settings', color: 'bg-gray-500', roles: ['doctor'] },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
@@ -54,6 +31,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [clinicName, setClinicName] = useState<string>('');
+
+  const navItems = allNavItems.filter(
+    item => !item.roles || (user?.role && item.roles.includes(user.role))
+  );
+
+  const roleLabel = user?.role === 'doctor' ? 'Doctor' : 'Secretary';
+  const displayName = user ? `${user.first_name} ${user.last_name}` : '';
 
   useEffect(() => {
     const loadClinicName = async () => {
@@ -194,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         : 'hover:bg-white/10 backdrop-blur-sm border border-transparent hover:border-white/10'
                     }`}
                     style={{ animationDelay: `${index * 100}ms` }}
-                    title={isCollapsed ? t(item.labelKey) : undefined}
+                      title={isCollapsed ? t(item.labelKey as any) : undefined}
                   >
 
                     {/* Icon Container */}
@@ -216,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                         <span className={`font-semibold transition-all duration-300 ${
                           isActive ? 'text-white' : 'text-primary-100 group-hover:text-white'
                         }`}>
-                          {t(item.labelKey)}
+                          {t(item.labelKey as any)}
                         </span>
                         {isActive && (
                           <div className="w-8 h-0.5 bg-white rounded-full mt-1 animate-pulse"></div>
@@ -257,11 +241,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold truncate text-lg">
-                        {user ? `Dr. ${user.first_name} ${user.last_name}` : 'Dr. Ahmed Wilson'}
+                        {displayName}
                       </p>
                       <div className="flex items-center space-x-2 mt-1">
                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <p className="text-primary-200 text-sm font-medium">Administrator</p>
+                        <p className="text-primary-200 text-sm font-medium">{roleLabel}</p>
                       </div>
                     </div>
 

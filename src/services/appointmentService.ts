@@ -1,6 +1,7 @@
 import { Appointment, AppointmentCreate, AppointmentUpdate } from '../types/Appointment';
 import { AppointmentMedicalData, AppointmentMedicalDataUpdate } from '../types/Medical';
 import { API_CONFIG } from '../config/api';
+import { authService } from './authService';
 
 export interface TimeSlot {
   start_time: string;
@@ -16,7 +17,7 @@ export class AppointmentService {
 
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders(),
         ...options.headers,
       },
       ...options,

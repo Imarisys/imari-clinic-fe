@@ -2,6 +2,7 @@
   "dashboard": "Dashboard",
   "calendar": "Calendar",
   "patients": "Patients",
+  "billing": "Billing",
   "reports": "Reports",
   "settings": "Settings",
   "clinic_name": "Imarisys Clinic",

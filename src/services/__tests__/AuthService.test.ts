@@ -6,6 +6,8 @@ const mockLoginResponse: LoginResponse = {
   first_name: 'Test',
   last_name: 'Doctor',
   clinic_name: 'Test Clinic',
+  role: 'doctor',
+  access_token: 'mock-token-123',
 };
 
 describe('AuthService', () => {
@@ -33,6 +35,7 @@ describe('AuthService', () => {
       const result = await authService.login(credentials);
       expect(result).toEqual(mockLoginResponse);
       expect(localStorage.getItem('user')).toBe(JSON.stringify(mockLoginResponse));
+      expect(localStorage.getItem('token')).toBe('mock-token-123');
       expect(localStorage.getItem('isAuthenticated')).toBe('true');
     });
 
@@ -102,6 +105,32 @@ describe('AuthService', () => {
 
     it('should return false when not authenticated', () => {
       expect(authService.isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('getToken', () => {
+    it('should return the stored token', () => {
+      localStorage.setItem('token', 'test-token');
+      expect(authService.getToken()).toBe('test-token');
+    });
+
+    it('should return null when no token stored', () => {
+      expect(authService.getToken()).toBeNull();
+    });
+  });
+
+  describe('getAuthHeaders', () => {
+    it('should return headers with Bearer token', () => {
+      localStorage.setItem('token', 'test-token');
+      const headers = authService.getAuthHeaders();
+      expect(headers['Authorization']).toBe('Bearer test-token');
+      expect(headers['Content-Type']).toBe('application/json');
+    });
+
+    it('should return headers without Authorization when no token', () => {
+      const headers = authService.getAuthHeaders();
+      expect(headers['Authorization']).toBeUndefined();
+      expect(headers['Content-Type']).toBe('application/json');
     });
   });
 

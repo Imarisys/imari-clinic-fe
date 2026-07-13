@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Patients } from './pages/Patients';
+import { Billing } from './pages/Billing';
 import { SettingsPage } from './pages/Settings';
 import { Reports } from './pages/Reports';
 import { AppointmentStart } from './pages/AppointmentStart';
@@ -19,6 +20,14 @@ import './styles/globals.css';
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+// Doctor-only route
+const DoctorRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== 'doctor') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
 };
 
 // App Routes component (needs to be inside AuthProvider)
@@ -56,11 +65,19 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/appointment/:appointmentId/start"
+        path="/billing"
         element={
           <ProtectedRoute>
-            <AppointmentStart />
+            <Billing />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/appointment/:appointmentId/start"
+        element={
+          <DoctorRoute>
+            <AppointmentStart />
+          </DoctorRoute>
         }
       />
       <Route
@@ -74,17 +91,17 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/settings"
         element={
-          <ProtectedRoute>
+          <DoctorRoute>
             <SettingsPage />
-          </ProtectedRoute>
+          </DoctorRoute>
         }
       />
       <Route
         path="/reports"
         element={
-          <ProtectedRoute>
+          <DoctorRoute>
             <Reports />
-          </ProtectedRoute>
+          </DoctorRoute>
         }
       />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

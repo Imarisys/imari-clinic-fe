@@ -435,7 +435,7 @@ export const Dashboard: React.FC = () => {
                     <span className="material-icons-round text-sm">groups</span>
                     {getUniquePatientCount()} {t('patients')}
                   </span>
-                  {upcomingAppointment && upcomingAppointment.status === 'Booked' && (
+                  {upcomingAppointment && upcomingAppointment.status === 'Booked' && user?.role === 'doctor' && (
                     <button
                       onClick={() => navigate(`/appointment/${upcomingAppointment.id}/start`)}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-medium shadow-sm transition-colors"
@@ -483,7 +483,7 @@ export const Dashboard: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 items-end">
-                          {appointment.status === 'Booked' && (
+                          {appointment.status === 'Booked' && user?.role === 'doctor' && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
                               className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
@@ -491,7 +491,7 @@ export const Dashboard: React.FC = () => {
                               <span className="material-icons-round text-xs">play_arrow</span>{t('start')}
                             </button>
                           )}
-                          {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && (
+                          {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && user?.role === 'doctor' && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
                               className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"

@@ -63,7 +63,7 @@ export class SettingsService {
       const url = buildApiUrl(`/api/v1/settings/${currentDoctorId}`);
       console.log('Making request to:', url); // Debug log
 
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: authService.getAuthHeaders() });
       console.log('Response status:', response.status); // Debug log
 
       if (!response.ok) {
@@ -107,7 +107,7 @@ export class SettingsService {
       const url = buildApiUrl('/api/v1/settings/fields/values');
       console.log('Making request to:', url); // Debug log
 
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: authService.getAuthHeaders() });
       console.log('Field values response status:', response.status); // Debug log
 
       if (!response.ok) {
@@ -135,9 +135,7 @@ export class SettingsService {
 
       const response = await fetch(buildApiUrl(`/api/v1/settings/${doctorId}`), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(updates),
       });
 

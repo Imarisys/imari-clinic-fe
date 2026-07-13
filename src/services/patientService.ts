@@ -1,6 +1,7 @@
 import { API_CONFIG, buildApiUrl } from '../config/api';
 import { Patient, PatientCreate, PatientUpdate, PatientRead, PatientListResponse, PatientSummary, PatientWithAppointments } from '../types/Patient';
 import { PatientMedicalHistory } from '../types/Medical';
+import { authService } from './authService';
 
 // Helper function to extract error message from response
 const extractErrorMessage = async (response: Response): Promise<string> => {
@@ -48,9 +49,7 @@ export class PatientService {
       const url = buildApiUrl(`${API_CONFIG.endpoints.patients.list}?offset=${offset}&limit=${limit}`);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -74,9 +73,7 @@ export class PatientService {
       const url = buildApiUrl(`${API_CONFIG.endpoints.patients.search}?term=${encodedQuery}&offset=${offset}&limit=${limit}`);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -99,9 +96,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.summary);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -124,9 +119,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.export);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -172,9 +165,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.get(patientId));
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -197,9 +188,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.create);
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(patientData),
       });
 
@@ -223,9 +212,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.update(patientId));
       const response = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(patientData),
       });
 
@@ -249,9 +236,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.delete(patientId));
       const response = await fetch(url, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -275,9 +260,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.get(patientId));
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -300,9 +283,7 @@ export class PatientService {
       const url = buildApiUrl(API_CONFIG.endpoints.patients.medicalHistory(patientId));
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
       });
 
       if (!response.ok) {

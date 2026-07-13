@@ -1086,6 +1086,13 @@ export const Patients: React.FC = () => {
                   {t('schedule')}
                 </Button>
                 <Button
+                  variant="secondary"
+                  icon="receipt_long"
+                  onClick={() => navigate(`/billing?tab=list&patient_id=${selectedPatient.id}`)}
+                >
+                  Facturation
+                </Button>
+                <Button
                   variant="danger"
                   icon="delete"
                   onClick={() => {
