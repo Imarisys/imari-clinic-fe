@@ -78,40 +78,34 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
   };
 
   const handleAddPrecondition = async () => {
-    // Get the condition name - either from selected common condition or custom input
-    const conditionName = selectedPreconditions.length > 0
-      ? selectedPreconditions[0] // Take the first selected condition
-      : customCondition.trim();
+    const namesToAdd = selectedPreconditions.length > 0
+      ? selectedPreconditions
+      : customCondition.trim() ? [customCondition.trim()] : [];
 
-    if (!conditionName) {
+    if (namesToAdd.length === 0) {
       showNotification('warning', t('warning'), t('please_select_or_enter_condition_name'));
       return;
     }
 
     setIsUpdating(true);
-
     try {
-      // Create single precondition via API
-      const createdPrecondition = await PreconditionService.createPrecondition({
+      const batch = namesToAdd.map(name => ({
         patient_id: patientId,
-        name: conditionName,
+        name,
         date: selectedDate,
-        note: notes.trim() || undefined
-      });
+        note: notes.trim() || undefined,
+      }));
 
-      // Update local state
-      setPreconditions(prev => [...prev, createdPrecondition]);
-
-      // Reset form
+      const created = await PreconditionService.createBatch(batch);
+      setPreconditions(prev => [...prev, ...created]);
       setSelectedPreconditions([]);
       setCustomCondition('');
       setNotes('');
       setSelectedDate(new Date().toISOString().split('T')[0]);
       setShowAddModal(false);
-
-      showNotification('success', t('success'), t('medical_condition_added_successfully'));
+      showNotification('success', t('success'), `${created.length} condition(s) ajoutée(s)`);
     } catch (error) {
-      console.error('Failed to add precondition:', error);
+      console.error('Failed to add preconditions:', error);
       showNotification('error', t('error'), t('failed_to_add_medical_condition'));
     } finally {
       setIsUpdating(false);
@@ -186,10 +180,11 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
   };
 
   const togglePrecondition = (conditionName: string) => {
-    // Set the custom condition field with the selected precondition name
-    setCustomCondition(conditionName);
-    // Clear any previous selections since we're using it as a picker now
-    setSelectedPreconditions([]);
+    setSelectedPreconditions(prev =>
+      prev.includes(conditionName)
+        ? prev.filter(c => c !== conditionName)
+        : [...prev, conditionName]
+    );
   };
 
   const resetAddForm = () => {
@@ -340,20 +335,33 @@ export const PatientPreconditions: React.FC<PatientPreconditionsProps> = ({
             </label>
             <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
               <div className="space-y-1">
-                {commonPreconditions.map((condition) => (
+                {commonPreconditions.map((condition) => {
+                  const isChecked = selectedPreconditions.includes(condition.name);
+                  return (
                   <div
                     key={condition.name}
                     onClick={() => togglePrecondition(condition.name)}
-                    className="flex items-center space-x-3 cursor-pointer hover:bg-blue-50 p-3 rounded-lg transition-colors duration-200 border border-transparent hover:border-blue-200"
+                    className={`flex items-center gap-3 cursor-pointer p-3 rounded-lg transition-colors border ${
+                      isChecked ? 'bg-blue-50 border-blue-300' : 'border-transparent hover:bg-blue-50 hover:border-blue-200'
+                    }`}
                   >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition ${
+                      isChecked ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                    }`}>
+                      {isChecked && <span className="material-icons-round text-white text-sm">check</span>}
+                    </div>
                     <span className="text-lg">{condition.icon}</span>
-                    <span className="text-sm text-gray-700 font-medium">
-                      {condition.name}
-                    </span>
+                    <span className="text-sm text-gray-700 font-medium">{condition.name}</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
+            {selectedPreconditions.length > 0 && (
+              <p className="text-xs text-blue-600 mt-2 font-medium">
+                {selectedPreconditions.length} condition(s) sélectionnée(s)
+              </p>
+            )}
           </div>
 
           {/* Notes */}

@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../config/api';
+import { authService } from './authService';
 
 export interface AppointmentType {
   name: string;
@@ -28,7 +29,7 @@ export class AppointmentTypeService {
 
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders(),
         ...options.headers,
       },
       ...options,

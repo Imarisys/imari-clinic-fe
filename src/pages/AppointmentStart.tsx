@@ -10,7 +10,8 @@ import { PatientFileRead, FileUploadData } from '../types/PatientFile';
 import { useNotification } from '../context/NotificationContext';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
-import { DentalChart } from '../components/dental/DentalChart';
+// Dental chart hidden for GP context — preserved for future use
+// import { DentalChart } from '../components/dental/DentalChart';
 import { useTranslation } from '../context/TranslationContext';
 
 // Predefined vital signs with their units and styling - now using translation keys
@@ -817,6 +818,7 @@ export const AppointmentStart: React.FC = () => {
                 <span>{t('patient_files')}</span>
               </button>
 
+              {/*
               <button
                 onClick={() => setActiveTab('dental')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
@@ -828,7 +830,7 @@ export const AppointmentStart: React.FC = () => {
                 <span className="material-icons-round">sentiment_very_satisfied</span>
                 <span>{t('dental')}</span>
               </button>
-
+              */}
               <button
                 onClick={() => setActiveTab('gynecology')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
@@ -1033,13 +1035,12 @@ export const AppointmentStart: React.FC = () => {
                 </div>
               )}
 
-              {/* Dental Tab - New Tab for Dental Information */}
+              {/* Dental Tab — hidden for GP context, code preserved */}
               {activeTab === 'dental' && (
-                <div className="space-y-4">
-                  <DentalChart
-                    patientId={appointment.patient_id}
-                    readonly={!isStarted || appointment?.status === 'Completed'}
-                  />
+                <div className="space-y-4 text-center py-12">
+                  <span className="material-icons-round text-5xl text-neutral-300 mb-4 block">construction</span>
+                  <p className="text-lg font-medium text-neutral-500">Fiche dentaire</p>
+                  <p className="text-sm text-neutral-400">Fonctionnalité dentaire à venir</p>
                 </div>
               )}
 

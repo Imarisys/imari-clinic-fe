@@ -47,6 +47,12 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   const { t } = useTranslation();
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
+  const [now, setNow] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Handle appointment drag start
   const handleAppointmentDragStart = (e: React.DragEvent, appointment: Appointment) => {
@@ -140,6 +146,18 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
   };
 
   const timeSlots = generateTimeSlots();
+  const today = now.toISOString().split('T')[0];
+
+  // Current time line position
+  const startHour = parseInt(workingHours.startTime.split(':')[0]);
+  const endHour = parseInt(workingHours.endTime.split(':')[0]);
+  const totalMinutes = (endHour - startHour) * 60;
+  const minutesSinceStart = (now.getHours() - startHour) * 60 + now.getMinutes();
+  const timePosition = (minutesSinceStart / totalMinutes) * 100;
+  const showTimeLine = minutesSinceStart >= 0 && minutesSinceStart <= totalMinutes;
+
+  // Find today's column index
+  const todayColIndex = days.findIndex(d => d.toISOString().split('T')[0] === today);
 
   return (
     <div className="card overflow-hidden">
@@ -194,11 +212,25 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
 
       {/* Time slots grid - 15 minute precision */}
       <div
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto relative"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{ height: 'calc(100vh - 280px)' }}
       >
+        {/* Current time indicator */}
+        {showTimeLine && todayColIndex >= 0 && (
+          <div className="absolute z-30 pointer-events-none" style={{
+            top: `${timePosition}%`,
+            left: `${((todayColIndex + 1) / 8) * 100}%`,
+            width: `${(1 / 8) * 100}%`,
+          }}>
+            <div className="relative w-full">
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-red-500">
+                <div className="absolute -left-1 -top-1 w-3 h-3 bg-red-500 rounded-full" />
+              </div>
+            </div>
+          </div>
+        )}
         {timeSlots.map((time, timeIndex) => (
           <div key={time} className="grid grid-cols-8 hover:bg-primary-50 transition-all duration-300">
             <div className="p-2 text-right text-sm text-neutral-500 bg-neutral-50 border-r border-gray-300 relative">

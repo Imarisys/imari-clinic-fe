@@ -48,6 +48,12 @@ export const DayView: React.FC<DayViewProps> = ({
   const { t } = useTranslation();
   const [draggedAppointment, setDraggedAppointment] = React.useState<Appointment | null>(null);
   const [dragPreviewPosition, setDragPreviewPosition] = React.useState<{date: string, time: string} | null>(null);
+  const [now, setNow] = React.useState(new Date());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Check if current date is a working day
   const isWorkingDay = (): boolean => {
@@ -136,6 +142,15 @@ export const DayView: React.FC<DayViewProps> = ({
   };
 
   const dayStr = currentDate.toISOString().split('T')[0];
+  const isToday = dayStr === now.toISOString().split('T')[0];
+
+  // Current time line position
+  const startHour = parseInt(workingHours.startTime.split(':')[0]);
+  const endHour = parseInt(workingHours.endTime.split(':')[0]);
+  const totalMinutes = (endHour - startHour) * 60;
+  const minutesSinceStart = (now.getHours() - startHour) * 60 + now.getMinutes();
+  const timePosition = (minutesSinceStart / totalMinutes) * 100; // percentage
+  const showTimeLine = isToday && minutesSinceStart >= 0 && minutesSinceStart <= totalMinutes;
 
   return (
     <div className="card overflow-hidden">
@@ -181,11 +196,19 @@ export const DayView: React.FC<DayViewProps> = ({
 
       {/* Time slots grid - 15 minute precision with drag and drop */}
       <div
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto relative"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{ height: 'calc(100vh - 280px)' }}
       >
+        {/* Current time indicator */}
+        {showTimeLine && (
+          <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: `${timePosition}%` }}>
+            <div className="relative w-full h-0.5 bg-red-500">
+              <div className="absolute -left-1 -top-1 w-3 h-3 bg-red-500 rounded-full" />
+            </div>
+          </div>
+        )}
         {timeSlots.map((time, timeIndex) => {
           const isSelected = isSlotSelected(dayStr, time);
           const dayAppointments = appointments.filter(apt => {

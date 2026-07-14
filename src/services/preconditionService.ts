@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../config/api';
+import { authService } from './authService';
 
 export interface Precondition {
   id: string;
@@ -26,95 +27,41 @@ export interface PreconditionListResponse {
   total: number;
 }
 
-// Helper function to handle HTTP errors
-const handleHttpError = async (response: Response) => {
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`HTTP ${response.status}: ${errorText}`);
-  }
-  return response;
-};
-
 export class PreconditionService {
-  /**
-   * Get all preconditions for a specific patient
-   */
   static async getPatientPreconditions(patientId: string): Promise<PreconditionListResponse> {
-    try {
-      const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${patientId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      await handleHttpError(response);
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching patient preconditions:', error);
-      throw error;
-    }
+    const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${patientId}`, { headers: authService.getAuthHeaders() });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
   }
 
-  /**
-   * Create a new precondition
-   */
   static async createPrecondition(precondition: PreconditionCreate): Promise<Precondition> {
-    try {
-      const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(precondition),
-      });
-      
-      await handleHttpError(response);
-      return await response.json();
-    } catch (error) {
-      console.error('Error creating precondition:', error);
-      throw error;
-    }
+    const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/`, {
+      method: 'POST', headers: authService.getAuthHeaders(), body: JSON.stringify(precondition),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
   }
 
-  /**
-   * Update an existing precondition
-   */
+  static async createBatch(preconditions: PreconditionCreate[]): Promise<Precondition[]> {
+    const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/batch`, {
+      method: 'POST', headers: authService.getAuthHeaders(), body: JSON.stringify(preconditions),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
   static async updatePrecondition(preconditionId: string, update: PreconditionUpdate): Promise<Precondition> {
-    try {
-      const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${preconditionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(update),
-      });
-      
-      await handleHttpError(response);
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating precondition:', error);
-      throw error;
-    }
+    const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${preconditionId}`, {
+      method: 'PUT', headers: authService.getAuthHeaders(), body: JSON.stringify(update),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
   }
 
-  /**
-   * Delete a precondition
-   */
   static async deletePrecondition(preconditionId: string): Promise<void> {
-    try {
-      const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${preconditionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      await handleHttpError(response);
-      // Delete endpoint returns empty response, so no need to parse JSON
-    } catch (error) {
-      console.error('Error deleting precondition:', error);
-      throw error;
-    }
+    const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/preconditions/${preconditionId}`, {
+      method: 'DELETE', headers: authService.getAuthHeaders(),
+    });
+    if (!r.ok) throw new Error(await r.text());
   }
 }

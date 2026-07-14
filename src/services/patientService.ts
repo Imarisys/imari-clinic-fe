@@ -257,22 +257,21 @@ export class PatientService {
   // Get a single patient by ID with appointments
   static async getPatientWithAppointments(patientId: string): Promise<PatientWithAppointments> {
     try {
-      const url = buildApiUrl(API_CONFIG.endpoints.patients.get(patientId));
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: authService.getAuthHeaders(),
-      });
+      const [patientResp, appointmentsResp] = await Promise.all([
+        buildApiUrl(API_CONFIG.endpoints.patients.get(patientId)),
+        buildApiUrl(API_CONFIG.endpoints.appointments.byPatient(patientId)),
+      ].map(url => fetch(url, { method: 'GET', headers: authService.getAuthHeaders() })));
 
-      if (!response.ok) {
-        const errorMessage = await extractErrorMessage(response);
+      if (!patientResp.ok) {
+        const errorMessage = await extractErrorMessage(patientResp);
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const patient = await patientResp.json();
+      const appointments = appointmentsResp.ok ? await appointmentsResp.json() : [];
+      return { ...patient, appointments };
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
+      if (error instanceof Error) throw error;
       throw new Error('Network error occurred while fetching patient with appointments');
     }
   }

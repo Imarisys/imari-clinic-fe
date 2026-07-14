@@ -19,7 +19,7 @@ export const API_CONFIG = {
     },
     appointments: {
       list: '/api/v1/appointments',
-      byPatient: (patientId: string) => `/api/v1/appointments/patient/${patientId}`,
+      byPatient: (patientId: string) => `/api/v1/appointments/by_patient/${patientId}`,
       get: (id: string) => `/api/v1/appointments/${id}`,
       create: '/api/v1/appointments',
       update: (id: string) => `/api/v1/appointments/${id}`,

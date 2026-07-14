@@ -746,7 +746,13 @@ export const Calendar: React.FC = () => {
       <div className="fade-in-element">
         {renderCalendarHeader()}
 
-        {view === 'week' && (
+        {loading && (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
+          </div>
+        )}
+
+        {!loading && view === 'week' && (
           <WeeklyView
             currentDate={currentDate}
             appointments={appointments}

@@ -975,133 +975,57 @@ export const Patients: React.FC = () => {
       <DashboardLayout>
         <div className="fade-in-element">
           <div className="card mb-6">
-            <div className="flex items-start space-x-6">
-              <div className="w-24 h-24 bg-primary-500 rounded-3xl flex items-center justify-center shadow-primary text-white">
-                <span className="text-3xl font-semibold">
+            <div className="flex items-start gap-6">
+              <div className="w-20 h-20 bg-primary-500 rounded-3xl flex items-center justify-center shadow-primary text-white shrink-0">
+                <span className="text-2xl font-semibold">
                   {selectedPatient.first_name[0]}{selectedPatient.last_name[0]}
                 </span>
               </div>
 
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-primary-600 mb-2">
-                  {selectedPatient.first_name} {selectedPatient.last_name}
-                </h1>
-                
-                {/* Contact and Address Information */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                  {/* Contact Information */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-3">
+                  <h1 className="text-2xl font-bold text-neutral-800">
+                    {selectedPatient.first_name} {selectedPatient.last_name}
+                  </h1>
+                  <button onClick={() => setViewMode('grid')} className="w-8 h-8 rounded-full hover:bg-neutral-100 flex items-center justify-center shrink-0" title={t('back_to_patients')}>
+                    <span className="material-icons-round text-neutral-400">arrow_back</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-4">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('contact_information')}</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="material-icons-round text-lg text-gray-400">phone</span>
-                        <span className="text-gray-800">{selectedPatient.phone}</span>
-                      </div>
-                      {selectedPatient.email && (
-                        <div className="flex items-center space-x-2">
-                          <span className="material-icons-round text-lg text-gray-400">email</span>
-                          <span className="text-gray-800">{selectedPatient.email}</span>
-                        </div>
-                      )}
+                    <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">{t('contact_information')}</h3>
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">phone</span><span className="text-neutral-700" style={{ overflowWrap: 'anywhere' }}>{selectedPatient.phone}</span></div>
+                      {selectedPatient.email && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">email</span><span className="text-neutral-700" style={{ overflowWrap: 'anywhere' }}>{selectedPatient.email}</span></div>)}
                     </div>
                   </div>
 
-                  {/* Personal Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('personal_information')}</h3>
-                    <div className="space-y-2">
-                      {selectedPatient.date_of_birth && (
-                        <div className="flex items-center space-x-2">
-                          <span className="material-icons-round text-lg text-gray-400">cake</span>
-                          <span className="text-gray-800">
-                            {new Date(selectedPatient.date_of_birth).toLocaleDateString()} 
-                            <span className="text-gray-500 ml-2">
-                              ({t('age')} {calculateAge(selectedPatient.date_of_birth)})
-                            </span>
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2">
-                        <span className="material-icons-round text-lg text-gray-400">person</span>
-                        <span className="text-gray-800 capitalize">{selectedPatient.gender || t('not_specified')}</span>
-                      </div>
+                    <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">{t('personal_information')}</h3>
+                    <div className="space-y-1.5 text-sm">
+                      {selectedPatient.date_of_birth && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">cake</span><span className="text-neutral-700">{new Date(selectedPatient.date_of_birth).toLocaleDateString()} <span className="text-neutral-400 ml-1">({t('age')} {calculateAge(selectedPatient.date_of_birth)})</span></span></div>)}
+                      <div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">person</span><span className="text-neutral-700 capitalize">{selectedPatient.gender || t('not_specified')}</span></div>
                     </div>
                   </div>
 
-                  {/* Address Information */}
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">{t('address')}</h3>
-                    <div className="space-y-2">
-                      {selectedPatient.street || selectedPatient.city || selectedPatient.state || selectedPatient.zip_code ? (
-                        <>
-                          {selectedPatient.street && (
-                            <div className="flex items-center space-x-2">
-                              <span className="material-icons-round text-lg text-gray-400">home</span>
-                              <span className="text-gray-800">{selectedPatient.street}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center space-x-2">
-                            <span className="material-icons-round text-lg text-gray-400">location_on</span>
-                            <span className="text-gray-800">
-                              {[selectedPatient.city, selectedPatient.state, selectedPatient.zip_code]
-                                .filter(Boolean)
-                                .join(', ')}
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span className="material-icons-round text-lg text-gray-400">location_off</span>
-                          <span className="text-gray-500 italic">{t('no_address_provided')}</span>
-                        </div>
-                      )}
+                    <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">{t('address')}</h3>
+                    <div className="space-y-1.5 text-sm">
+                      {selectedPatient.street || selectedPatient.city ? (<>
+                        {selectedPatient.street && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">home</span><span className="text-neutral-700" style={{ overflowWrap: 'anywhere' }}>{selectedPatient.street}</span></div>)}
+                        <div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">location_on</span><span className="text-neutral-700" style={{ overflowWrap: 'anywhere' }}>{[selectedPatient.city, selectedPatient.state, selectedPatient.zip_code].filter(Boolean).join(', ')}</span></div>
+                      </>) : (<span className="text-neutral-400 italic">{t('no_address_provided')}</span>)}
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className="btn-secondary"
-                  title={t('back_to_patients')}
-                >
-                  <span className="material-icons-round">arrow_back</span>
-                </button>
-                <Button
-                  variant="secondary"
-                  icon="edit"
-                  onClick={() => setViewMode('edit')}
-                >
-                  {t('edit')}
-                </Button>
-                <Button
-                  variant="primary"
-                  icon="event"
-                  onClick={() => {
-                    setSelectedPatientForBooking(selectedPatient);
-                    setShowAppointmentModal(true);
-                  }}
-                >
-                  {t('schedule')}
-                </Button>
-                <Button
-                  variant="secondary"
-                  icon="receipt_long"
-                  onClick={() => navigate(`/billing?tab=list&patient_id=${selectedPatient.id}`)}
-                >
-                  Facturation
-                </Button>
-                <Button
-                  variant="danger"
-                  icon="delete"
-                  onClick={() => {
-                    handleDeleteConfirmation(selectedPatient);
-                  }}
-                  disabled={isLoading}
-                >
-                  {t('delete')}
-                </Button>
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100">
+                  <Button variant="secondary" icon="edit" onClick={() => setViewMode('edit')}>{t('edit')}</Button>
+                  <Button variant="primary" icon="event" onClick={() => { setSelectedPatientForBooking(selectedPatient); setShowAppointmentModal(true); }}>{t('schedule')}</Button>
+                  <Button variant="secondary" icon="receipt_long" onClick={() => navigate(`/billing?tab=list&patient_id=${selectedPatient.id}`)}>Facturation</Button>
+                  <Button variant="danger" icon="delete" onClick={() => handleDeleteConfirmation(selectedPatient)} disabled={isLoading}>{t('delete')}</Button>
+                </div>
               </div>
             </div>
           </div>

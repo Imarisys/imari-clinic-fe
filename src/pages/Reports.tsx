@@ -13,6 +13,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { BillingService, RevenueSummary } from '../services/billingService';
 import { PatientService } from '../services/patientService';
+import { authService } from '../services/authService';
+import { API_CONFIG } from '../config/api';
 import { useTranslation } from '../context/TranslationContext';
 
 type ReportType = 'revenue' | 'patients' | 'appointments';
@@ -22,6 +24,7 @@ export const Reports: React.FC = () => {
   const [selected, setSelected] = useState<ReportType>('revenue');
   const [analytics, setAnalytics] = useState<any>(null);
   const [patientSummary, setPatientSummary] = useState<any>(null);
+  const [apptStats, setApptStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   const fmt = (n: number) => `${(n || 0).toFixed(3)} TND`;
@@ -35,6 +38,10 @@ export const Reports: React.FC = () => {
         }
         if (selected === 'patients') {
           setPatientSummary(await PatientService.getPatientSummary());
+        }
+        if (selected === 'appointments') {
+          const r = await fetch(`${API_CONFIG.baseUrl}/api/v1/appointments/stats?month=7&year=2026`, { headers: authService.getAuthHeaders() });
+          setApptStats(await r.json());
         }
       } catch {}
       setLoading(false);
@@ -150,12 +157,60 @@ export const Reports: React.FC = () => {
           </div>
         )}
 
-        {!loading && selected === 'appointments' && (
-          <div className="bg-white rounded-2xl shadow-soft p-8 text-center border border-neutral-100">
-            <span className="material-icons-round text-5xl text-neutral-300 mb-3 block">schedule</span>
-            <p className="text-lg font-medium text-neutral-500">Statistiques des rendez-vous</p>
-            <p className="text-sm text-neutral-400 mt-1">Les graphiques de rendez-vous seront disponibles dans la prochaine mise à jour.</p>
-            <p className="text-xs text-neutral-300 mt-3">En attendant, consultez le Calendrier pour voir les rendez-vous du jour.</p>
+        {!loading && selected === 'appointments' && apptStats && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-2xl shadow-soft p-5 border border-neutral-100">
+                <p className="text-sm text-neutral-400 mb-1">Total ce mois</p>
+                <p className="text-3xl font-bold text-primary-600">{apptStats.total}</p>
+                <p className="text-xs text-neutral-400 mt-1">{apptStats.avg_per_day}/jour · {apptStats.trend > 0 ? '+' : ''}{apptStats.trend}% vs mois précédent</p>
+              </div>
+              <div className="bg-white rounded-2xl shadow-soft p-5 border border-neutral-100">
+                <p className="text-sm text-neutral-400 mb-1">Complétés</p>
+                <p className="text-3xl font-bold text-green-600">{apptStats.by_status.completed}</p>
+                <p className="text-xs text-green-500 mt-1">{apptStats.completion_rate}% de taux de complétion</p>
+              </div>
+              <div className="bg-white rounded-2xl shadow-soft p-5 border border-neutral-100">
+                <p className="text-sm text-neutral-400 mb-1">À venir</p>
+                <p className="text-3xl font-bold text-blue-600">{apptStats.by_status.booked}</p>
+                <p className="text-xs text-neutral-400 mt-1">{apptStats.by_status.in_progress} en cours</p>
+              </div>
+              <div className="bg-white rounded-2xl shadow-soft p-5 border border-neutral-100">
+                <p className="text-sm text-neutral-400 mb-1">Annulés / No-show</p>
+                <p className="text-3xl font-bold text-red-600">{apptStats.by_status.cancelled + apptStats.by_status.no_show}</p>
+                <p className="text-xs text-red-500 mt-1">{apptStats.no_show_rate}% no-show</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-2xl shadow-soft p-6 border border-neutral-100">
+                <h3 className="font-semibold text-neutral-800 mb-4">Rendez-vous par type</h3>
+                <div className="space-y-3">
+                  {apptStats.by_type.map((t: any) => (
+                    <div key={t.name} className="flex items-center gap-3">
+                      <span className="text-sm text-neutral-600 flex-1">{t.name}</span>
+                      <span className="font-bold text-sm text-neutral-800">{t.count}</span>
+                      <div className="w-24 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary-400 rounded-full" style={{ width: `${(t.count / apptStats.total) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-soft p-6 border border-neutral-100">
+                <h3 className="font-semibold text-neutral-800 mb-4">Répartition par jour</h3>
+                <div className="flex items-end gap-3 h-40 pt-4">
+                  {apptStats.by_day.map((d: any) => (
+                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                      <span className="text-sm font-medium text-neutral-600">{d.count}</span>
+                      <div className="w-full bg-primary-400 rounded-t-lg" style={{ height: `${Math.max(4, (d.count / Math.max(...apptStats.by_day.map((x: any) => x.count))) * 100)}%` }} />
+                      <span className="text-xs text-neutral-400">{d.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

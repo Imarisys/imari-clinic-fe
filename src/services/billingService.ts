@@ -49,4 +49,10 @@ export const BillingService = {
 
   getPatientBalance: (patientId: string): Promise<{ patient_id: string; outstanding_balance: number }> =>
     fetch(`${BASE}/api/v1/billing/patients/${patientId}/balance`, { headers: h() }).then(r => r.json()),
+
+  getDailyCollections: (date?: string): Promise<any> =>
+    fetch(`${BASE}/api/v1/billing/daily-collections${date ? '?date=' + date : ''}`, { headers: h() }).then(r => r.json()),
+
+  getOutstandingPatients: (): Promise<any[]> =>
+    fetch(`${BASE}/api/v1/billing/outstanding-patients`, { headers: h() }).then(r => r.json()),
 };
