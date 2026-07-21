@@ -71,15 +71,19 @@ export const AppointmentDetails: React.FC = () => {
         setDiagnosis(data.diagnosis || '');
         setTreatmentPlan(data.treatment_plan || '');
         setPrescription(data.prescription || '');
-        if (data.vital_signs) {
-          const vitals = Object.entries(data.vital_signs).map(([k,v], idx) => ({
-            id: String(idx+1),
-            name: k.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase()),
-            value: String(v),
-            unit: '',
-            icon: 'health_and_safety',
-            color: 'blue'
-          }));
+        if (data.vital_signs && Object.keys(data.vital_signs).length > 0) {
+          const vitalSignOptions = getVitalSignOptions(t);
+          const vitals = Object.entries(data.vital_signs).map(([k,v], idx) => {
+            const option = vitalSignOptions.find((opt: any) => opt.name.toLowerCase().replace(/\s+/g, '_') === k.toLowerCase());
+            return {
+              id: String(idx+1),
+              name: option?.name || k.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase()),
+              value: String(v),
+              unit: option?.unit || '',
+              icon: option?.icon || 'health_and_safety',
+              color: option?.color || 'blue'
+            };
+          });
           setVitalSigns(vitals);
         } else {
           // Initialize minimal vitals rows
@@ -168,12 +172,16 @@ export const AppointmentDetails: React.FC = () => {
     setVitalSigns(prev => prev.filter(vital => vital.id !== id));
   };
 
-  const isCompleted = appointment?.status === 'Completed';
+  // Medical data can only be edited for appointments that have been started
+  const canEdit = appointment?.status === 'Completed'
+    || appointment?.status === 'In Progress'
+    || appointment?.status === 'IN_PROGRESS';
 
   // Format time helper function
   const formatTimeHHMM = (timeString?: string) => {
     if (!timeString) return '';
-    return timeString.split('.')[0];
+    const parts = timeString.split(':');
+    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : timeString;
   };
 
   // ESC key: return to previous view
@@ -237,10 +245,10 @@ export const AppointmentDetails: React.FC = () => {
 
             {/* Status and Actions */}
             <div className="flex items-center space-x-3">
-              {/* Completed Status Badge */}
-              <div className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1">
-                <span className="material-icons-round text-sm">check_circle</span>
-                <span className="text-sm">{t('completed')}</span>
+              {/* Status Badge */}
+              <div className={`${appointment.status === 'Completed' ? 'bg-green-600' : appointment.status === 'In Progress' || appointment.status === 'IN_PROGRESS' ? 'bg-purple-600' : appointment.status === 'Cancelled' ? 'bg-red-600' : appointment.status === 'No Show' ? 'bg-orange-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-1`}>
+                <span className="material-icons-round text-sm">{appointment.status === 'Completed' ? 'check_circle' : appointment.status === 'Cancelled' ? 'cancel' : appointment.status === 'No Show' ? 'person_off' : appointment.status === 'In Progress' || appointment.status === 'IN_PROGRESS' ? 'play_circle' : 'event'}</span>
+                <span className="text-sm">{t((appointment.status === 'IN_PROGRESS' ? 'in_progress' : appointment.status.toLowerCase().replace(/\s+/g, '_')) as any)}</span>
               </div>
 
               {/* Back Button */}
@@ -299,13 +307,20 @@ export const AppointmentDetails: React.FC = () => {
               )}
             </div>
 
-            {/* Right side: Save button */}
+            {/* Right side: Open full consultation + Save button */}
             <div className="flex items-center space-x-2">
+              <Button
+                variant="secondary"
+                icon="open_in_new"
+                onClick={() => navigate(`/appointment/${appointment.id}/start`)}
+              >
+                {t('view_full_consultation')}
+              </Button>
               <Button
                 variant="primary"
                 icon="save"
                 onClick={saveMedical}
-                disabled={saving}
+                disabled={saving || !canEdit}
                 loading={saving}
               >
                 {saving ? t('saving') : t('save')}

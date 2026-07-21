@@ -5,7 +5,7 @@ export interface Patient {
     id: string;
     first_name: string;
     last_name: string;
-    date_of_birth: string; // ISO date string
+    date_of_birth: string;
     gender: 'male' | 'female';
     email: string;
     phone: string;
@@ -13,7 +13,10 @@ export interface Patient {
     city: string;
     state: string;
     zip_code: string;
-    preconditions?: any; // JSON field for medical preconditions
+    cin?: string | null;
+    cnam_identifier?: string | null;
+    insurance_number?: string | null;
+    preconditions?: any;
 }
 
 // For creating new patients (without id)
@@ -28,7 +31,10 @@ export interface PatientCreate {
     city?: string;
     state?: string;
     zip_code?: string;
-    preconditions?: any; // JSON field for medical preconditions
+    cin?: string | null;
+    cnam_identifier?: string | null;
+    insurance_number?: string | null;
+    preconditions?: any;
 }
 
 // For updating patients (all fields optional)
@@ -43,7 +49,10 @@ export interface PatientUpdate {
     city?: string;
     state?: string;
     zip_code?: string;
-    preconditions?: any; // JSON field for medical preconditions
+    cin?: string | null;
+    cnam_identifier?: string | null;
+    insurance_number?: string | null;
+    preconditions?: any;
 }
 
 // For API responses (matches PatientRead from OpenAPI)

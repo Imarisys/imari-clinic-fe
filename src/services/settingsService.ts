@@ -54,24 +54,19 @@ export class SettingsService {
     }
 
     try {
-      console.log('Doctor ID retrieved:', currentDoctorId); // Debug log
-
       if (!currentDoctorId) {
         throw new Error('Doctor ID not found. Please log in again.');
       }
 
       const url = buildApiUrl(`/api/v1/settings/${currentDoctorId}`);
-      console.log('Making request to:', url); // Debug log
 
       const response = await fetch(url, { headers: authService.getAuthHeaders() });
-      console.log('Response status:', response.status); // Debug log
 
       if (!response.ok) {
         throw new Error(`Failed to fetch settings: ${response.status} ${response.statusText}`);
       }
 
       const data: Settings = await response.json();
-      console.log('Settings data received:', data); // Debug log
       
       // Cache the settings with doctor ID
       this.cachedSettings = data;
@@ -105,17 +100,14 @@ export class SettingsService {
   static async getSettingsFieldValues(): Promise<SettingsFieldValues> {
     try {
       const url = buildApiUrl('/api/v1/settings/fields/values');
-      console.log('Making request to:', url); // Debug log
 
       const response = await fetch(url, { headers: authService.getAuthHeaders() });
-      console.log('Field values response status:', response.status); // Debug log
 
       if (!response.ok) {
         throw new Error(`Failed to fetch settings field values: ${response.status} ${response.statusText}`);
       }
 
       const data: SettingsFieldValues = await response.json();
-      console.log('Field values data received:', data); // Debug log
       return data;
     } catch (error) {
       console.error('Error fetching settings field values:', error);

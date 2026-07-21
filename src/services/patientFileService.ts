@@ -1,5 +1,8 @@
 import { PatientFile, PatientFileRead, PatientFileListResponse, FileUploadData } from '../types/PatientFile';
 import { API_CONFIG, buildApiUrl } from '../config/api';
+import { authService } from './authService';
+
+const H = () => authService.getAuthHeaders();
 
 export class PatientFileService {
   /**
@@ -12,18 +15,11 @@ export class PatientFileService {
   ): Promise<PatientFileListResponse> {
     const response = await fetch(
       buildApiUrl(`/api/v1/patients/${patientId}/files?offset=${offset}&limit=${limit}`),
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      { method: 'GET', headers: H() }
     );
-
     if (!response.ok) {
       throw new Error('Failed to fetch patient files');
     }
-
     return response.json();
   }
 
@@ -39,16 +35,17 @@ export class PatientFileService {
     if (fileData.description) {
       formData.append('description', fileData.description);
     }
+    const hdrs = { ...H() };
+    delete (hdrs as any)['Content-Type']; // browser sets multipart boundary
 
     const response = await fetch(buildApiUrl(`/api/v1/patients/${patientId}/files`), {
       method: 'POST',
+      headers: hdrs,
       body: formData,
     });
-
     if (!response.ok) {
       throw new Error('Failed to upload file');
     }
-
     return response.json();
   }
 
@@ -60,22 +57,18 @@ export class PatientFileService {
   }
 
   /**
-   * Fetch thumbnail data for an image file
+   * Get thumbnail blob for an image file
    */
   static async getThumbnailBlob(patientId: string, fileId: string): Promise<string | null> {
     try {
-      const response = await fetch(buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/thumbnail`), {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
+      const response = await fetch(
+        buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/thumbnail`),
+        { method: 'GET', headers: H() }
+      );
+      if (!response.ok) return null;
       const blob = await response.blob();
       return URL.createObjectURL(blob);
-    } catch (error) {
-      console.error('Failed to fetch thumbnail:', error);
+    } catch {
       return null;
     }
   }
@@ -88,27 +81,13 @@ export class PatientFileService {
   }
 
   /**
-   * Get download URL for a file
-   */
-  static getDownloadUrl(patientId: string, fileId: string): string {
-    return buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/download`);
-  }
-
-  /**
    * Get a presigned URL for direct file download
    */
   static async getFileDownloadUrl(patientId: string, fileId: string): Promise<string> {
-    const response = await fetch(buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/url`), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get download URL');
-    }
-
+    const response = await fetch(
+      buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/url`),
+      { method: 'GET', headers: H() }
+    );
     const data = await response.json();
     return data.url;
   }
@@ -117,12 +96,25 @@ export class PatientFileService {
    * Delete a patient file
    */
   static async deletePatientFile(patientId: string, fileId: string): Promise<void> {
-    const response = await fetch(buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}`), {
-      method: 'DELETE',
-    });
-
+    const response = await fetch(
+      buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}`),
+      { method: 'DELETE', headers: H() }
+    );
     if (!response.ok) {
       throw new Error('Failed to delete file');
+    }
+  }
+
+  /**
+   * Delete all files for a patient
+   */
+  static async deleteAllPatientFiles(patientId: string): Promise<void> {
+    const response = await fetch(
+      buildApiUrl(`/api/v1/patients/${patientId}/files`),
+      { method: 'DELETE', headers: H() }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to delete all files');
     }
   }
 
@@ -133,102 +125,80 @@ export class PatientFileService {
     patientId: string,
     fileId: string,
     description: string
-  ): Promise<PatientFile> {
-    const formData = new FormData();
-    formData.append('description', description);
-
+  ): Promise<PatientFileRead> {
     const response = await fetch(
       buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/description`),
       {
         method: 'PUT',
-        body: formData,
+        headers: H(),
+        body: JSON.stringify({ description }),
       }
     );
-
     if (!response.ok) {
       throw new Error('Failed to update file description');
     }
-
     return response.json();
   }
 
   /**
-   * Preview a file by opening it in a new tab
-   */
-  static previewFile(patientId: string, fileId: string): void {
-    const previewUrl = this.getPreviewUrl(patientId, fileId);
-    window.open(previewUrl, '_blank');
-  }
-
-  /**
-   * Download a file
-   */
-  static async downloadFile(patientId: string, fileId: string, filename?: string): Promise<void> {
-    try {
-      const downloadUrl = this.getDownloadUrl(patientId, fileId);
-
-      // Create a temporary link element to trigger download
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Failed to download file:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get file type icon based on file type and mime type
+   * Get Material Icon name for a file type
    */
   static getFileIcon(file: PatientFileRead): string {
-    // Check file_type first, then fall back to mime_type analysis
     switch (file.file_type) {
-      case 'image':
-        return 'image';
+      case 'image': return 'image';
       case 'document':
-        if (file.mime_type.includes('pdf')) return 'picture_as_pdf';
-        if (file.mime_type.includes('word') || file.mime_type.includes('msword') || file.mime_type.includes('wordprocessingml')) return 'description';
-        if (file.mime_type.includes('excel') || file.mime_type.includes('spreadsheet') || file.mime_type.includes('sheet')) return 'table_chart';
-        if (file.mime_type.includes('powerpoint') || file.mime_type.includes('presentation')) return 'slideshow';
+        if (file.mime_type?.includes('pdf')) return 'picture_as_pdf';
+        if (file.mime_type?.includes('word') || file.mime_type?.includes('msword') || file.mime_type?.includes('wordprocessingml')) return 'description';
+        if (file.mime_type?.includes('excel') || file.mime_type?.includes('spreadsheet')) return 'table_chart';
         return 'description';
-      case 'video':
-        return 'play_circle_outline';
-      case 'audio':
-        return 'audiotrack';
-      case 'other':
+      case 'video': return 'play_circle_outline';
+      case 'audio': return 'audiotrack';
       default:
-        // Fall back to mime type analysis for unknown types
-        if (file.mime_type.startsWith('image/')) return 'image';
-        if (file.mime_type.includes('pdf')) return 'picture_as_pdf';
-        if (file.mime_type.startsWith('video/')) return 'play_circle_outline';
-        if (file.mime_type.startsWith('audio/')) return 'audiotrack';
-        if (file.mime_type.includes('text')) return 'text_snippet';
-        if (file.mime_type.includes('zip') || file.mime_type.includes('rar') || file.mime_type.includes('archive')) return 'folder_zip';
+        if (file.mime_type?.startsWith('image/')) return 'image';
+        if (file.mime_type?.includes('pdf')) return 'picture_as_pdf';
+        if (file.mime_type?.startsWith('video/')) return 'play_circle_outline';
+        if (file.mime_type?.startsWith('audio/')) return 'audiotrack';
+        if (file.mime_type?.includes('text')) return 'text_snippet';
         return 'insert_drive_file';
     }
   }
 
   /**
-   * Format file size for display
+   * Format file size
    */
   static formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
-
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   /**
-   * Check if file is an image and can have thumbnail
+   * Check if file is an image
    */
   static isImageFile(file: PatientFileRead): boolean {
-    // Check both file_type and mime_type to be sure
-    return file.file_type === 'image' || file.mime_type.startsWith('image/');
+    return file.mime_type?.startsWith('image/') || false;
+  }
+
+  /**
+   * Download a file
+   */
+  static async downloadFile(patientId: string, fileId: string, filename: string): Promise<void> {
+    const response = await fetch(
+      buildApiUrl(`/api/v1/patients/${patientId}/files/${fileId}/download`),
+      { method: 'GET', headers: H() }
+    );
+    if (!response.ok) throw new Error('Failed to download file');
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   }
 }

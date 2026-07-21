@@ -120,7 +120,7 @@ export const Header: React.FC = () => {
               </h1>
               <div className="flex items-center space-x-2 text-primary-200">
                 <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-xs font-medium">Healthcare Excellence</span>
+                <span className="text-xs font-medium">{t('healthcare_excellence')}</span>
               </div>
             </div>
           </Link>
@@ -184,9 +184,9 @@ export const Header: React.FC = () => {
             {/* User Info */}
             <div className="hidden md:block text-left">
               <div className="text-sm font-medium text-white">
-                Dr. {user?.first_name} {user?.last_name}
+                {user?.role === 'doctor' ? 'Dr. ' : ''}{user?.first_name} {user?.last_name}
               </div>
-              <div className="text-xs text-primary-200">Healthcare Professional</div>
+              <div className="text-xs text-primary-200">{t('healthcare_professional')}</div>
             </div>
 
             {/* Dropdown Arrow */}
@@ -207,7 +207,7 @@ export const Header: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-semibold text-gray-800">
-                      Dr. {user?.first_name} {user?.last_name}
+                      {user?.role === 'doctor' ? 'Dr. ' : ''}{user?.first_name} {user?.last_name}
                     </div>
                     <div className="text-sm text-gray-600">{user?.clinic_name}</div>
                   </div>

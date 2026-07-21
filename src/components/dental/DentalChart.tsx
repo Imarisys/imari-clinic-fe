@@ -155,7 +155,7 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     setTeethData(prev => ({
       ...prev,
       [selectedTooth]: {
-        ...(prev[selectedTooth] || { number: selectedTooth, condition: prev[selectedTooth]?.condition || '' }),
+        ...(prev[selectedTooth] || { number: selectedTooth, condition: '' }),
         number: selectedTooth,
         treatment: selectedTreatment || undefined,
         notes: notes || undefined,

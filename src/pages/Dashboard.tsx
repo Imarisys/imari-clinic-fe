@@ -13,6 +13,7 @@ import { AppointmentBookingForm } from '../components/patients/AppointmentBookin
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { SettingsService } from '../services/settingsService';
+import { BillingService, Analytics } from '../services/billingService';
 import { useTranslation } from '../context/TranslationContext';
 
 export const Dashboard: React.FC = () => {
@@ -29,11 +30,13 @@ export const Dashboard: React.FC = () => {
   const [patientSummary, setPatientSummary] = useState<PatientSummary | null>(null);
   const [patientSummaryLoading, setPatientSummaryLoading] = useState(true);
   const [patientSummaryError, setPatientSummaryError] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<string>('$');
+  const [currency, setCurrency] = useState<string>('TND');
   const [workingHours, setWorkingHours] = useState({ startTime: '08:00', endTime: '17:00' });
   const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+  const [revenue, setRevenue] = useState<Analytics | null>(null);
+  const [revenueLoading, setRevenueLoading] = useState(true);
   // Derived displays
-  const totalPatientsDisplay = patientSummaryLoading ? t('loading') : patientSummaryError ? t('error') : patientSummary?.total_patients?.toString() || '0';
+  const totalPatientsDisplay = patientSummaryLoading ? '…' : patientSummaryError ? '—' : patientSummary?.total_patients?.toString() || '0';
 
   // New state variables for appointment scheduling
   const [showNewAppointmentForm, setShowNewAppointmentForm] = useState(false);
@@ -48,6 +51,7 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { user } = useAuth();
+  const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
   // Load patients for appointment booking
   const loadPatients = async () => {
@@ -63,7 +67,7 @@ export const Dashboard: React.FC = () => {
     const fetchWeather = async () => {
       try {
         setWeatherLoading(true);
-        const weatherData = await weatherService.getWeather('TN', 'Sidi Bouzid');
+        const weatherData = await weatherService.getWeather('TN', 'Tunis');
         setWeather(weatherData);
         setWeatherError(null);
       } catch (error) {
@@ -104,7 +108,7 @@ export const Dashboard: React.FC = () => {
           startTime: settings.appointments_start_time || '08:00',
           endTime: settings.appointments_end_time || '17:00'
         });
-        setCurrency(settings.display_currency || '$'); // Use display_currency from settings
+        setCurrency(settings.display_currency || 'TND'); // Use display_currency from settings
       } catch (error) {
         console.error('Failed to fetch settings:', error);
       }
@@ -124,11 +128,24 @@ export const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchRevenue = async () => {
+      try {
+        setRevenueLoading(true);
+        const analytics = await BillingService.getAnalytics();
+        setRevenue(analytics);
+      } catch (error) {
+        console.error('Failed to fetch revenue analytics:', error);
+      } finally {
+        setRevenueLoading(false);
+      }
+    };
+
     fetchWeather();
     fetchTodayAppointments();
     fetchPatients();
     fetchSettings();
     fetchPatientSummary();
+    fetchRevenue();
   }, []);
 
   const getCurrentTemperature = () => {
@@ -162,8 +179,8 @@ export const Dashboard: React.FC = () => {
 
   // Calculate unique patients from today's appointments
   const getUniquePatientCount = (): string => {
-    if (appointmentsLoading) return t('loading');
-    if (appointmentsError) return t('error');
+    if (appointmentsLoading) return '…';
+    if (appointmentsError) return '—';
     const ids = new Set(appointments.map(a => a.patient_id));
     return ids.size.toString();
   };
@@ -184,13 +201,15 @@ export const Dashboard: React.FC = () => {
   };
   const upcomingAppointment = getUpcomingAppointment();
 
+  const fmtCurrency = (n: number | undefined) => `${currency} ${(n || 0).toFixed(3)}`;
+
   // Stats chips data
   const statChips = [
-    { key: 'appointments', label: t('todays_appointments'), value: appointmentsLoading ? t('loading') : appointmentsError ? t('error') : appointments.length.toString(), icon: 'event' },
+    { key: 'appointments', label: t('todays_appointments'), value: appointmentsLoading ? '…' : appointmentsError ? '—' : appointments.length.toString(), icon: 'event' },
     { key: 'unique_patients', label: t('total_patients'), value: totalPatientsDisplay, icon: 'people' },
-    { key: 'unique_today', label: t('patients') || 'Patients (Today)', value: getUniquePatientCount(), icon: 'groups' },
-    { key: 'revenue', label: t('revenue_today'), value: `${currency} --`, icon: 'attach_money' },
-    { key: 'hours', label: 'Working Hours', value: `${workingHours.startTime} - ${workingHours.endTime}` , icon: 'schedule' }
+    { key: 'unique_today', label: t('patients_today'), value: getUniquePatientCount(), icon: 'groups' },
+    { key: 'revenue', label: t('revenue_today'), value: revenueLoading ? '…' : revenue ? fmtCurrency(revenue.today.collected) : '—', icon: 'attach_money' },
+    { key: 'hours', label: t('working_hours'), value: `${workingHours.startTime} - ${workingHours.endTime}` , icon: 'schedule' }
   ];
 
   // Handle adding a new patient
@@ -200,14 +219,15 @@ export const Dashboard: React.FC = () => {
       // Since we're only creating new patients in this modal, cast to PatientCreate
       // The form will always provide the required fields for creation
       const createData = patientData as PatientCreate;
-      await PatientService.createPatient(createData);
+      const newPatient = await PatientService.createPatient(createData);
+      setPatients(prev => [...prev, newPatient]);
       setIsCreatingPatient(false);
       setIsAddPatientModalOpen(false);
-      // Optionally, refetch patients or update state to include the new patient
+      showNotification('success', t('success'), t('patient_created_successfully'));
     } catch (error) {
       setIsCreatingPatient(false);
       console.error('Failed to create patient:', error);
-      // Handle error (e.g., show notification)
+      showNotification('error', t('error'), error instanceof Error ? error.message : t('failed_to_create_patient'));
     }
   };
 
@@ -219,14 +239,14 @@ export const Dashboard: React.FC = () => {
       setAppointments(prev => [...prev, newAppointment]);
       setShowNewAppointmentForm(false);
       setSelectedPatientForBooking(null);
-      showNotification('success', 'Success', 'Appointment created successfully');
+      showNotification('success', t('success'), t('appointment_created_successfully'));
 
       // Refresh today's appointments
       const todayAppointments = await AppointmentService.getTodaysAppointments();
       setAppointments(todayAppointments);
     } catch (err) {
       console.error('Error creating appointment:', err);
-      showNotification('error', 'Error', err instanceof Error ? err.message : 'Failed to create appointment');
+      showNotification('error', t('error'), err instanceof Error ? err.message : t('failed_to_create_appointment'));
     } finally {
       setAppointmentLoading(false);
     }
@@ -265,7 +285,7 @@ export const Dashboard: React.FC = () => {
       setPatients(response.data);
     } catch (err) {
       console.error('Error searching patients:', err);
-      showNotification('error', 'Error', 'Failed to search patients');
+      showNotification('error', t('error'), t('failed_to_search_patients'));
     } finally {
       setIsSearchingPatients(false);
     }
@@ -318,10 +338,10 @@ export const Dashboard: React.FC = () => {
       setSelectedPatientForBooking(newPatient);
       setShowCreatePatientForm(false);
       setBookingStep('appointment');
-      showNotification('success', 'Success', 'Patient created successfully');
+      showNotification('success', t('success'), t('patient_created_successfully'));
     } catch (err) {
       console.error('Error creating patient:', err);
-      showNotification('error', 'Error', 'Failed to create patient');
+      showNotification('error', t('error'), t('failed_to_create_patient'));
       throw err;
     }
   };
@@ -483,7 +503,7 @@ export const Dashboard: React.FC = () => {
                           </div>
                         </div>
                         <div className="flex flex-col gap-2 items-end">
-                          {appointment.status === 'Booked' && user?.role === 'doctor' && (
+                          {appointment.status === 'Booked' && isDoctor && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
                               className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
@@ -491,7 +511,7 @@ export const Dashboard: React.FC = () => {
                               <span className="material-icons-round text-xs">play_arrow</span>{t('start')}
                             </button>
                           )}
-                          {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && user?.role === 'doctor' && (
+                          {(appointment.status === 'IN_PROGRESS' || appointment.status === 'In Progress') && isDoctor && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
                               className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
@@ -499,7 +519,7 @@ export const Dashboard: React.FC = () => {
                               <span className="material-icons-round text-xs">play_circle</span>{t('resume')}
                             </button>
                           )}
-                          {appointment.status === 'Completed' && (
+                          {(appointment.status === 'Completed' || appointment.status === 'Cancelled' || appointment.status === 'No Show') && (
                             <button
                               onClick={() => navigate(`/appointment/${appointment.id}/start`)}
                               className="bg-neutral-200 hover:bg-neutral-300 text-neutral-800 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 shadow-sm"
@@ -528,9 +548,6 @@ export const Dashboard: React.FC = () => {
                 <button className="w-full px-4 py-3 rounded-xl border border-neutral-300 hover:border-primary-400 hover:bg-neutral-50 text-neutral-700 font-medium text-sm flex items-center gap-2 transition-colors" onClick={() => setShowNewAppointmentForm(true)}>
                   <span className="material-icons-round text-base">event</span>{t('schedule_appointment')}
                 </button>
-                <button className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium text-sm flex items-center gap-2 transition-colors">
-                  <span className="material-icons-round text-base">description</span>{t('generate_report')}
-                </button>
               </div>
             </div>
 
@@ -539,16 +556,12 @@ export const Dashboard: React.FC = () => {
               <h3 className="text-lg font-bold text-neutral-800 mb-4 flex items-center gap-2"><span className="material-icons-round text-primary-500">insights</span>{t('activity_overview')}</h3>
               <div className="space-y-5">
                 <div>
-                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('appointments_completed')}</span><span className="font-semibold text-success-600">8/12</span></div>
-                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-2/3 bg-success-500" /></div>
+                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('appointments_completed')}</span><span className="font-semibold text-success-600">{appointments.filter(a => a.status === 'Completed').length}/{appointments.length}</span></div>
+                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full bg-success-500" style={{ width: `${appointments.length > 0 ? Math.round(appointments.filter(a => a.status === 'Completed').length / appointments.length * 100) : 0}%` }} /></div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('patient_satisfaction')}</span><span className="font-semibold text-primary-600">4.8/5</span></div>
-                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-[96%] bg-primary-500" /></div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('revenue_target')}</span><span className="font-semibold text-primary-600">$2.3K/$3K</span></div>
-                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full w-[77%] bg-primary-600" /></div>
+                  <div className="flex items-center justify-between mb-1 text-sm"><span className="text-neutral-600">{t('collection_rate')}</span><span className="font-semibold text-primary-600">{revenue ? `${Math.round(revenue.today.collection_rate)}%` : '--'}</span></div>
+                  <div className="h-2 bg-neutral-200 rounded-full overflow-hidden"><div className="h-full bg-primary-500" style={{ width: `${revenue ? Math.round(revenue.today.collection_rate) : 0}%` }} /></div>
                 </div>
               </div>
             </div>

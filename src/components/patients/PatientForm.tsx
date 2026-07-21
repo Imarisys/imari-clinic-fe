@@ -35,6 +35,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
     city: '',
     state: '',
     zip_code: '',
+    cin: '',
+    cnam_identifier: '',
+    insurance_number: '',
     preconditions: [],
   });
 
@@ -53,6 +56,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         city: patient.city || '',
         state: patient.state || '',
         zip_code: patient.zip_code || '',
+        cin: patient.cin || '',
+        cnam_identifier: patient.cnam_identifier || '',
+        insurance_number: patient.insurance_number || '',
         preconditions: patient.preconditions || [],
       });
     }
@@ -104,6 +110,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({
         city: formData.city || undefined,
         state: formData.state || undefined,
         zip_code: formData.zip_code || undefined,
+        cin: formData.cin || undefined,
+        cnam_identifier: formData.cnam_identifier || undefined,
+        insurance_number: formData.insurance_number || undefined,
       };
 
       await onSubmit(cleanData);
@@ -245,6 +254,27 @@ export const PatientForm: React.FC<PatientFormProps> = ({
                 value={formData.zip_code}
                 onChange={(e) => handleInputChange('zip_code', e.target.value)}
                 placeholder={t('zip_placeholder')}
+              />
+
+              <Input
+                label="CIN (Carte d'Identité Nationale)"
+                value={formData.cin ?? ''}
+                onChange={(e) => handleInputChange('cin', e.target.value)}
+                placeholder="Numéro CIN (8 chiffres)"
+              />
+
+              <Input
+                label="Identifiant CNAM"
+                value={formData.cnam_identifier ?? ''}
+                onChange={(e) => handleInputChange('cnam_identifier', e.target.value)}
+                placeholder="Ex: 123456/78"
+              />
+
+              <Input
+                label="N° Affiliation CNSS/CNRPS"
+                value={formData.insurance_number ?? ''}
+                onChange={(e) => handleInputChange('insurance_number', e.target.value)}
+                placeholder="Ex: CNSS-123456-78"
               />
             </div>
           </div>

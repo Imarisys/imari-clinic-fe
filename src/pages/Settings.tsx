@@ -71,8 +71,7 @@ export const SettingsPage: React.FC = () => {
   // Available languages - always show these regardless of backend response
   const availableLanguages = [
     { code: 'en', name: 'English', nativeName: 'English' },
-    { code: 'fr', name: 'French', nativeName: 'Français' },
-    { code: 'ar', name: 'Arabic', nativeName: 'العربية' }
+    { code: 'fr', name: 'French', nativeName: 'Français' }
   ];
 
   useEffect(() => {
@@ -88,17 +87,6 @@ export const SettingsPage: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-
-      // Debug: Check if user is authenticated and doctor_id exists
-      const isAuth = authService.isAuthenticated();
-      const currentUser = authService.getCurrentUser();
-      const doctorId = authService.getDoctorId();
-
-      console.log('=== Settings Page Debug ===');
-      console.log('Is authenticated:', isAuth);
-      console.log('Current user:', currentUser);
-      console.log('Doctor ID:', doctorId);
-      console.log('========================');
 
       const [settingsData, fieldValuesData] = await Promise.all([
         SettingsService.getSettings(),
@@ -135,8 +123,36 @@ export const SettingsPage: React.FC = () => {
     handleInputChange('appointments_working_days', updatedDays);
   };
 
+  // Validate settings before saving — returns an error message (key) or null
+  const validateSettings = (s: typeof settings): string | null => {
+    if (!s) return null;
+    const toMinutes = (t?: string) => {
+      if (!t) return 0;
+      const [h, m] = t.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    if (s.appointments_start_time && s.appointments_end_time &&
+        toMinutes(s.appointments_end_time) <= toMinutes(s.appointments_start_time)) {
+      return t('end_time_after_start');
+    }
+    if (s.clinic_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.clinic_email)) {
+      return t('invalid_email_format');
+    }
+    if (s.notifications_appointment_reminder && s.notifications_reminder_time !== undefined &&
+        (s.notifications_reminder_time < 1 || s.notifications_reminder_time > 10080)) {
+      return t('invalid_reminder_time');
+    }
+    return null;
+  };
+
   const handleSave = async () => {
     if (!settings) return;
+
+    const validationError = validateSettings(settings);
+    if (validationError) {
+      showNotification('error', t('error'), validationError);
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -147,22 +163,20 @@ export const SettingsPage: React.FC = () => {
       const currentLayoutPosition = updatedSettings.layout_position || 'sidebar';
       const previousLayoutPosition = localStorage.getItem('previous_layout_position') || 'sidebar';
 
-      showNotification('success', 'Success', t('layout_updated_successfully'));
-
-      // Store the current layout position for next comparison
-      localStorage.setItem('previous_layout_position', currentLayoutPosition);
-
-      // Reload page if layout position changed
+      // Only the layout-specific toast mentions layout; otherwise show a generic success
       if (currentLayoutPosition !== previousLayoutPosition) {
-        // Store the current tab so we can restore it after reload
+        showNotification('success', t('success'), t('layout_updated_successfully'));
+        localStorage.setItem('previous_layout_position', currentLayoutPosition);
         localStorage.setItem('settings_active_tab', 'layout');
         setTimeout(() => {
           window.location.reload();
         }, 1000); // Small delay to show the success notification
+      } else {
+        showNotification('success', t('success'), t('settings_saved_successfully'));
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      showNotification('error', 'Error', 'Failed to save settings');
+      showNotification('error', t('error'), t('failed_to_save_settings'));
     } finally {
       setIsSaving(false);
     }
@@ -245,6 +259,14 @@ export const SettingsPage: React.FC = () => {
 
   const handleAddEditAppointmentType = async () => {
     if (!appointmentTypeForm.name) return;
+    if (!appointmentTypeForm.duration_minutes || appointmentTypeForm.duration_minutes <= 0) {
+      showNotification('error', t('error'), t('invalid_duration'));
+      return;
+    }
+    if (appointmentTypeForm.cost < 0) {
+      showNotification('error', t('error'), t('invalid_cost'));
+      return;
+    }
 
     try {
       let response: AppointmentType;
@@ -674,8 +696,10 @@ export const SettingsPage: React.FC = () => {
                     <Input
                       label={t('reminder_time_minutes')}
                       type="number"
+                      min={1}
+                      max={10080}
                       value={settings.notifications_reminder_time.toString()}
-                      onChange={(e) => handleInputChange('notifications_reminder_time', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleInputChange('notifications_reminder_time', Math.min(10080, Math.max(0, parseInt(e.target.value) || 0)))}
                       placeholder="60"
                       className="w-32"
                     />
@@ -698,12 +722,12 @@ export const SettingsPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-card p-6">
           <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
             <span className="material-icons-round text-primary-600 mr-2">display_settings</span>
-            Display Preferences
+            {t('display_preferences')}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Format</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('date_format')}</label>
               <select
                 value={settings.display_date_format}
                 onChange={(e) => handleInputChange('display_date_format', e.target.value)}
@@ -716,20 +740,20 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Time Format</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('time_format')}</label>
               <select
                 value={settings.display_time_format}
                 onChange={(e) => handleInputChange('display_time_format', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {fieldValues.timeFormats.map((format) => (
-                  <option key={format} value={format}>{format === '12h' ? '12 Hour (AM/PM)' : '24 Hour'}</option>
+                  <option key={format} value={format}>{format === '12h' ? t('12_hour') : t('24_hour')}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('currency')}</label>
               <select
                 value={settings.display_currency}
                 onChange={(e) => handleInputChange('display_currency', e.target.value)}
@@ -742,20 +766,20 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Temperature Unit</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('temperature_unit')}</label>
               <select
                 value={settings.display_temperature_unit}
                 onChange={(e) => handleInputChange('display_temperature_unit', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               >
                 {fieldValues.temperatureUnits.map((unit) => (
-                  <option key={unit} value={unit}>{unit === 'celsius' ? 'Celsius (°C)' : 'Fahrenheit (°F)'}</option>
+                  <option key={unit} value={unit}>{unit === 'celsius' ? t('celsius') : t('fahrenheit')}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('language')}</label>
               <select
                 value={settings.display_language || currentUILanguage}
                 onChange={(e) => handleInputChange('display_language', e.target.value)}
@@ -936,113 +960,16 @@ export const SettingsPage: React.FC = () => {
 
   const renderBackupRestoreTab = () => (
     <div className="space-y-6">
-      {/* Cloud Backup Section */}
+      {/* Cloud Backup Section — coming soon */}
       <div className="bg-white rounded-2xl shadow-card p-6">
         <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
           <span className="material-icons-round text-primary-600 mr-2">cloud_upload</span>
-          Cloud Backup
+          {t('backup_restore')}
         </h3>
-
-        <div className="space-y-6">
-          {/* Enable Cloud Backup Toggle */}
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div>
-              <h4 className="font-medium text-gray-800">Enable Cloud Backup</h4>
-              <p className="text-sm text-gray-600 mb-4">{t('automatically_backup_desc')}</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cloudBackupEnabled}
-                onChange={(e) => setCloudBackupEnabled(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-            </label>
-          </div>
-
-          {/* Backup Frequency */}
-          {cloudBackupEnabled && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Automatic Backup Frequency</label>
-              <select
-                value={autoBackupFrequency}
-                onChange={(e) => setAutoBackupFrequency(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Automatic backups will run in the background at the selected frequency
-              </p>
-            </div>
-          )}
-
-          {/* Manual Backup */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">Manual Backup</h4>
-              <p className="text-sm text-gray-600 mb-4">Create an immediate backup of all your clinic data</p>
-              <Button
-                onClick={handleCloudBackup}
-                disabled={isBackingUp}
-                variant="primary"
-                className="w-full"
-              >
-                {isBackingUp ? (
-                  <>
-                    <span className="material-icons-round animate-spin mr-2">cloud_upload</span>
-                    Backing up...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-icons-round mr-2">cloud_upload</span>
-                    Backup Now
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div>
-              <h4 className="font-medium text-gray-800 mb-2">Restore from Cloud</h4>
-              <p className="text-sm text-gray-600 mb-4">Restore your clinic data from the latest cloud backup</p>
-              <Button
-                onClick={handleCloudRestore}
-                disabled={isRestoring || !lastBackupDate}
-                variant="secondary"
-                className="w-full"
-              >
-                {isRestoring ? (
-                  <>
-                    <span className="material-icons-round animate-spin mr-2">cloud_download</span>
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-icons-round mr-2">cloud_download</span>
-                    Restore from Cloud
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Last Backup Info */}
-          {lastBackupDate && (
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center">
-                <span className="material-icons-round text-green-600 mr-2">cloud_done</span>
-                <div>
-                  <p className="font-medium text-green-800">Last backup completed</p>
-                  <p className="text-sm text-green-600">
-                    {new Date(lastBackupDate).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+        <div className="p-6 bg-blue-50 rounded-xl border border-blue-200 text-center">
+          <span className="material-icons-round text-4xl text-blue-400 mb-3 block">cloud_off</span>
+          <p className="font-medium text-gray-800 mb-1">{t('coming_soon')}</p>
+          <p className="text-sm text-gray-600">{t('not_available_in_demo')}</p>
         </div>
       </div>
 
@@ -1096,50 +1023,6 @@ export const SettingsPage: React.FC = () => {
                 <li>• Keep your backup files secure and in a safe location</li>
               </ul>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Backup History */}
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-          <span className="material-icons-round text-primary-600 mr-2">history</span>
-          Backup History
-        </h3>
-
-        <div className="space-y-3">
-          {/* Mock backup history entries */}
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <span className="material-icons-round text-green-600 mr-3">cloud_done</span>
-              <div>
-                <p className="font-medium text-gray-800">Automatic Cloud Backup</p>
-                <p className="text-sm text-gray-600">August 1, 2025 at 2:00 AM</p>
-              </div>
-            </div>
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Success</span>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <span className="material-icons-round text-blue-600 mr-3">download</span>
-              <div>
-                <p className="font-medium text-gray-800">Manual Settings Export</p>
-                <p className="text-sm text-gray-600">July 28, 2025 at 10:30 AM</p>
-              </div>
-            </div>
-            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Exported</span>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center">
-              <span className="material-icons-round text-green-600 mr-3">cloud_done</span>
-              <div>
-                <p className="font-medium text-gray-800">Automatic Cloud Backup</p>
-                <p className="text-sm text-gray-600">July 25, 2025 at 2:00 AM</p>
-              </div>
-            </div>
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Success</span>
           </div>
         </div>
       </div>
@@ -1232,44 +1115,46 @@ export const SettingsPage: React.FC = () => {
         <Modal
           isOpen={showAppointmentTypeModal}
           onClose={() => setShowAppointmentTypeModal(false)}
-          title={`${editingAppointmentType ? 'Edit' : 'Add'} Appointment Type`}
+          title={editingAppointmentType ? t('edit_appointment_type') : t('add_appointment_type')}
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('name')}</label>
               <Input
                 value={appointmentTypeForm.name}
                 onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, name: e.target.value })}
-                placeholder="Enter appointment type name"
+                placeholder={t('enter_appointment_type_name')}
                 className="w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('duration_minutes')}</label>
               <Input
                 type="number"
+                min={1}
                 value={appointmentTypeForm.duration_minutes.toString()}
-                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, duration_minutes: parseInt(e.target.value) })}
-                placeholder="Enter duration in minutes"
+                onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, duration_minutes: parseInt(e.target.value) || 0 })}
+                placeholder={t('enter_duration')}
                 className="w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cost</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('cost')}</label>
               <Input
                 type="number"
+                min={0}
                 step="0.01"
                 value={appointmentTypeForm.cost.toString()}
                 onChange={(e) => setAppointmentTypeForm({ ...appointmentTypeForm, cost: parseFloat(e.target.value) || 0 })}
-                placeholder="Enter cost"
+                placeholder={t('enter_cost')}
                 className="w-full"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Icon</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('icon')}</label>
               <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg">
                 {availableIcons.map(icon => (
                   <button
@@ -1291,7 +1176,7 @@ export const SettingsPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-2">Select an icon that best represents this appointment type</p>
+              <p className="text-xs text-gray-500 mt-2">{t('select_icon_hint')}</p>
             </div>
           </div>
 
@@ -1301,14 +1186,14 @@ export const SettingsPage: React.FC = () => {
               variant="secondary"
               className="px-4 py-2 rounded-lg"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleAddEditAppointmentType}
               variant="primary"
               className="px-4 py-2 rounded-lg"
             >
-              Save
+              {t('save')}
             </Button>
           </div>
         </Modal>

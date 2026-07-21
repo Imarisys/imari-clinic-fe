@@ -44,9 +44,9 @@ const extractErrorMessage = async (response: Response): Promise<string> => {
 // API service for patient operations
 export class PatientService {
   // List patients with pagination
-  static async listPatients(offset = 0, limit = 20): Promise<PatientListResponse> {
+  static async listPatients(offset = 0, limit = 20, sortBy = 'last_name', sortOrder = 'asc'): Promise<PatientListResponse> {
     try {
-      const url = buildApiUrl(`${API_CONFIG.endpoints.patients.list}?offset=${offset}&limit=${limit}`);
+      const url = buildApiUrl(`${API_CONFIG.endpoints.patients.list}?offset=${offset}&limit=${limit}&sort_by=${sortBy}&sort_order=${sortOrder}`);
       const response = await fetch(url, {
         method: 'GET',
         headers: authService.getAuthHeaders(),

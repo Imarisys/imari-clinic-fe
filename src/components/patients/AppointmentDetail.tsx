@@ -341,6 +341,7 @@ export const AppointmentDetail: React.FC<AppointmentDetailProps> = ({
                   type="date"
                   value={formData.date || ''}
                   onChange={(e) => handleChange('date', e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
                   error={errors.date}
                   disabled={isEditLoading}
                 />

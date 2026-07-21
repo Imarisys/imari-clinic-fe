@@ -36,11 +36,11 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const { showNotification } = useNotification();
   const [isClosing, setIsClosing] = useState(false);
 
-  // Debug log to see what working hours we're receiving
+  // Validate working hours on mount
   useEffect(() => {
-    console.log('AppointmentBookingForm - Received workingHours prop:', workingHours);
-    console.log('AppointmentBookingForm - startTime:', workingHours?.startTime);
-    console.log('AppointmentBookingForm - endTime:', workingHours?.endTime);
+    if (!workingHours?.startTime || !workingHours?.endTime) {
+      console.warn('Working hours not configured — using defaults 08:00-17:00');
+    }
   }, [workingHours]);
 
   const [formData, setFormData] = useState<AppointmentCreate>({
@@ -274,10 +274,6 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   // Function to fetch available slots
   const fetchAvailableSlots = async (appointmentTypeName: string, date: string) => {
     if (!appointmentTypeName || !date) return;
-
-    // Add debugging to check working hours
-    console.log('Fetching slots with working hours:', workingHours);
-    console.log('Start time:', workingHours?.startTime, 'End time:', workingHours?.endTime);
 
     // Ensure we have valid working hours before making the API call
     const startTime = workingHours?.startTime || '08:00';

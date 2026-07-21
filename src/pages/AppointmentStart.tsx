@@ -7,11 +7,14 @@ import { PatientFileService } from '../services/patientFileService';
 import { Appointment, AppointmentCreate } from '../types/Appointment';
 import { AppointmentMedicalData, VitalSign, PatientMedicalHistory } from '../types/Medical';
 import { PatientFileRead, FileUploadData } from '../types/PatientFile';
+import { Patient } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { jsPDF } from 'jspdf';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
-// Dental chart hidden for GP context — preserved for future use
-// import { DentalChart } from '../components/dental/DentalChart';
+import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 import { useTranslation } from '../context/TranslationContext';
 
 // Predefined vital signs with their units and styling - now using translation keys
@@ -26,6 +29,52 @@ const getVitalSignOptions = (t: any) => [
   { name: t('blood_sugar'), unit: t('mg_per_dl'), icon: 'bloodtype', color: 'rose' },
   { name: t('pulse'), unit: t('bpm'), icon: 'favorite', color: 'red' },
 ];
+
+// Plausible numeric ranges per vital (returns null if valid, an error message key otherwise).
+// Keys are normalized the same way saveMedicalData does: lowercased + underscores.
+export const validateVital = (name: string, value: string): string | null => {
+  if (!value || !value.trim()) return null; // empty is allowed
+  const key = name.toLowerCase().replace(/\s+/g, '_');
+  const numeric = parseFloat(value);
+  if (isNaN(numeric)) return 'vital_must_be_number';
+
+  switch (key) {
+    case 'heart_rate':
+    case 'pulse':
+      if (numeric < 30 || numeric > 220) return 'vital_out_of_range';
+      return null;
+    case 'blood_pressure':
+      // Accepts "120/80" or single number; only validate the numeric parts
+      if (value.includes('/')) {
+        const [sys, dia] = value.split('/').map(v => parseFloat(v));
+        if (isNaN(sys) || isNaN(dia)) return 'vital_invalid_bp_format';
+        if (sys < 70 || sys > 250 || dia < 40 || dia > 150) return 'vital_out_of_range';
+      } else if (numeric < 40 || numeric > 250) {
+        return 'vital_out_of_range';
+      }
+      return null;
+    case 'temperature':
+      if (numeric < 34 || numeric > 42) return 'vital_out_of_range';
+      return null;
+    case 'oxygen_saturation':
+      if (numeric < 50 || numeric > 100) return 'vital_out_of_range';
+      return null;
+    case 'respiratory_rate':
+      if (numeric < 8 || numeric > 40) return 'vital_out_of_range';
+      return null;
+    case 'blood_sugar':
+      if (numeric < 20 || numeric > 600) return 'vital_out_of_range';
+      return null;
+    case 'weight':
+      if (numeric < 0.5 || numeric > 500) return 'vital_out_of_range';
+      return null;
+    case 'height':
+      if (numeric < 20 || numeric > 250) return 'vital_out_of_range';
+      return null;
+    default:
+      return null; // unknown vitals aren't range-checked
+  }
+};
 
 // Add a unified ComingSoon component for consistent design
 const ComingSoonSection: React.FC<{
@@ -81,19 +130,23 @@ export const AppointmentStart: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { user } = useAuth();
 
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [_, setMedicalData] = useState<AppointmentMedicalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingMedicalData, setSavingMedicalData] = useState(false);
+  const [medicalDataError, setMedicalDataError] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isStarted, setIsStarted] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [isCreatingFollowUp, setIsCreatingFollowUp] = useState(false);
-  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files' | 'dental' | 'gynecology' | 'ophthalmology'>('consultation');
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'vitals' | 'consultation' | 'files' | 'gynecology' | 'ophthalmology'>('consultation');
 
   // Medical data fields
   const [diagnosis, setDiagnosis] = useState('');
@@ -121,6 +174,7 @@ export const AppointmentStart: React.FC = () => {
   const [showTreatmentHistory, setShowTreatmentHistory] = useState(false);
   const [showPrescriptionHistory, setShowPrescriptionHistory] = useState(false);
   const [patientHistory, setPatientHistory] = useState<PatientMedicalHistory | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
   const [expandedHistoryItems, setExpandedHistoryItems] = useState<Set<string>>(new Set());
 
   // Replace mock uploaded files with real patient files
@@ -138,6 +192,58 @@ export const AppointmentStart: React.FC = () => {
     file: null,
     imageUrl: null
   });
+
+  // Auto-enable viewing for completed/in-progress appointments
+  useEffect(() => {
+    const status = appointment?.status;
+    if (status === 'Completed' || status === 'In Progress' || status === 'IN_PROGRESS') {
+      setIsStarted(true);
+      if (status === 'Completed') setIsCompleted(true);
+    }
+  }, [appointment?.status]);
+
+  const handleGenerateBS1 = async () => {
+    if (!appointment) return;
+    const doctorName = user ? `Dr ${user.first_name} ${user.last_name}` : '______________________';
+    const today = new Date().toLocaleDateString('fr-TN');
+    const patientFull = `${appointment.patient_first_name || ''} ${appointment.patient_last_name || ''}`.trim();
+    const parts = patientFull.split(' ');
+    const lastName = parts.pop() || '';
+    const firstName = parts.join(' ');
+
+    try {
+      const resp = await fetch('/BS1_CNAM_2026.pdf');
+      const pdfDoc = await PDFDocument.load(await resp.arrayBuffer());
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const page = pdfDoc.getPage(0);
+      const { height: ph } = page.getSize();
+      const fill = (t: string, x: number, y: number, s = 7) =>
+        page.drawText(t || '', { x, y: ph - y, size: s, font, color: rgb(0, 0, 0.6) });
+
+      fill(firstName, 510, 244, 6);
+      fill(lastName, 510, 263, 6);
+      fill('X', 495, 358, 8);
+      fill(firstName, 510, 405, 6);
+      fill(lastName, 510, 423, 6);
+      fill(appointment.date, 80, 96, 6);
+      fill('CG', 164, 96, 6);
+      fill('60.000', 463, 96, 6);
+      fill(doctorName, 80, 514, 8);
+      fill('12-34567-8', 80, 530, 7);
+      fill('Médecine Générale', 80, 546, 7);
+      fill(today, 220, 546, 7);
+
+      const blob = new Blob([new Uint8Array(await pdfDoc.save())], { type: 'application/pdf' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `BS1_${lastName}_${appointment.date}.pdf`;
+      a.click(); URL.revokeObjectURL(a.href);
+      showNotification('success', 'BS1 CNAM', 'Formulaire BS1 téléchargé');
+    } catch (e) {
+      console.error(e);
+      showNotification('error', 'Erreur', 'Échec BS1');
+    }
+  };
 
   // Timer for appointment duration
   useEffect(() => {
@@ -190,6 +296,7 @@ export const AppointmentStart: React.FC = () => {
     if (!appointmentId) return;
 
     try {
+      setMedicalDataError(null);
       const data = await AppointmentService.getMedicalData(appointmentId);
       setMedicalData(data);
 
@@ -220,14 +327,26 @@ export const AppointmentStart: React.FC = () => {
           setVitalSigns(vitalsFromApi);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch medical data:', error);
-      // Don't show error notification as medical data might not exist yet
+      // Distinguish "no data yet" (404) from a real load failure
+      if (error?.message?.includes('404') || error?.response?.status === 404) {
+        setMedicalDataError(null);
+      } else {
+        setMedicalDataError(t('failed_to_load_medical_data'));
+      }
     }
   };
 
   const saveMedicalData = async () => {
     if (!appointmentId) return;
+
+    // Block save if any vital has an invalid value — prevents persisting garbage
+    const invalidVital = vitalSigns.find(v => v.value && v.value.trim() && validateVital(v.name, v.value));
+    if (invalidVital) {
+      showNotification('warning', t('vital_signs'), t('vital_invalid_block_save'));
+      return;
+    }
 
     setSavingMedicalData(true);
     try {
@@ -249,6 +368,7 @@ export const AppointmentStart: React.FC = () => {
 
       const updatedData = await AppointmentService.updateMedicalData(appointmentId, medicalDataUpdate);
       setMedicalData(updatedData);
+      setLastSavedAt(new Date());
       // Remove the success notification for auto-saves - they should be silent
     } catch (error) {
       console.error('Failed to save medical data:', error);
@@ -261,7 +381,9 @@ export const AppointmentStart: React.FC = () => {
   // Auto-save medical data when fields change (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isStarted && (diagnosis || treatmentPlan || prescription || vitalSigns.some(v => v.value))) {
+      // Save whenever started, including when fields are cleared (so stale
+      // values can be wiped). The debounce prevents save spam on each keystroke.
+      if (isStarted) {
         saveMedicalData();
       }
     }, 2000); // Auto-save after 2 seconds of inactivity
@@ -274,8 +396,20 @@ export const AppointmentStart: React.FC = () => {
     if (appointment) {
       fetchMedicalData();
       fetchPatientHistory();
+      fetchPatientRecord();
     }
   }, [appointment]);
+
+  // Fetch the patient record for accurate demographics (gender, DOB, contact)
+  const fetchPatientRecord = async () => {
+    if (!appointment?.patient_id) return;
+    try {
+      const patientData = await PatientService.getPatient(appointment.patient_id);
+      setPatient(patientData);
+    } catch (error) {
+      console.error('Failed to fetch patient record:', error);
+    }
+  };
 
   // Fetch patient medical history
   const fetchPatientHistory = async () => {
@@ -357,9 +491,6 @@ export const AppointmentStart: React.FC = () => {
     } catch (error) {
       console.error('Failed to start appointment:', error);
       showNotification('error', t('error'), t('failed_to_start_appointment'));
-      // Fallback to local state if API call fails
-      setIsStarted(true);
-      setStartTime(new Date());
     }
   };
 
@@ -525,9 +656,86 @@ export const AppointmentStart: React.FC = () => {
     }
   };
 
-  const handleGeneratePrescription = () => {
-    // TODO: Implement prescription generation
-    showNotification('info', t('generate_prescription'), t('prescription_generation_coming_soon'));
+  const handleGeneratePrescription = async () => {
+    if (!prescription || !prescription.trim()) {
+      showNotification('warning', t('prescription_label'), t('prescription_empty_warning'));
+      return;
+    }
+    if (!appointment?.patient_id) {
+      showNotification('error', t('error'), t('patient_info_unavailable'));
+      return;
+    }
+
+    try {
+      const doctorName = user ? `Dr ${user.first_name} ${user.last_name}` : t('doctor_fallback');
+      const clinicName = user?.clinic_name || t('clinic_fallback');
+      const today = new Date().toLocaleDateString(language === 'fr' ? 'fr-TN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+      const patientName = `${appointment.patient_first_name || ''} ${appointment.patient_last_name || ''}`.trim() || t('patient');
+      const lines = prescription.split('\n').filter(l => l.trim());
+
+      // Generate PDF in Tunisian ordonnance format
+      const doc = new jsPDF({ format: 'a5', unit: 'mm' });
+      let y = 12;
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(doctorName, 10, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.text(clinicName, 10, y + 3);
+      doc.text(t('clinic_phone_placeholder'), 10, y + 5.5);
+
+      // Divider
+      y += 9;
+      doc.setDrawColor(200);
+      doc.setLineWidth(0.3);
+      doc.line(10, y, 95, y);
+      y += 9;
+
+      // Patient info
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(`${t('patient_prefix')} ${patientName}`, 10, y);
+      doc.text(`${t('date_prefix')} ${today}`, 65, y);
+      y += 8;
+
+      // R/ section
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(t('prescription_symbol'), 10, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      for (const line of lines) {
+        const wrapped = doc.splitTextToSize(line, 85);
+        doc.text(wrapped, 14, y);
+        y += wrapped.length * 4;
+      }
+      y += 5;
+
+      // Footer
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(6);
+      doc.text(t('no_substitution_notice'), 10, y);
+      y += 12;
+      doc.text(t('signature_label'), 65, y);
+
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], `ordonnance_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.pdf`, { type: 'application/pdf' });
+
+      await PatientFileService.uploadPatientFile(appointment.patient_id, {
+        file,
+        description: `${t('prescription_label')} — ${doctorName} — ${today}`,
+      });
+
+      showNotification('success', t('prescription_label'), t('prescription_saved_success'));
+      fetchPatientFiles(); // Refresh the files list
+    } catch (error) {
+      console.error('Failed to save prescription:', error);
+      showNotification('error', t('error'), t('prescription_generation_failed'));
+    }
   };
 
   const getElapsedTime = () => {
@@ -658,7 +866,7 @@ export const AppointmentStart: React.FC = () => {
                   {/* Complete Button */}
                   {!isCompleted ? (
                     <button
-                      onClick={handleEndAppointment}
+                      onClick={() => setShowCompleteConfirm(true)}
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-1"
                     >
                       <span className="material-icons-round text-sm">check_circle</span>
@@ -746,7 +954,7 @@ export const AppointmentStart: React.FC = () => {
                 className="flex items-center space-x-1 bg-purple-50 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
               >
                 <span className="material-icons-round text-sm">medication</span>
-                <span className="font-medium">{t('generate_rx')}</span>
+                <span className="font-medium">{t('prescription_label')}</span>
               </button>
 
               {/* Upload File Button */}
@@ -818,19 +1026,6 @@ export const AppointmentStart: React.FC = () => {
                 <span>{t('patient_files')}</span>
               </button>
 
-              {/*
-              <button
-                onClick={() => setActiveTab('dental')}
-                className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
-                  activeTab === 'dental'
-                    ? 'text-primary-600 border-primary-500'
-                    : 'text-neutral-600 border-transparent hover:text-neutral-800'
-                }`}
-              >
-                <span className="material-icons-round">sentiment_very_satisfied</span>
-                <span>{t('dental')}</span>
-              </button>
-              */}
               <button
                 onClick={() => setActiveTab('gynecology')}
                 className={`flex items-center space-x-2 px-6 py-3 font-medium transition-all duration-300 border-b-2 ${
@@ -856,13 +1051,36 @@ export const AppointmentStart: React.FC = () => {
               </button>
 
               {/* Save Indicator */}
-              {savingMedicalData && (
+              {savingMedicalData ? (
                 <div className="ml-auto flex items-center space-x-2 px-4 py-3">
                   <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full"></div>
                   <span className="text-sm text-primary-600 font-medium">{t('saving')}</span>
                 </div>
+              ) : lastSavedAt && (
+                <div className="ml-auto flex items-center space-x-2 px-4 py-3">
+                  <span className="material-icons-round text-success-500 text-sm">check_circle</span>
+                  <span className="text-sm text-success-600 font-medium">
+                    {t('saved')} {lastSavedAt.toLocaleTimeString()}
+                  </span>
+                </div>
               )}
             </div>
+
+            {/* Medical data load error banner */}
+            {medicalDataError && (
+              <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+                <span className="text-sm text-red-700 flex items-center gap-2">
+                  <span className="material-icons-round text-red-500">error_outline</span>
+                  {medicalDataError}
+                </span>
+                <button
+                  onClick={() => fetchMedicalData()}
+                  className="text-sm text-red-700 font-medium hover:underline"
+                >
+                  {t('retry')}
+                </button>
+              </div>
+            )}
 
             {/* Scrollable Content Area */}
             <div>
@@ -920,14 +1138,29 @@ export const AppointmentStart: React.FC = () => {
                               </div>
                             )}
 
-                            <input
-                              type="text"
-                              value={vital.value}
-                              onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
-                              placeholder={t('value')}
-                              disabled={!isStarted}
-                              className="w-20 px-2 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
-                            />
+                            {(() => {
+                              const vitalError = validateVital(vital.name, vital.value);
+                              return (
+                                <input
+                                  type="text"
+                                  value={vital.value}
+                                  onChange={(e) => updateVitalSign(vital.id, 'value', e.target.value)}
+                                  placeholder={t('value')}
+                                  disabled={!isStarted}
+                                  aria-invalid={!!vitalError}
+                                  title={vitalError ? t(vitalError as any) : undefined}
+                                  className={`w-20 px-2 py-1 border rounded focus:ring-2 focus:border-transparent text-center text-sm disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed ${vitalError ? 'border-red-400 focus:ring-red-500 bg-red-50' : 'border-neutral-300 focus:ring-primary-500'}`}
+                                />
+                              );
+                            })()}
+                            {(() => {
+                              const vitalError = validateVital(vital.name, vital.value);
+                              return vitalError ? (
+                                <span className="text-xs text-red-500 absolute -bottom-4 left-0 whitespace-nowrap" title={t(vitalError as any)}>
+                                  !
+                                </span>
+                              ) : null;
+                            })()}
 
                             {vital.unit ? (
                               <span className="text-sm text-neutral-600 font-medium w-12">{vital.unit}</span>
@@ -1032,15 +1265,6 @@ export const AppointmentStart: React.FC = () => {
                       className="w-full px-4 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                     />
                   </div>
-                </div>
-              )}
-
-              {/* Dental Tab — hidden for GP context, code preserved */}
-              {activeTab === 'dental' && (
-                <div className="space-y-4 text-center py-12">
-                  <span className="material-icons-round text-5xl text-neutral-300 mb-4 block">construction</span>
-                  <p className="text-lg font-medium text-neutral-500">Fiche dentaire</p>
-                  <p className="text-sm text-neutral-400">Fonctionnalité dentaire à venir</p>
                 </div>
               )}
 
@@ -1306,14 +1530,14 @@ export const AppointmentStart: React.FC = () => {
                 id: appointment.patient_id,
                 first_name: appointment.patient_first_name,
                 last_name: appointment.patient_last_name,
-                email: '',
-                phone: '',
-                date_of_birth: '',
-                gender: 'male',
-                street: '',
-                city: '',
-                state: '',
-                zip_code: ''
+                email: patient?.email || '',
+                phone: patient?.phone || '',
+                date_of_birth: patient?.date_of_birth || '',
+                gender: patient?.gender || 'male',
+                street: patient?.street || '',
+                city: patient?.city || '',
+                state: patient?.state || '',
+                zip_code: patient?.zip_code || ''
               }}
               onSubmit={handleFollowUpSubmit}
               onCancel={handleFollowUpCancel}
@@ -1321,6 +1545,22 @@ export const AppointmentStart: React.FC = () => {
             />
           </Modal>
         )}
+
+        {/* Complete Appointment Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={showCompleteConfirm}
+          onClose={() => setShowCompleteConfirm(false)}
+          onConfirm={async () => {
+            await handleEndAppointment();
+            setShowCompleteConfirm(false);
+          }}
+          title={t('complete_appointment')}
+          message={t('are_you_sure_complete_appointment')}
+          confirmButtonText={t('complete')}
+          cancelButtonText={t('cancel')}
+          isLoading={false}
+          variant="info"
+        />
 
         {/* Vital Signs History Modal */}
         {showVitalHistory && (

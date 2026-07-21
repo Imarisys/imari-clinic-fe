@@ -80,9 +80,6 @@ export const Reports: React.FC = () => {
             <h1 className="text-3xl font-bold text-primary-600 mb-2">{t('reports_analytics')}</h1>
             <p className="text-neutral-600">Indicateurs de performance et analyse de l'activité</p>
           </div>
-          <Button variant="secondary" onClick={() => window.print()} className="flex items-center gap-2">
-            <PrinterIcon className="h-4 w-4" />Imprimer
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

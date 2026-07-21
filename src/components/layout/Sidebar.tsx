@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     item => !item.roles || (user?.role && item.roles.includes(user.role))
   );
 
-  const roleLabel = user?.role === 'doctor' ? 'Doctor' : 'Secretary';
+  const roleLabel = user?.role === 'doctor' ? t('doctor' as any) : t('secretary' as any);
   const displayName = user ? `${user.first_name} ${user.last_name}` : '';
 
   useEffect(() => {
@@ -155,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                   </h1>
                   <div className="flex items-center space-x-2 text-primary-200">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Healthcare Excellence</span>
+                    <span className="text-sm font-medium">{t('healthcare_excellence' as any)}</span>
                   </div>
                 </div>
               )}

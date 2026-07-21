@@ -86,12 +86,7 @@ export const Calendar: React.FC = () => {
         days
       );
 
-      // Filter out cancelled appointments
-      const activeAppointments = appointmentData.filter(appointment =>
-        appointment.status !== 'Cancelled'
-      );
-
-      setAppointments(activeAppointments);
+      setAppointments(appointmentData);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('failed_to_load_appointments'));
       console.error('Error loading appointments:', err);
@@ -153,10 +148,37 @@ export const Calendar: React.FC = () => {
     };
   }, [workingHours, workingDays]);
 
+  // Convert "HH:MM:SS" to minutes since midnight for range comparison
+  const timeToMinutes = (t: string): number => {
+    if (!t) return 0;
+    const parts = t.split(':');
+    return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+  };
+
+  // Returns a conflicting appointment (same date, overlapping time) or null
+  const findConflict = (appt: { date: string; start_time: string; end_time: string }, excludeId?: string): Appointment | null => {
+    const newStart = timeToMinutes(appt.start_time);
+    const newEnd = timeToMinutes(appt.end_time);
+    return appointments.find(a =>
+      a.id !== excludeId &&
+      a.status !== 'Cancelled' &&
+      a.date === appt.date &&
+      timeToMinutes(a.start_time) < newEnd &&
+      timeToMinutes(a.end_time) > newStart
+    ) || null;
+  };
+
   // Handle appointment creation
   const handleCreateAppointment = async (appointmentData: AppointmentCreate) => {
     setAppointmentLoading(true);
     try {
+      // Prevent double-booking before hitting the API
+      const conflict = findConflict(appointmentData);
+      if (conflict) {
+        showNotification('error', t('error'), t('appointment_conflict'));
+        setAppointmentLoading(false);
+        return;
+      }
       const newAppointment = await AppointmentService.createAppointment(appointmentData);
       setAppointments(prev => [...prev, newAppointment]);
       setShowNewAppointmentForm(false);
@@ -367,7 +389,7 @@ export const Calendar: React.FC = () => {
   const getViewStartDate = () => {
     const date = new Date(currentDate);
     if (view === 'week') {
-      date.setDate(date.getDate() - date.getDay()); // Start of week
+      date.setDate(date.getDate() - ((date.getDay() + 6) % 7)); // Start of week (Monday-based)
     } else if (view === 'month') {
       date.setDate(1); // Start of month
     }
@@ -378,7 +400,18 @@ export const Calendar: React.FC = () => {
     switch (view) {
       case 'day': return 1;
       case 'week': return 7;
-      case 'month': return 31; // Approximate
+      case 'month': {
+        // Actual number of days in the current month, extended to cover full week grid
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        // Start from the Monday of the first week, count through end of last week
+        const startOffset = (firstDay.getDay() + 6) % 7; // days before the 1st (Mon-based)
+        const totalDays = lastDay.getDate();
+        const trailing = (7 - ((startOffset + totalDays) % 7)) % 7; // days after month end
+        return startOffset + totalDays + trailing;
+      }
       default: return 7;
     }
   };
@@ -389,6 +422,8 @@ export const Calendar: React.FC = () => {
       case 'Booked': return 'bg-blue-100 text-blue-800';
       case 'Cancelled': return 'bg-red-100 text-red-800';
       case 'No Show': return 'bg-orange-100 text-orange-800';
+      case 'In Progress': return 'bg-purple-100 text-purple-800';
+      case 'IN_PROGRESS': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -400,6 +435,8 @@ export const Calendar: React.FC = () => {
       case 'Booked': return '#dbeafe';    // Light blue
       case 'Cancelled': return '#fee2e2';  // Light red
       case 'No Show': return '#ffedd5';    // Light orange
+      case 'In Progress': return '#f3e8ff'; // Light purple
+      case 'IN_PROGRESS': return '#f3e8ff'; // Light purple
       default: return '#f3f4f6';          // Light gray
     }
   };
@@ -411,6 +448,8 @@ export const Calendar: React.FC = () => {
       case 'Booked': return '#1e40af';    // Dark blue
       case 'Cancelled': return '#b91c1c';  // Dark red
       case 'No Show': return '#c2410c';    // Dark orange
+      case 'In Progress': return '#7e22ce'; // Dark purple
+      case 'IN_PROGRESS': return '#7e22ce'; // Dark purple
       default: return '#4b5563';          // Dark gray
     }
   };
@@ -610,7 +649,6 @@ export const Calendar: React.FC = () => {
     setIsDragging(true);
     setDragStart({ date, time });
     setDragEnd({ date, time });
-    console.log('Starting drag at:', date, time);
   };
 
   const handleMouseEnter = (date: string, time: string) => {
@@ -631,12 +669,6 @@ export const Calendar: React.FC = () => {
         const maxIndex = Math.max(startIndex, endIndex);
         const startTime = timeSlots[minIndex];
         const endTime = timeSlots[maxIndex + 1] || timeSlots[maxIndex]; // End time is next slot or same if last
-
-        console.log('Drag completed:', {
-          date: dragStart.date,
-          startTime,
-          endTime
-        });
 
         setSelectedTimeSlot({
           date: dragStart.date,
@@ -688,6 +720,13 @@ export const Calendar: React.FC = () => {
     const endMinutes = totalMinutes % 60;
     const newEndTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}:00`;
 
+    // Prevent double-booking on the new slot
+    const conflict = findConflict({ date: newDate, start_time: newStartTime, end_time: newEndTime }, appointment.id);
+    if (conflict) {
+      showNotification('error', t('error'), t('appointment_conflict'));
+      return;
+    }
+
     // Load patient data and show reschedule confirmation
     try {
       setAppointmentLoading(true);
@@ -712,6 +751,18 @@ export const Calendar: React.FC = () => {
   // Handle reschedule confirmation
   const handleRescheduleConfirm = async (appointmentData: AppointmentUpdate) => {
     if (!rescheduleData) return;
+
+    // Re-check conflict in case the time was edited in the confirmation dialog
+    if (appointmentData.date && appointmentData.start_time && appointmentData.end_time) {
+      const conflict = findConflict(
+        { date: appointmentData.date, start_time: appointmentData.start_time, end_time: appointmentData.end_time },
+        rescheduleData.appointment.id
+      );
+      if (conflict) {
+        showNotification('error', t('error'), t('appointment_conflict'));
+        return;
+      }
+    }
 
     try {
       setAppointmentLoading(true);
@@ -946,12 +997,12 @@ export const Calendar: React.FC = () => {
                               ))}
                               {patients.length === 0 && searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  {t('no_patients_found')} "{searchQuery}"
+                                  {t('no_patients_found_query', { query: searchQuery })}
                                 </div>
                               )}
                               {patients.length === 0 && !searchQuery && (
                                 <div className="text-center py-8 text-gray-500">
-                                  {t('no_patients_available')}. {t('create_new_patient')}.
+                                  {t('no_patients_create_new')}
                                 </div>
                               )}
                             </div>
@@ -1012,7 +1063,7 @@ export const Calendar: React.FC = () => {
         {/* Cancel Appointment Confirmation Dialog */}
         <ConfirmDialog
           isOpen={showCancelConfirm}
-          title={t('are_you_sure_cancel_appointment')}
+          title={t('cancel_appointment')}
           message={t('are_you_sure_cancel_appointment')}
           confirmText={t('yes')}
           cancelText={t('no')}
@@ -1032,7 +1083,7 @@ export const Calendar: React.FC = () => {
         {/* Delete Appointment Confirmation Dialog */}
         <ConfirmDialog
           isOpen={showDeleteConfirm}
-          title={t('are_you_sure_delete_appointment')}
+          title={t('delete_appointment')}
           message={t('are_you_sure_delete_appointment')}
           confirmText={t('yes')}
           cancelText={t('no')}

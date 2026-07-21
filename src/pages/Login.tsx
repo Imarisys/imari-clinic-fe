@@ -78,7 +78,7 @@ export const Login: React.FC = () => {
                 label="Email Address"
                 type="email"
                 icon="alternate_email"
-                placeholder="doctor@healthcare.com"
+                placeholder="votre@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 required
@@ -97,16 +97,6 @@ export const Login: React.FC = () => {
                 error={loginError}
               />
 
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2" />
-                  <span className="text-neutral-600">Remember me</span>
-                </label>
-                <a href="#" className="text-primary-600 hover:text-primary-700 transition-colors duration-300">
-                  Forgot password?
-                </a>
-              </div>
-
               <Button
                 type="submit"
                 variant="primary"
@@ -119,55 +109,6 @@ export const Login: React.FC = () => {
                 Sign In to Dashboard
               </Button>
             </form>
-
-            {/* Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-neutral-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-neutral-500">Or continue with</span>
-              </div>
-            </div>
-
-            {/* Alternative login methods */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" icon="fingerprint" size="md" fullWidth>
-                Biometric
-              </Button>
-              <Button variant="secondary" icon="badge" size="md" fullWidth>
-                ID Card
-              </Button>
-            </div>
-
-            {/* Footer */}
-            <div className="text-center mt-8 pt-6 border-t border-neutral-200">
-              <p className="text-neutral-500 text-sm">
-                Need help? <a href="#" className="text-primary-600 hover:text-primary-700 transition-colors duration-300">Contact Support</a>
-              </p>
-            </div>
-          </div>
-
-          {/* Info cards */}
-          <div className="mt-6 grid grid-cols-3 gap-4">
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 text-center slide-up-element border border-white/20" style={{ animationDelay: '0.1s' }}>
-              <div className="w-8 h-8 bg-success-500 rounded-xl flex items-center justify-center mx-auto mb-2">
-                <span className="material-icons-round text-white text-sm">security</span>
-              </div>
-              <p className="text-xs text-neutral-600">Secure</p>
-            </div>
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 text-center slide-up-element border border-white/20" style={{ animationDelay: '0.2s' }}>
-              <div className="w-8 h-8 bg-primary-500 rounded-xl flex items-center justify-center mx-auto mb-2">
-                <span className="material-icons-round text-white text-sm">speed</span>
-              </div>
-              <p className="text-xs text-neutral-600">Fast</p>
-            </div>
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 text-center slide-up-element border border-white/20" style={{ animationDelay: '0.3s' }}>
-              <div className="w-8 h-8 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-2">
-                <span className="material-icons-round text-white text-sm">verified</span>
-              </div>
-              <p className="text-xs text-neutral-600">Trusted</p>
-            </div>
           </div>
         </div>
       </div>

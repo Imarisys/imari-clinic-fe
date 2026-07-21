@@ -31,7 +31,7 @@ type ViewMode = 'list' | 'grid' | 'create' | 'edit' | 'detail' | 'history';
 type PatientDetailTab = 'upcoming' | 'past' | 'files' | 'preconditions';
 
 export const Patients: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -40,6 +40,8 @@ export const Patients: React.FC = () => {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('last_name');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -49,6 +51,8 @@ export const Patients: React.FC = () => {
   const [activePatientTab, setActivePatientTab] = useState<PatientDetailTab>('upcoming');
   const [patientFiles, setPatientFiles] = useState<PatientFileRead[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<PatientFileRead | null>(null);
+  const [deletingFile, setDeletingFile] = useState(false);
   const [patientPreconditions, setPatientPreconditions] = useState<any>(null);
   const [loadingPreconditions, setLoadingPreconditions] = useState(false);
 
@@ -107,6 +111,13 @@ export const Patients: React.FC = () => {
         if (previewModal.isOpen) {
           // Close preview modal if it's open
           setPreviewModal({ isOpen: false, file: null, imageUrl: null });
+        } else if (fileToDelete) {
+          // Close file-delete confirmation
+          setFileToDelete(null);
+        } else if (showAppointmentModal) {
+          // Close appointment booking modal
+          setShowAppointmentModal(false);
+          setSelectedPatientForBooking(null);
         } else if (viewMode === 'edit') {
           // Exit edit mode if no modal is open
           setViewMode('detail');
@@ -119,7 +130,7 @@ export const Patients: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [viewMode, previewModal.isOpen]);
+  }, [viewMode, previewModal.isOpen, fileToDelete, showAppointmentModal]);
 
 
   // Reset to grid view when navigating to patients page
@@ -152,7 +163,7 @@ export const Patients: React.FC = () => {
     setError(null);
     try {
       const offset = (page - 1) * itemsPerPage;
-      const response = await PatientService.listPatients(offset, itemsPerPage);
+      const response = await PatientService.listPatients(offset, itemsPerPage, sortBy, sortOrder);
       setPatients(response.data);
       setTotalPatients(response.total);
       setCurrentPage(page);
@@ -162,6 +173,19 @@ export const Patients: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Client-side sort comparator (the search endpoint doesn't support sort params)
+  const sortPatientsClientSide = (list: Patient[]): Patient[] => {
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      const av = (a[sortBy as keyof Patient] ?? '').toString().toLowerCase();
+      const bv = (b[sortBy as keyof Patient] ?? '').toString().toLowerCase();
+      if (av < bv) return sortOrder === 'asc' ? -1 : 1;
+      if (av > bv) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
   };
 
   // Search patients using API
@@ -176,7 +200,8 @@ export const Patients: React.FC = () => {
     try {
       const offset = (page - 1) * itemsPerPage;
       const response = await PatientService.searchPatients(query.trim(), offset, itemsPerPage);
-      setPatients(response.data);
+      // Search endpoint doesn't support sort params, so sort client-side
+      setPatients(sortPatientsClientSide(response.data));
       setTotalPatients(response.total);
       setCurrentPage(page);
     } catch (err) {
@@ -185,7 +210,7 @@ export const Patients: React.FC = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [itemsPerPage]);
+  }, [itemsPerPage, sortBy, sortOrder]);
 
   // Debounced search effect
   useEffect(() => {
@@ -198,7 +223,7 @@ export const Patients: React.FC = () => {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, searchPatients]);
+  }, [searchQuery, sortBy, sortOrder, searchPatients]);
 
   // Load initial data on component mount
   useEffect(() => {
@@ -209,16 +234,12 @@ export const Patients: React.FC = () => {
     const loadSettings = async () => {
       try {
         const settings = await SettingsService.getSettings();
-        console.log('Patients - Settings loaded:', settings);
-        console.log('Patients - appointments_start_time:', settings.appointments_start_time);
-        console.log('Patients - appointments_end_time:', settings.appointments_end_time);
 
         const newWorkingHours = {
           startTime: settings.appointments_start_time || '08:00',
           endTime: settings.appointments_end_time || '17:00'
         };
 
-        console.log('Patients - Setting working hours to:', newWorkingHours);
         setWorkingHours(newWorkingHours);
       } catch (error) {
         console.error('Patients - Failed to fetch settings:', error);
@@ -350,20 +371,24 @@ export const Patients: React.FC = () => {
   };
 
   // Function to handle file deletion
-  const handleFileDelete = async (file: PatientFileRead) => {
-    if (!selectedPatient?.id) return;
+  const handleFileDelete = (file: PatientFileRead) => {
+    setFileToDelete(file);
+  };
 
-    if (!window.confirm(t('confirm_delete_file', { filename: file.filename }))) {
-      return;
-    }
-
+  // Confirms and performs the actual file deletion
+  const confirmFileDelete = async () => {
+    if (!fileToDelete || !selectedPatient?.id) return;
+    setDeletingFile(true);
     try {
-      await PatientFileService.deletePatientFile(selectedPatient.id, file.id);
+      await PatientFileService.deletePatientFile(selectedPatient.id, fileToDelete.id);
       showNotification('success', t('success'), t('file_deleted_successfully'));
       loadPatientFiles(selectedPatient.id); // Refresh the files list
+      setFileToDelete(null);
     } catch (error) {
       console.error('Failed to delete file:', error);
       showNotification('error', t('error'), t('failed_to_delete_file'));
+    } finally {
+      setDeletingFile(false);
     }
   };
 
@@ -382,15 +407,8 @@ export const Patients: React.FC = () => {
     }
   };
 
-  // Load appointments when patient is selected for detail view
-  useEffect(() => {
-    if (selectedPatient && viewMode === 'detail') {
-      loadPatientAppointments(selectedPatient.id);
-      // Load patient files and preconditions when detail view is opened
-      loadPatientFiles(selectedPatient.id);
-      loadPatientPreconditions(selectedPatient.id);
-    }
-  }, [selectedPatient, viewMode]);
+  // Patient detail data (appointments, files, preconditions) is loaded by the
+  // statistics effect below when `selectedPatient` changes — no separate load here.
 
 
   // Handle page change for pagination
@@ -409,7 +427,8 @@ export const Patients: React.FC = () => {
     setIsLoading(true);
     try {
       const newPatient = await PatientService.createPatient(patientData);
-      setPatients(prev => [...prev, newPatient]);
+      // Insert and keep the list sorted so the new patient appears in the right place
+      setPatients(prev => sortPatientsClientSide([...prev, newPatient]));
       setViewMode('detail');
       setSelectedPatient(newPatient);
       setError(null);
@@ -526,7 +545,8 @@ export const Patients: React.FC = () => {
     }
   };
 
-  const calculateAge = (dateOfBirth: string): number => {
+  const calculateAge = (dateOfBirth: string): number | null => {
+    if (!dateOfBirth) return null;
     const birthDate = new Date(dateOfBirth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -725,6 +745,24 @@ export const Patients: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
+          <select
+            value={`${sortBy}|${sortOrder}`}
+            onChange={e => {
+              const [sb, so] = e.target.value.split('|');
+              setSortBy(sb);
+              setSortOrder(so);
+              setCurrentPage(1);
+            }}
+            className="border border-neutral-200 rounded-xl px-4 py-2.5 text-sm bg-white h-[42px]"
+          >
+            <option value="last_name|asc">{t('sort_last_name_az')}</option>
+            <option value="last_name|desc">{t('sort_last_name_za')}</option>
+            <option value="first_name|asc">{t('sort_first_name_az')}</option>
+            <option value="first_name|desc">{t('sort_first_name_za')}</option>
+            <option value="date_of_birth|desc">{t('sort_youngest_first')}</option>
+            <option value="date_of_birth|asc">{t('sort_oldest_first')}</option>
+          </select>
+
           <Button
             variant="secondary"
             icon="refresh"
@@ -837,7 +875,16 @@ export const Patients: React.FC = () => {
 
         {/* Action Menu */}
         <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors duration-300">
+          <button
+            className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors duration-300"
+            title={t('edit')}
+            aria-label={t('edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedPatient(patient);
+              setViewMode('edit');
+            }}
+          >
             <span className="material-icons-round">more_vert</span>
           </button>
         </div>
@@ -912,10 +959,28 @@ export const Patients: React.FC = () => {
                 </td>
                 <td className="py-4 px-6">
                   <div className="flex space-x-2">
-                    <button className="p-2 text-neutral-400 hover:text-blue-600 transition-colors duration-300">
+                    <button
+                      className="p-2 text-neutral-400 hover:text-blue-600 transition-colors duration-300"
+                      title={t('edit')}
+                      aria-label={t('edit')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPatient(patient);
+                        setViewMode('edit');
+                      }}
+                    >
                       <span className="material-icons-round text-lg">edit</span>
                     </button>
-                    <button className="p-2 text-neutral-400 hover:text-purple-600 transition-colors duration-300">
+                    <button
+                      className="p-2 text-neutral-400 hover:text-purple-600 transition-colors duration-300"
+                      title={t('view_details')}
+                      aria-label={t('view_details')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPatient(patient);
+                        setViewMode('detail');
+                      }}
+                    >
                       <span className="material-icons-round text-lg">visibility</span>
                     </button>
                   </div>
@@ -1018,12 +1083,23 @@ export const Patients: React.FC = () => {
                       </>) : (<span className="text-neutral-400 italic">{t('no_address_provided')}</span>)}
                     </div>
                   </div>
+
+                  <div>
+                    <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">{t('insurance_section')}</h3>
+                    <div className="space-y-1.5 text-sm">
+                      {selectedPatient.cin && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">badge</span><span className="text-neutral-700">{selectedPatient.cin}</span></div>)}
+                      {selectedPatient.cnam_identifier && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">verified</span><span className="text-neutral-700">{t('cnam_label')} {selectedPatient.cnam_identifier}</span></div>)}
+                      {selectedPatient.insurance_number && (<div className="flex items-start gap-2"><span className="material-icons-round text-neutral-300 text-base mt-0.5 shrink-0">shield</span><span className="text-neutral-700">{t('cnss_label')} {selectedPatient.insurance_number}</span></div>)}
+                      {!selectedPatient.cin && !selectedPatient.cnam_identifier && !selectedPatient.insurance_number && (<span className="text-neutral-400 italic">{t('not_specified')}</span>)}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-neutral-100">
                   <Button variant="secondary" icon="edit" onClick={() => setViewMode('edit')}>{t('edit')}</Button>
                   <Button variant="primary" icon="event" onClick={() => { setSelectedPatientForBooking(selectedPatient); setShowAppointmentModal(true); }}>{t('schedule')}</Button>
-                  <Button variant="secondary" icon="receipt_long" onClick={() => navigate(`/billing?tab=list&patient_id=${selectedPatient.id}`)}>Facturation</Button>
+                  <Button variant="secondary" icon="history" onClick={() => handleViewHistory(selectedPatient)} disabled={isLoading}>{t('history')}</Button>
+                  <Button variant="secondary" icon="receipt_long" onClick={() => navigate(`/billing?tab=list&patient_id=${selectedPatient.id}`)}>{t('billing_label')}</Button>
                   <Button variant="danger" icon="delete" onClick={() => handleDeleteConfirmation(selectedPatient)} disabled={isLoading}>{t('delete')}</Button>
                 </div>
               </div>
@@ -1107,7 +1183,7 @@ export const Patients: React.FC = () => {
                         };
 
                         const formatDate = (dateString: string) => {
-                          return new Date(dateString).toLocaleDateString('en-US', {
+                          return new Date(dateString).toLocaleDateString(language === 'fr' ? 'fr-TN' : 'en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -1118,6 +1194,10 @@ export const Patients: React.FC = () => {
                           const time = timeString.split('.')[0]; // Remove microseconds
                           const [hours, minutes] = time.split(':');
                           const hour = parseInt(hours);
+                          // French UI uses 24-hour; English keeps 12-hour AM/PM
+                          if (language === 'fr') {
+                            return `${hours.padStart(2, '0')}:${minutes}`;
+                          }
                           const ampm = hour >= 12 ? 'PM' : 'AM';
                           const displayHour = hour % 12 || 12;
                           return `${displayHour}:${minutes} ${ampm}`;
@@ -1247,7 +1327,7 @@ export const Patients: React.FC = () => {
                         };
 
                         const formatDate = (dateString: string) => {
-                          return new Date(dateString).toLocaleDateString('en-US', {
+                          return new Date(dateString).toLocaleDateString(language === 'fr' ? 'fr-TN' : 'en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
@@ -1258,6 +1338,10 @@ export const Patients: React.FC = () => {
                           const time = timeString.split('.')[0]; // Remove microseconds
                           const [hours, minutes] = time.split(':');
                           const hour = parseInt(hours);
+                          // French UI uses 24-hour; English keeps 12-hour AM/PM
+                          if (language === 'fr') {
+                            return `${hours.padStart(2, '0')}:${minutes}`;
+                          }
                           const ampm = hour >= 12 ? 'PM' : 'AM';
                           const displayHour = hour % 12 || 12;
                           return `${displayHour}:${minutes} ${ampm}`;
@@ -1589,6 +1673,19 @@ export const Patients: React.FC = () => {
           variant="danger"
         />
 
+        {/* File Deletion Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={!!fileToDelete}
+          onClose={() => setFileToDelete(null)}
+          onConfirm={confirmFileDelete}
+          title={t('delete_file')}
+          message={t('confirm_delete_file', { filename: fileToDelete?.filename || '' })}
+          confirmButtonText={t('delete')}
+          cancelButtonText={t('cancel')}
+          isLoading={deletingFile}
+          variant="danger"
+        />
+
         {/* Appointment Booking Modal */}
         {showAppointmentModal && selectedPatientForBooking && (
           <Modal
@@ -1768,8 +1865,9 @@ export const Patients: React.FC = () => {
         patient={selectedPatientWithHistory}
         onBack={() => setViewMode('detail')}
         onScheduleNew={() => {
-          // TODO: Navigate to appointment booking for this patient
-          console.log('Schedule new appointment for', selectedPatientWithHistory);
+          setSelectedPatientForBooking(selectedPatientWithHistory);
+          setShowAppointmentModal(true);
+          setViewMode('detail');
         }}
       />
     );
@@ -1813,6 +1911,37 @@ export const Patients: React.FC = () => {
         )}
 
         {viewMode === 'list' && renderListView()}
+
+        {/* Pagination */}
+        {totalPatients > itemsPerPage && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-200">
+            <div className="text-sm text-neutral-500">
+              {t('pagination_range', {
+                start: String(((currentPage - 1) * itemsPerPage) + 1),
+                end: String(Math.min(currentPage * itemsPerPage, totalPatients)),
+                total: String(totalPatients)
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1}
+                className="w-8 h-8 rounded-lg border border-neutral-200 flex items-center justify-center disabled:opacity-30 hover:bg-neutral-50">
+                <span className="material-icons-round text-lg">chevron_left</span>
+              </button>
+              <span className="px-2 text-sm font-medium text-neutral-700">{currentPage} / {Math.ceil(totalPatients / itemsPerPage)}</span>
+              <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= Math.ceil(totalPatients / itemsPerPage)}
+                className="w-8 h-8 rounded-lg border border-neutral-200 flex items-center justify-center disabled:opacity-30 hover:bg-neutral-50">
+                <span className="material-icons-round text-lg">chevron_right</span>
+              </button>
+            </div>
+            <select value={itemsPerPage} onChange={e => { handlePageSizeChange(Number(e.target.value)); }}
+              className="border rounded-lg px-3 py-1.5 text-sm text-neutral-600">
+              <option value={10}>10 / page</option>
+              <option value={25}>25 / page</option>
+              <option value={50}>50 / page</option>
+              <option value={100}>100 / page</option>
+            </select>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
