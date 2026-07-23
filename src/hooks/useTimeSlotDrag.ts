@@ -58,8 +58,6 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
     const y = event.clientY - rect.top;
     const timeIndex = getIndexFromPosition(y, rect.height);
     
-    console.log('Mouse down at:', { date, timeIndex, time: getTimeFromIndex(timeIndex) });
-
     setIsDragging(true);
     setDragStart({ date, timeIndex });
     setDragEnd({ date, timeIndex });
@@ -77,7 +75,6 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
     // Only allow dragging within the same date
     if (date === dragStart.date) {
       setDragEnd({ date, timeIndex });
-      console.log('Mouse move to:', { date, timeIndex, time: getTimeFromIndex(timeIndex) });
     }
   }, [isDragging, dragStart]);
 
@@ -120,8 +117,6 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
   };
 
   const handleMouseUp = useCallback(() => {
-    console.log('Mouse up called, isDragging:', isDragging, 'dragStart:', dragStart, 'dragEnd:', dragEnd);
-
     if (!isDragging || !dragStart || !dragEnd || !dragStartedRef.current) {
       setIsDragging(false);
       setDragStart(null);
@@ -134,11 +129,8 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
     const endIndex = Math.max(dragStart.timeIndex, dragEnd.timeIndex);
     
     const startTime = getTimeFromIndex(startIndex);
-    const endTime = getTimeFromIndex(endIndex + 1); // End time is the start of the next slot
-    
-    console.log('Selected time slot:', { date: dragStart.date, startTime, endTime });
+    const endTime = getTimeFromIndex(endIndex + 1);
 
-    // Check for conflicts with existing appointments
     const hasConflict = checkSlotConflict(dragStart.date, startTime, endTime);
 
     if (hasConflict) {
@@ -151,8 +143,9 @@ export const useTimeSlotDrag = (onSlotSelected: (slot: TimeSlot) => void, appoin
         startTime,
         endTime
       };
-      console.log('Calling onSlotSelected with:', slot);
-      onSlotSelected(slot);
+      if (onSlotSelected) {
+        onSlotSelected(slot);
+      }
     }
 
     setIsDragging(false);

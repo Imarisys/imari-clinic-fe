@@ -153,12 +153,9 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
   };
 
   const handleShowMedicalDetails = async (appointmentId: string) => {
-    console.log('Details button clicked for appointment:', appointmentId);
     setLoadingMedical(true);
     try {
-      console.log('Fetching medical data from API...');
       const medical = await AppointmentService.getMedicalData(appointmentId);
-      console.log('Medical data received:', medical);
       setMedicalData(medical);
       setShowMedicalDetails(true);
     } catch (error) {
@@ -304,27 +301,6 @@ export const PatientHistory: React.FC<PatientHistoryProps> = ({
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">{t('appointment_history')}</h3>
                 <p className="text-gray-500 mt-1">{t('view_all_patient_appointments')}</p>
-                {/* Debug: Show modal directly */}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    console.log('Test button clicked - showing modal directly');
-                    setShowMedicalDetails(true);
-                    setMedicalData({
-                      appointment_id: 'test',
-                      patient_id: 'test',
-                      date: new Date().toISOString(),
-                      diagnosis: 'Test diagnosis',
-                      treatment_plan: 'Test treatment plan',
-                      prescription: 'Test prescription',
-                      vital_signs: { heart_rate: '72', blood_pressure: '120/80' }
-                    });
-                  }}
-                  className="mb-4"
-                >
-                  Test Medical Modal
-                </Button>
               </div>
 
               {isLoading ? (

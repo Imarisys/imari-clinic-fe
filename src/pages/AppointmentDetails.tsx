@@ -54,7 +54,7 @@ export const AppointmentDetails: React.FC = () => {
       } catch (e) {
         console.error(e);
         showNotification('error', t('error'), t('failed_to_load_appointment_details'));
-        navigate('/patients');
+        navigate(-1);
       } finally {
         setLoading(false);
       }

@@ -9,10 +9,12 @@ import { SettingsPage } from './pages/Settings';
 import { Reports } from './pages/Reports';
 import { AppointmentStart } from './pages/AppointmentStart';
 import { AppointmentDetails } from './pages/AppointmentDetails';
+import { BS1Generator } from './pages/BS1Generator';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { TranslationProvider } from './context/TranslationContext';
 import { AppLoadingSpinner } from './components/common/AppLoadingSpinner';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { HealthCheckService } from './services/healthCheckService';
 import './styles/globals.css';
 
@@ -85,6 +87,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <AppointmentDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bs1/:appointmentId"
+        element={
+          <ProtectedRoute>
+            <BS1Generator />
           </ProtectedRoute>
         }
       />
@@ -164,7 +174,9 @@ function App() {
       <AuthProvider>
         <Router>
           <NotificationProvider>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </NotificationProvider>
         </Router>
       </AuthProvider>

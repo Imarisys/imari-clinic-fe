@@ -1,0 +1,23 @@
+[
+  { "name": "patient_cnam_id",    "x": 84, "y": 141, "width": 69, "height": 35 },
+  { "name": "reference_dossier",  "x": 1106, "y": 139, "width": 106, "height": 31 },
+  { "name": "cnam_digit_1",       "x": 820, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_2",       "x": 845, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_3",       "x": 869, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_4",       "x": 892, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_5",       "x": 916, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_6",       "x": 940, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_7",       "x": 963, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_8",       "x": 987, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_9",       "x": 1010, "y": 263, "width": 24, "height": 31 },
+  { "name": "cnam_digit_10",      "x": 1034, "y": 263, "width": 24, "height": 31 },
+  { "name": "check_cnss",         "x": 822, "y": 305, "width": 24, "height": 17 },
+  { "name": "check_cnrps",        "x": 937, "y": 305, "width": 24, "height": 17 },
+  { "name": "check_convention",   "x": 1132, "y": 305, "width": 24, "height": 17 },
+  { "name": "patient_first_name", "x": 757, "y": 351, "width": 384, "height": 24 },
+  { "name": "patient_last_name",  "x": 742, "y": 380, "width": 400, "height": 23 },
+  { "name": "address_line1",      "x": 755, "y": 408, "width": 376, "height": 22 },
+  { "name": "address_line2",      "x": 755, "y": 434, "width": 376, "height": 22 },
+  { "name": "code_postal",        "x": 774, "y": 467, "width": 98, "height": 19 },
+  { "name": "address_line3",      "x": 944, "y": 463, "width": 225, "height": 22 }
+]

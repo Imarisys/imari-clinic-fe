@@ -19,10 +19,9 @@ export const SettingsPage: React.FC = () => {
   const [fieldValues, setFieldValues] = useState<SettingsFieldValues | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
-    // Check if we should restore to layout tab after reload
     const savedTab = localStorage.getItem('settings_active_tab');
     if (savedTab) {
-      localStorage.removeItem('settings_active_tab'); // Clean up
+      localStorage.removeItem('settings_active_tab');
       return savedTab;
     }
     return 'general';
@@ -818,6 +817,10 @@ export const SettingsPage: React.FC = () => {
               {/* Sidebar Layout Option */}
               <div
                 onClick={() => handleInputChange('layout_position', 'sidebar')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleInputChange('layout_position', 'sidebar'); } }}
+                aria-pressed={(settings.layout_position || 'sidebar') === 'sidebar'}
                 className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
                   (settings.layout_position || 'sidebar') === 'sidebar'
                     ? 'border-primary-500 bg-primary-50'
@@ -855,6 +858,10 @@ export const SettingsPage: React.FC = () => {
               {/* Header Layout Option */}
               <div
                 onClick={() => handleInputChange('layout_position', 'header')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleInputChange('layout_position', 'header'); } }}
+                aria-pressed={settings.layout_position === 'header'}
                 className={`relative p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:scale-105 ${
                   settings.layout_position === 'header'
                     ? 'border-primary-500 bg-primary-50'
@@ -1061,23 +1068,58 @@ export const SettingsPage: React.FC = () => {
             <p className="text-gray-600 mt-1">{t('manage_clinic_preferences')}</p>
           </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="bg-primary-600 hover:bg-primary-700"
-          >
-            {isSaving ? (
-              <>
-                <span className="material-icons-round animate-spin mr-2">autorenew</span>
-                {t('saving')}
-              </>
-            ) : (
-              <>
-                <span className="material-icons-round mr-2">save</span>
-                {t('save_changes')}
-              </>
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              icon="restart_alt"
+              onClick={async () => {
+                if (!fieldValues) return;
+                const defaults: Partial<SettingsType> = {
+                  clinic_name: settings?.clinic_name || 'Imari Clinic',
+                  appointments_start_time: '08:00',
+                  appointments_end_time: '17:00',
+                  appointments_working_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                  display_language: 'en',
+                  display_date_format: 'DD/MM/YYYY',
+                  display_time_format: '24h',
+                  display_currency: 'TND',
+                  display_temperature_unit: 'celsius',
+                  layout_position: 'sidebar' as const,
+                };
+                setIsSaving(true);
+                try {
+                  const updated = await SettingsService.updateSettings(defaults as SettingsType);
+                  setSettings(updated);
+                  showNotification('success', t('success'), t('settings_saved_successfully'));
+                } catch (error) {
+                  console.error('Error resetting settings:', error);
+                  showNotification('error', t('error'), t('failed_to_save_settings'));
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+            >
+              {t('refresh')}
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              {isSaving ? (
+                <>
+                  <span className="material-icons-round animate-spin mr-2">autorenew</span>
+                  {t('saving')}
+                </>
+              ) : (
+                <>
+                  <span className="material-icons-round mr-2">save</span>
+                  {t('save_changes')}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Tabs */}

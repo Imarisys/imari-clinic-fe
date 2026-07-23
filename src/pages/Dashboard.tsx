@@ -53,15 +53,19 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const isDoctor = user?.role?.toLowerCase() === 'doctor';
 
-  // Load patients for appointment booking
-  const loadPatients = async () => {
+  const fetchTodayAppointments = useCallback(async () => {
     try {
-      const response = await PatientService.listPatients();
-      setPatients(response.data);
-    } catch (err) {
-      console.error('Error loading patients:', err);
+      setAppointmentsLoading(true);
+      const todayAppointments = await AppointmentService.getTodaysAppointments();
+      setAppointments(todayAppointments);
+      setAppointmentsError(null);
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error);
+      setAppointmentsError('Failed to load appointments');
+    } finally {
+      setAppointmentsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -75,20 +79,6 @@ export const Dashboard: React.FC = () => {
         setWeatherError('Failed to load weather data');
       } finally {
         setWeatherLoading(false);
-      }
-    };
-
-    const fetchTodayAppointments = async () => {
-      try {
-        setAppointmentsLoading(true);
-        const todayAppointments = await AppointmentService.getTodaysAppointments();
-        setAppointments(todayAppointments);
-        setAppointmentsError(null);
-      } catch (error) {
-        console.error('Failed to fetch appointments:', error);
-        setAppointmentsError('Failed to load appointments');
-      } finally {
-        setAppointmentsLoading(false);
       }
     };
 
@@ -169,12 +159,20 @@ export const Dashboard: React.FC = () => {
     return t('partly_cloudy');
   };
 
-  const getWeatherIcon = (temperature: number | null) => {
-    if (!temperature) return '🌤️';
-    if (temperature >= 30) return '☀️';
-    if (temperature >= 20) return '🌤️';
-    if (temperature >= 10) return '⛅';
-    return '🌧��';
+  const getWeatherIcon = (temperature: number | null): string => {
+    if (!temperature) return 'cloud';
+    if (temperature >= 30) return 'sunny';
+    if (temperature >= 20) return 'partly_cloudy_day';
+    if (temperature >= 10) return 'cloud';
+    return 'rainy';
+  };
+
+  const getWeatherIconColor = (temperature: number | null): string => {
+    if (!temperature) return 'text-neutral-400';
+    if (temperature >= 30) return 'text-orange-400';
+    if (temperature >= 20) return 'text-yellow-400';
+    if (temperature >= 10) return 'text-blue-300';
+    return 'text-blue-400';
   };
 
   // Calculate unique patients from today's appointments
@@ -289,6 +287,15 @@ export const Dashboard: React.FC = () => {
     } finally {
       setIsSearchingPatients(false);
     }
+  }, [t, showNotification]);
+
+  const loadPatients = useCallback(async () => {
+    try {
+      const response = await PatientService.listPatients();
+      setPatients(response.data);
+    } catch (err) {
+      console.error('Error loading patients:', err);
+    }
   }, []);
 
   // Debounced search effect for patients
@@ -372,7 +379,15 @@ export const Dashboard: React.FC = () => {
           <div className="shrink-0 w-full md:w-auto">
             <div className="flex items-center gap-4 bg-white/10 rounded-2xl px-5 py-4 backdrop-blur-sm border border-white/20">
               <div className="text-5xl leading-none">
-                {weatherLoading ? '⏳' : weatherError ? '❌' : getWeatherIcon(getCurrentTemperature())}
+                {weatherLoading ? (
+                  <span className="material-icons-round text-neutral-400 animate-spin">sync</span>
+                ) : weatherError ? (
+                  <span className="material-icons-round text-error-400" role="img" aria-label="Weather error">error_outline</span>
+                ) : (
+                  <span className={`material-icons-round ${getWeatherIconColor(getCurrentTemperature())}`}>
+                    {getWeatherIcon(getCurrentTemperature())}
+                  </span>
+                )}
               </div>
               <div>
                 <div className="flex items-end gap-2">
@@ -476,12 +491,15 @@ export const Dashboard: React.FC = () => {
                   <div className="text-center py-8">
                     <span className="material-icons-round text-4xl text-error-400">error_outline</span>
                     <p className="mt-2 text-neutral-500">{appointmentsError}</p>
+                    <button
+                      onClick={fetchTodayAppointments}
+                      className="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-error-50 text-error-600 hover:bg-error-100 transition-colors"
+                    >
+                      <span className="material-icons-round text-sm mr-1">refresh</span>{t('retry')}
+                    </button>
                   </div>
                 ) : appointments.length === 0 ? (
-                  <div className="text-center py-8">
-                    <span className="material-icons-round text-4xl text-neutral-300">event_busy</span>
-                    <p className="mt-2 text-neutral-500">{t('no_appointments_scheduled_today')}</p>
-                  </div>
+                  null
                 ) : (
                   appointments.map((appointment, index) => (
                     <div key={appointment.id} className={`bg-neutral-50 rounded-xl p-4 hover:bg-white hover:shadow-sm transition-all duration-300 slide-up-element border border-neutral-100`}
@@ -621,7 +639,7 @@ export const Dashboard: React.FC = () => {
                 </div>
               </div>
               {/* Content */}
-              <div className="h-[600px] overflow-y-auto">
+              <div className="max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   {bookingStep === 'patient' && (
                     <div className="min-h-full">

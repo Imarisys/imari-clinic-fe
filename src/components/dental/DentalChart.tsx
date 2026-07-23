@@ -101,9 +101,6 @@ export const DentalChart: React.FC<DentalChartProps> = ({
     { id: 'whitening', name: t('whitening'), color: '#10B981' }
   ];
 
-  // TODO: Implement data persistence with patientId and appointmentId
-  console.log('DentalChart initialized for patient:', patientId, 'appointment:', appointmentId);
-
   const [teethData, setTeethData] = useState<Record<number, ToothData>>({});
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [selectedTreatment, setSelectedTreatment] = useState<string>('');

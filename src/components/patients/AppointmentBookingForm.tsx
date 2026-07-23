@@ -120,16 +120,12 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    console.log('Validating form with data:', formData);
-
     if (!formData.title.trim()) {
       newErrors.title = t('title_required');
-      console.log('Title validation failed - title is empty');
     }
 
     if (!formData.date) {
       newErrors.date = t('date_required_error');
-      console.log('Date validation failed - date is empty');
     } else {
       const selectedDate = new Date(formData.date);
       const today = new Date();
@@ -137,18 +133,15 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
       if (selectedDate < today) {
         newErrors.date = t('date_past_error');
-        console.log('Date validation failed - date is in the past');
       }
     }
 
     if (!formData.start_time) {
       newErrors.start_time = t('start_time_required_error');
-      console.log('Start time validation failed - start_time is empty');
     }
 
     if (!formData.end_time) {
       newErrors.end_time = t('end_time_required_error');
-      console.log('End time validation failed - end_time is empty');
     }
 
     if (formData.start_time && formData.end_time) {
@@ -157,12 +150,8 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
       if (endTime <= startTime) {
         newErrors.end_time = t('end_time_after_start');
-        console.log('End time validation failed - end time is not after start time');
       }
     }
-
-    console.log('Validation errors found:', newErrors);
-    console.log('Validation will return:', Object.keys(newErrors).length === 0);
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -171,28 +160,20 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('Form submitted!', { formData, isLoading });
-
     const validationResult = validateForm();
-    console.log('Validation result:', validationResult);
 
     if (!validationResult) {
-      console.log('Form validation failed - current errors state:', errors);
       return;
     }
 
-    console.log('Form validation passed, submitting...');
-
     try {
-      // Format data for API - date as date string, times as time strings
       const appointmentData: AppointmentCreate = {
         ...formData,
-        date: formData.date, // Keep date as YYYY-MM-DD format
-        start_time: formData.start_time, // Keep time as HH:MM format
-        end_time: formData.end_time, // Keep time as HH:MM format
+        date: formData.date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
       };
 
-      console.log('Calling onSubmit with data:', appointmentData);
       await onSubmit(appointmentData);
 
       // Show success notification
@@ -281,10 +262,8 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
 
     // Additional validation to ensure times are not undefined
     if (!startTime || startTime === 'undefined' || !endTime || endTime === 'undefined') {
-      console.warn('Working hours are invalid, using fallback times');
       const fallbackStartTime = '08:00';
       const fallbackEndTime = '17:00';
-      console.log('Using fallback working hours - Start:', fallbackStartTime, 'End:', fallbackEndTime);
       
       setLoadingSlots(true);
       try {
@@ -304,8 +283,6 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({
       }
       return;
     }
-
-    console.log('Using working hours - Start:', startTime, 'End:', endTime);
 
     setLoadingSlots(true);
     try {

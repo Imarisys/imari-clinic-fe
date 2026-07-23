@@ -11,7 +11,6 @@ import { Patient } from '../types/Patient';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { jsPDF } from 'jspdf';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { AppointmentBookingForm } from '../components/patients/AppointmentBookingForm';
 import { Modal } from '../components/common/Modal';
 import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
@@ -155,18 +154,33 @@ export const AppointmentStart: React.FC = () => {
 
   // Vital signs - initialize empty, will be populated with translated values
   const [vitalSigns, setVitalSigns] = useState<VitalSign[]>([]);
+  const prevLangRef = React.useRef(language);
 
   // Initialize vital signs with translated values when translation context is available
   useEffect(() => {
-    if (vitalSigns.length === 0) { // Only initialize if not already set
-      const defaultVitalSigns = [
-        { id: '1', name: t('heart_rate'), value: '', unit: t('bpm'), icon: 'monitor_heart', color: 'red' },
-        { id: '2', name: t('blood_pressure'), value: '', unit: t('mmhg'), icon: 'favorite', color: 'pink' },
-        { id: '3', name: t('temperature'), value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
-      ];
-      setVitalSigns(defaultVitalSigns);
+    const langChanged = prevLangRef.current !== language;
+    prevLangRef.current = language;
+
+    if (vitalSigns.length === 0 || langChanged) {
+      if (langChanged && vitalSigns.length > 0) {
+        // Re-translate existing vital names preserving values
+        const vitalSignOptions = getVitalSignOptions(t);
+        setVitalSigns(prev => prev.map(v => {
+          const option = vitalSignOptions.find(opt =>
+            opt.name.toLowerCase().replace(/\s+/g, '_') === v.name.toLowerCase().replace(/\s+/g, '_')
+          );
+          return option ? { ...v, name: option.name, unit: option.unit } : v;
+        }));
+      } else if (vitalSigns.length === 0) {
+        const defaultVitalSigns = [
+          { id: '1', name: t('heart_rate'), value: '', unit: t('bpm'), icon: 'monitor_heart', color: 'red' },
+          { id: '2', name: t('blood_pressure'), value: '', unit: t('mmhg'), icon: 'favorite', color: 'pink' },
+          { id: '3', name: t('temperature'), value: '', unit: '°C', icon: 'device_thermostat', color: 'orange' }
+        ];
+        setVitalSigns(defaultVitalSigns);
+      }
     }
-  }, [t, vitalSigns.length]);
+  }, [t, language, vitalSigns.length]);
 
   // Show vital signs history modal
   const [showVitalHistory, setShowVitalHistory] = useState(false);
@@ -201,49 +215,6 @@ export const AppointmentStart: React.FC = () => {
       if (status === 'Completed') setIsCompleted(true);
     }
   }, [appointment?.status]);
-
-  const handleGenerateBS1 = async () => {
-    if (!appointment) return;
-    const doctorName = user ? `Dr ${user.first_name} ${user.last_name}` : '______________________';
-    const today = new Date().toLocaleDateString('fr-TN');
-    const patientFull = `${appointment.patient_first_name || ''} ${appointment.patient_last_name || ''}`.trim();
-    const parts = patientFull.split(' ');
-    const lastName = parts.pop() || '';
-    const firstName = parts.join(' ');
-
-    try {
-      const resp = await fetch('/BS1_CNAM_2026.pdf');
-      const pdfDoc = await PDFDocument.load(await resp.arrayBuffer());
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const page = pdfDoc.getPage(0);
-      const { height: ph } = page.getSize();
-      const fill = (t: string, x: number, y: number, s = 7) =>
-        page.drawText(t || '', { x, y: ph - y, size: s, font, color: rgb(0, 0, 0.6) });
-
-      fill(firstName, 510, 244, 6);
-      fill(lastName, 510, 263, 6);
-      fill('X', 495, 358, 8);
-      fill(firstName, 510, 405, 6);
-      fill(lastName, 510, 423, 6);
-      fill(appointment.date, 80, 96, 6);
-      fill('CG', 164, 96, 6);
-      fill('60.000', 463, 96, 6);
-      fill(doctorName, 80, 514, 8);
-      fill('12-34567-8', 80, 530, 7);
-      fill('Médecine Générale', 80, 546, 7);
-      fill(today, 220, 546, 7);
-
-      const blob = new Blob([new Uint8Array(await pdfDoc.save())], { type: 'application/pdf' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `BS1_${lastName}_${appointment.date}.pdf`;
-      a.click(); URL.revokeObjectURL(a.href);
-      showNotification('success', 'BS1 CNAM', 'Formulaire BS1 téléchargé');
-    } catch (e) {
-      console.error(e);
-      showNotification('error', 'Erreur', 'Échec BS1');
-    }
-  };
 
   // Timer for appointment duration
   useEffect(() => {
@@ -389,7 +360,7 @@ export const AppointmentStart: React.FC = () => {
     }, 2000); // Auto-save after 2 seconds of inactivity
 
     return () => clearTimeout(timeoutId);
-  }, [diagnosis, treatmentPlan, prescription, vitalSigns, isStarted]);
+  }, [diagnosis, treatmentPlan, prescription, vitalSigns, isStarted, saveMedicalData]);
 
   // Fetch medical data when appointment is loaded
   useEffect(() => {
@@ -955,6 +926,16 @@ export const AppointmentStart: React.FC = () => {
               >
                 <span className="material-icons-round text-sm">medication</span>
                 <span className="font-medium">{t('prescription_label')}</span>
+              </button>
+
+              {/* Generate BS1 CNAM Button */}
+              <button
+                onClick={() => navigate(`/bs1/${appointment?.id}`)}
+                disabled={!isStarted}
+                className="flex items-center space-x-1 bg-teal-50 text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-100 transition-colors disabled:bg-neutral-100 disabled:text-neutral-400 disabled:cursor-not-allowed text-sm"
+              >
+                <span className="material-icons-round text-sm">receipt_long</span>
+                <span className="font-medium">BS1 CNAM</span>
               </button>
 
               {/* Upload File Button */}

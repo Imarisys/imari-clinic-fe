@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BS1 Labeler — CNAM Tunisia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #1e293b; }
+.toolbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 8px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; }
+.toolbar button { padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.toolbar button:hover { background: #f8fafc; border-color: #94a3b8; }
+.toolbar button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.toolbar button.danger { color: #dc2626; border-color: #fca5a5; }
+.toolbar button:disabled { opacity: 0.4; cursor: default; }
+.toolbar .sep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 4px; }
+.toolbar .zoom-group { display: flex; align-items: center; gap: 2px; }
+.toolbar .zoom-group button { padding: 5px 8px; border-radius: 0; font-size: 13px; }
+.toolbar .zoom-group button:first-child { border-radius: 6px 0 0 6px; }
+.toolbar .zoom-group button:last-child { border-radius: 0 6px 6px 0; }
+.toolbar .zoom-label { font-size: 11px; color: #64748b; min-width: 40px; text-align: center; padding: 0 4px; }
+.main { display: flex; height: calc(100vh - 44px); }
+.sidebar { width: 280px; background: #fff; border-right: 1px solid #e2e8f0; padding: 12px; overflow-y: auto; flex-shrink: 0; }
+.sidebar h3 { font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; }
+.sidebar .box-list { max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+.sidebar .box-item { padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 4px; cursor: pointer; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+.sidebar .box-item.selected { background: #eff6ff; border-color: #3b82f6; }
+.sidebar .box-item .del { color: #94a3b8; cursor: pointer; font-size: 14px; }
+.sidebar .box-item .del:hover { color: #dc2626; }
+.sidebar input[type=text], .sidebar input[type=number] { width: 100%; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; margin-bottom: 6px; }
+.sidebar label { font-size: 10px; color: #64748b; display: block; margin-bottom: 2px; }
+.sidebar .props { margin-top: 12px; }
+.sidebar .color-row { display: flex; gap: 4px; margin-bottom: 8px; }
+.sidebar .color-swatch { width: 22px; height: 22px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; }
+.sidebar .color-swatch.active { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+.canvas-wrap { flex: 1; overflow: auto; background: #64748b; position: relative; }
+.canvas-wrap .page-container { position: absolute; transform-origin: 0 0; margin: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+canvas#pdfCanvas { display: block; }
+svg#boxSvg { position: absolute; top: 0; left: 0; cursor: crosshair; }
+.handle { cursor: nwse-resize; }
+.handle.n,.handle.s { cursor: ns-resize; }
+.handle.e,.handle.w { cursor: ew-resize; }
+.handle.ne,.handle.sw { cursor: nesw-resize; }
+.handle.nw,.handle.se { cursor: nwse-resize; }
+.json-preview { background: #1e293b; color: #4ade80; padding: 12px; border-radius: 6px; font: 11px monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; margin-top: 8px; display: none; }
+.json-preview.show { display: block; }
+.help { font-size: 10px; color: #94a3b8; margin-top: 12px; line-height: 1.5; }
+.help kbd { background: #f1f5f9; padding: 1px 4px; border-radius: 3px; border: 1px solid #cbd5e1; }
+.upload-zone { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #fff; height: 100%; }
+.upload-zone .icon { font-size: 48px; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button onclick="document.getElementById('pdfInput').click()">📄 Load PDF</button>
+  <input type="file" id="pdfInput" accept=".pdf" style="display:none" onchange="loadPDF(event)">
+  <span class="sep"></span>
+  <button class="primary" onclick="addBox()">➕ Add Box</button>
+  <button onclick="copyBox()" id="btnCopy" disabled>📋 Copy</button>
+  <button onclick="pasteBox()" id="btnPaste" disabled>📌 Paste</button>
+  <button class="danger" onclick="deleteBox()" id="btnDel" disabled>🗑 Delete</button>
+  <span class="sep"></span>
+  <div class="zoom-group">
+    <button onclick="zoomOut()" title="Zoom Out">−</button>
+    <span class="zoom-label" id="zoomLabel">100%</span>
+    <button onclick="zoomIn()" title="Zoom In">+</button>
+    <button onclick="zoomFit()" title="Fit">⊡</button>
+  </div>
+  <span class="sep"></span>
+  <button onclick="exportJSON()" id="btnExport" disabled>💾 Export JSON</button>
+  <button onclick="document.getElementById('jsonInput').click()">📥 Import</button>
+  <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
+  <span class="sep"></span>
+  <span style="font-size:11px;color:#64748b" id="boxCount">0 boxes</span>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <h3>📦 Boxes</h3>
+    <div class="box-list" id="boxList"></div>
+    <div class="props" id="propsPanel" style="display:none">
+      <h3>⚙ Properties</h3>
+      <label>Name (data key)</label><input type="text" id="propName" onchange="updateProp()" placeholder="e.g. patient_name">
+      <label>X</label><input type="number" id="propX" onchange="updateProp()">
+      <label>Y</label><input type="number" id="propY" onchange="updateProp()">
+      <label>Width</label><input type="number" id="propW" onchange="updateProp()">
+      <label>Height</label><input type="number" id="propH" onchange="updateProp()">
+    </div>
+    <button onclick="toggleJSON()" style="font-size:11px;border:none;background:none;color:#3b82f6;cursor:pointer;margin-top:8px">Show/Hide JSON</button>
+    <div class="json-preview" id="jsonPreview"></div>
+    <div class="help">
+      <strong>Click-drag</strong> canvas = new box<br>
+      <strong>Drag box</strong> = move &nbsp; <strong>Drag handles</strong> = resize<br>
+      <strong>Ctrl+scroll</strong> = zoom<br>
+      <strong>Click overlapping</strong> = cycles through stacked boxes<br>
+      <kbd>Ctrl+C</kbd> Copy &nbsp; <kbd>Ctrl+V</kbd> Paste<br>
+      <kbd>Ctrl+Z</kbd> Undo &nbsp; <kbd>Ctrl+Shift+Z</kbd> Redo<br>
+      <kbd>Ctrl+D</kbd> Duplicate &nbsp; <kbd>Del</kbd> Delete
+    </div>
+  </div>
+  <div class="canvas-wrap" id="canvasWrap">
+    <div class="upload-zone" id="uploadZone">
+      <div class="icon">📄</div>
+      <p>Load a BS1 PDF to start labeling</p>
+      <button onclick="document.getElementById('pdfInput').click()" style="padding:8px 16px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#fff;color:#1e293b">Choose PDF File</button>
+    </div>
+    <div class="page-container" id="pageContainer" style="display:none">
+      <canvas id="pdfCanvas"></canvas>
+      <svg id="boxSvg"></svg>
+    </div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const BOX_COLOR = '#0d1f66';
+let boxes = JSON.parse(localStorage.getItem('bs1_boxes') || '[]');
+let undoStack = [JSON.parse(JSON.stringify(boxes))];
+let undoIdx = 0;
+
+function pushUndo() {
+  undoStack = undoStack.slice(0, undoIdx + 1);
+  undoStack.push(JSON.parse(JSON.stringify(boxes)));
+  if (undoStack.length > 50) undoStack.shift();
+  undoIdx = undoStack.length - 1;
+}
+
+function undo() {
+  if (undoIdx > 0) {
+    undoIdx--;
+    boxes = JSON.parse(JSON.stringify(undoStack[undoIdx]));
+    selected = boxes.length > 0 ? Math.min(selected ?? 0, boxes.length - 1) : null;
+    render();
+  }
+}
+
+function redo() {
+  if (undoIdx < undoStack.length - 1) {
+    undoIdx++;
+    boxes = JSON.parse(JSON.stringify(undoStack[undoIdx]));
+    selected = boxes.length > 0 ? Math.min(selected ?? 0, boxes.length - 1) : null;
+    render();
+  }
+}
+let selected = null, clipboard = null, dragMode = null, dragData = null, creating = null, hasPdf = false;
+let zoom = parseFloat(localStorage.getItem('bs1_zoom') || '1.0'), totalW = 595, totalH = 842;
+const canvas = document.getElementById('pdfCanvas'), svg = document.getElementById('boxSvg'), ctx = canvas.getContext('2d');
+const pageContainer = document.getElementById('pageContainer'), canvasWrap = document.getElementById('canvasWrap');
+const HS = 6;
+
+canvasWrap.addEventListener('wheel', e => {
+  if (e.ctrlKey || e.metaKey) { e.preventDefault(); setZoom(zoom - e.deltaY * 0.005); }
+}, { passive: false });
+
+function setZoom(z) {
+  zoom = Math.max(0.2, Math.min(4, Math.round(z * 100) / 100));
+  localStorage.setItem('bs1_zoom', String(zoom));
+  document.getElementById('zoomLabel').textContent = Math.round(zoom * 100) + '%';
+  pageContainer.style.transform = `scale(${zoom})`;
+}
+function zoomIn() { setZoom(zoom + 0.15); }
+function zoomOut() { setZoom(zoom - 0.15); }
+function zoomFit() {
+  if (!hasPdf) { setZoom(1); return; }
+  setZoom(Math.min((canvasWrap.clientWidth - 40) / canvas.width, (canvasWrap.clientHeight - 40) / canvas.height, 2));
+}
+
+function svgPos(e) {
+  const r = svg.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
+}
+
+function getHandles(b) {
+  return [
+    { id:'nw', x:b.x-HS, y:b.y-HS }, { id:'n', x:b.x+b.width/2-HS, y:b.y-HS },
+    { id:'ne', x:b.x+b.width-HS, y:b.y-HS }, { id:'e', x:b.x+b.width-HS, y:b.y+b.height/2-HS },
+    { id:'se', x:b.x+b.width-HS, y:b.y+b.height-HS }, { id:'s', x:b.x+b.width/2-HS, y:b.y+b.height-HS },
+    { id:'sw', x:b.x-HS, y:b.y+b.height-HS }, { id:'w', x:b.x-HS, y:b.y+b.height/2-HS }
+  ];
+}
+
+function hitHandle(mx, my, b) {
+  for (const h of getHandles(b))
+    if (mx >= h.x - 3 && mx <= h.x + HS + 3 && my >= h.y - 3 && my <= h.y + HS + 3) return h;
+  return null;
+}
+
+function render() {
+  document.getElementById('boxCount').textContent = boxes.length + ' box' + (boxes.length !== 1 ? 'es' : '');
+  document.getElementById('btnDel').disabled = selected === null;
+  document.getElementById('btnCopy').disabled = selected === null;
+  document.getElementById('btnExport').disabled = boxes.length === 0;
+
+  document.getElementById('boxList').innerHTML = boxes.map((b, i) =>
+    `<div class="box-item${i === selected ? ' selected' : ''}" onclick="selectBox(${i})">
+      <span style="font-weight:600">${b.name}</span>
+      <span class="del" onclick="event.stopPropagation();deleteBox(${i})">×</span></div>`).join('');
+
+  if (selected !== null && boxes[selected]) {
+    document.getElementById('propsPanel').style.display = 'block';
+    const b = boxes[selected];
+    document.getElementById('propName').value = b.name;
+    document.getElementById('propX').value = b.x;
+    document.getElementById('propY').value = b.y;
+    document.getElementById('propW').value = b.width;
+    document.getElementById('propH').value = b.height;
+  } else { document.getElementById('propsPanel').style.display = 'none'; }
+
+  svg.setAttribute('width', hasPdf ? totalW : (boxes.length ? '595' : '0'));
+  svg.setAttribute('height', hasPdf ? totalH : (boxes.length ? '842' : '0'));
+
+  let h = '';
+  boxes.forEach((b, i) => {
+    const sel = i === selected;
+    const s = sel ? 'fill:rgba(59,130,246,0.12);stroke:#3b82f6;stroke-width:1.5' :
+      `fill:rgba(0,0,0,0.03);stroke:${BOX_COLOR};stroke-width:0.5;stroke-dasharray:3,2`;
+    h += `<rect x="${b.x}" y="${b.y}" width="${b.width}" height="${b.height}" style="${s}" />`;
+    h += `<text x="${b.x + 3}" y="${b.y + b.height / 2 + 1}" font-size="10" fill="${BOX_COLOR}" opacity="0.8" font-family="monospace">${b.name}</text>`;
+    if (sel) getHandles(b).forEach(hd => h += `<rect class="handle ${hd.id}" x="${hd.x}" y="${hd.y}" width="${HS}" height="${HS}" fill="white" stroke="#3b82f6" stroke-width="1.5" rx="1" />`);
+  });
+  if (creating) {
+    const x = Math.min(creating.sx, creating.cx), y = Math.min(creating.sy, creating.cy);
+    h += `<rect x="${x}" y="${y}" width="${Math.abs(creating.cx - creating.sx)}" height="${Math.abs(creating.cy - creating.sy)}" fill="rgba(59,130,246,0.08)" stroke="#3b82f6" stroke-width="1" stroke-dasharray="4,2" />`;
+  }
+  svg.innerHTML = h;
+  document.getElementById('jsonPreview').textContent = JSON.stringify(boxes, null, 2);
+  localStorage.setItem('bs1_boxes', JSON.stringify(boxes));
+}
+
+function addBox() {
+  boxes.push({ name: 'field_' + (boxes.length + 1), x: 50, y: 50 + boxes.length * 35, width: 200, height: 24 });
+  selected = boxes.length - 1; pushUndo(); render();
+}
+function selectBox(i) { selected = i; render(); }
+function deleteBox(i) {
+  if (i === undefined) i = selected; if (i === null) return;
+  boxes.splice(i, 1); selected = boxes.length > 0 ? Math.min(i, boxes.length - 1) : null;
+  pushUndo(); render();
+}
+function copyBox() { if (selected === null) return; clipboard = { ...boxes[selected] }; document.getElementById('btnPaste').disabled = false; }
+function pasteBox() {
+  if (!clipboard) return;
+  boxes.push({ ...clipboard, x: clipboard.x + 20, y: clipboard.y + 20, name: clipboard.name + '_copy' });
+  selected = boxes.length - 1; pushUndo(); render();
+}
+function updateBox(i, p) { Object.assign(boxes[i], p); pushUndo(); render(); }
+function updateProp() {
+  if (selected === null) return;
+  boxes[selected].name = document.getElementById('propName').value || 'unnamed';
+  boxes[selected].x = parseInt(document.getElementById('propX').value) || 0;
+  boxes[selected].y = parseInt(document.getElementById('propY').value) || 0;
+  boxes[selected].width = parseInt(document.getElementById('propW').value) || 50;
+  boxes[selected].height = parseInt(document.getElementById('propH').value) || 20;
+  pushUndo(); render();
+}
+
+svg.addEventListener('mousedown', e => {
+  const p = svgPos(e);
+  if (selected !== null && boxes[selected]) {
+    const h = hitHandle(p.x, p.y, boxes[selected]);
+    if (h) {
+      dragMode = 'resize-' + h.id;
+      const b = boxes[selected];
+      dragData = { idx: selected, sx: p.x, sy: p.y, bx: b.x, by: b.y, bw: b.width, bh: b.height };
+      e.preventDefault(); return;
+    }
+  }
+  // Find ALL boxes at click point (last = topmost visually)
+  const hits = [];
+  boxes.forEach((b, i) => {
+    if (p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height) hits.push(i);
+  });
+  if (hits.length > 0) {
+    if (hits.includes(selected)) {
+      // Cycle to next overlapped box
+      const curIdx = hits.indexOf(selected);
+      const next = hits[(curIdx + 1) % hits.length];
+      selected = next;
+    } else {
+      selected = hits[hits.length - 1]; // topmost
+    }
+    dragMode = 'move';
+    dragData = { idx: selected, sx: p.x, sy: p.y, bx: boxes[selected].x, by: boxes[selected].y };
+  } else {
+    selected = null; dragMode = 'create'; creating = { sx: p.x, sy: p.y, cx: p.x, cy: p.y };
+  }
+  render();
+});
+
+svg.addEventListener('mousemove', e => {
+  const p = svgPos(e);
+  if (dragMode === 'move' && dragData) {
+    boxes[dragData.idx].x = Math.max(0, Math.round(dragData.bx + p.x - dragData.sx));
+    boxes[dragData.idx].y = Math.max(0, Math.round(dragData.by + p.y - dragData.sy));
+    render(); return;
+  }
+  if (dragMode && dragMode.startsWith('resize-') && dragData) {
+    const h = dragMode.replace('resize-', '');
+    const dx = p.x - dragData.sx, dy = p.y - dragData.sy;
+    let { bx, by, bw, bh } = dragData;
+    if (h.includes('e')) bw = Math.max(10, dragData.bw + dx);
+    if (h.includes('w')) { const nw = Math.max(10, dragData.bw - dx); bx = dragData.bx + dragData.bw - nw; bw = nw; }
+    if (h.includes('s')) bh = Math.max(10, dragData.bh + dy);
+    if (h.includes('n')) { const nh = Math.max(10, dragData.bh - dy); by = dragData.by + dragData.bh - nh; bh = nh; }
+    boxes[dragData.idx].x = Math.max(0, Math.round(bx));
+    boxes[dragData.idx].y = Math.max(0, Math.round(by));
+    boxes[dragData.idx].width = Math.round(bw);
+    boxes[dragData.idx].height = Math.round(bh);
+    render(); return;
+  }
+  if (dragMode === 'create' && creating) { creating.cx = p.x; creating.cy = p.y; render(); }
+});
+
+document.addEventListener('mouseup', () => {
+  const wasCreating = dragMode === 'create' && creating;
+  const wasEditing = dragMode === 'move' || (dragMode && dragMode.startsWith('resize-'));
+  if (wasCreating && Math.abs(creating.cx - creating.sx) > 5 && Math.abs(creating.cy - creating.sy) > 5) {
+    boxes.push({ name: 'field_' + (boxes.length + 1), x: Math.round(Math.min(creating.sx, creating.cx)), y: Math.round(Math.min(creating.sy, creating.cy)), width: Math.round(Math.abs(creating.cx - creating.sx)), height: Math.round(Math.abs(creating.cy - creating.sy)) });
+    selected = boxes.length - 1;
+  }
+  if (wasCreating || wasEditing) pushUndo();
+  creating = null; dragMode = null; dragData = null; render();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteBox(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) { e.preventDefault(); copyBox(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); pasteBox(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); if (selected !== null) { const dup = { ...boxes[selected], x: boxes[selected].x + 20, y: boxes[selected].y + 20, name: boxes[selected].name + '_copy' }; boxes.push(dup); selected = boxes.length - 1; pushUndo(); render(); } return; }
+});
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(boxes, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'bs1_template.json'; a.click();
+}
+function importJSON(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => { try { const d = JSON.parse(r.result); if (Array.isArray(d)) { boxes = d; selected = null; pushUndo(); render(); } } catch(ex) { alert('Invalid JSON'); } };
+  r.readAsText(f);
+}
+function toggleJSON() { document.getElementById('jsonPreview').classList.toggle('show'); }
+
+async function loadPDF(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const scale = 1.5;
+  const page1 = await pdf.getPage(1);
+  const vp1 = page1.getViewport({ scale });
+  totalW = vp1.width;
+
+  const heights = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    heights.push((await pdf.getPage(i)).getViewport({ scale }).height);
+  }
+  totalH = heights.reduce((a, b) => a + b, 0);
+
+  const off = document.createElement('canvas'); off.width = totalW; off.height = totalH;
+  const octx = off.getContext('2d'); octx.fillStyle = '#fff'; octx.fillRect(0, 0, totalW, totalH);
+
+  let yOff = 0;
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const pg = await pdf.getPage(i);
+    const vp = pg.getViewport({ scale });
+    const pc = document.createElement('canvas'); pc.width = vp.width; pc.height = vp.height;
+    await pg.render({ canvasContext: pc.getContext('2d'), viewport: vp }).promise;
+    octx.drawImage(pc, 0, yOff);
+    yOff += vp.height;
+  }
+  canvas.width = totalW; canvas.height = totalH;
+  ctx.drawImage(off, 0, 0);
+  document.getElementById('uploadZone').style.display = 'none';
+  pageContainer.style.display = 'block';
+  svg.setAttribute('width', totalW); svg.setAttribute('height', totalH);
+  hasPdf = true; zoomFit(); render();
+}
+
+setZoom(zoom); render();
+</script>
+</body>
+</html>

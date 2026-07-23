@@ -783,5 +783,9 @@
   "no_treatment": "No treatment",
   "doctor_notes_section": "Doctor notes",
   "enter_dental_notes_placeholder": "Enter overall dental notes, findings, and plan",
-  "start_appointment_to_edit": "Start appointment to edit notes."
+  "start_appointment_to_edit": "Start appointment to edit notes.",
+  "bs1_generated": "BS1 CNAM",
+  "bs1_downloaded": "BS1 form downloaded successfully",
+  "bs1_generation_failed": "Failed to generate BS1 form",
+  "failed_to_load_bs1_data": "Failed to load BS1 data"
 }

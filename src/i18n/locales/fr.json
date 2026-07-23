@@ -783,5 +783,9 @@
   "no_treatment": "Aucun traitement",
   "doctor_notes_section": "Notes du médecin",
   "enter_dental_notes_placeholder": "Saisissez les notes dentaires générales, les observations et le plan",
-  "start_appointment_to_edit": "Commencez le rendez-vous pour modifier les notes."
+  "start_appointment_to_edit": "Commencez le rendez-vous pour modifier les notes.",
+  "bs1_generated": "BS1 CNAM",
+  "bs1_downloaded": "Formulaire BS1 téléchargé avec succès",
+  "bs1_generation_failed": "Échec de la génération du formulaire BS1",
+  "failed_to_load_bs1_data": "Échec du chargement des données BS1"
 }

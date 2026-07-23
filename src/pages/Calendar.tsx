@@ -491,11 +491,11 @@ export const Calendar: React.FC = () => {
   };
 
   // Get appointment date from API response
-  const getAppointmentDate = (appointment: Appointment) => {
+  const getAppointmentDate = (appointment: Appointment): string => {
     if (appointment.date) {
-      return appointment.date.split('T')[0]; // Extract date part from ISO string
+      return appointment.date.split('T')[0];
     }
-    return new Date().toISOString().split('T')[0];
+    return '';
   };
 
   // Get patient name from appointment
@@ -540,11 +540,12 @@ export const Calendar: React.FC = () => {
   }, [selectedAppointment, loadPatientForAppointment]);
 
   // Format appointments data for MonthView component
-  const groupAppointmentsByDate = () => {
+  const formatAppointmentsData = () => {
     const grouped: Record<string, any[]> = {};
 
     appointments.forEach(appointment => {
       const dateStr = getAppointmentDate(appointment);
+      if (!dateStr) return;
 
       if (!grouped[dateStr]) {
         grouped[dateStr] = [];
@@ -849,7 +850,7 @@ export const Calendar: React.FC = () => {
           <div className="card">
             <MonthView
               currentDate={currentDate}
-              appointments={groupAppointmentsByDate()}
+              appointments={formatAppointmentsData()}
               onAppointmentClick={(appointmentId) => {
                 const appointment = appointments.find(apt => apt.id === appointmentId);
                 if (appointment) {
@@ -923,7 +924,7 @@ export const Calendar: React.FC = () => {
               </div>
 
               {/* Content - Fixed height container for consistency */}
-              <div className="h-[600px] overflow-y-auto">
+              <div className="max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   {bookingStep === 'patient' && (
                     <div className="min-h-full">

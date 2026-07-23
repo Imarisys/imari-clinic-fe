@@ -735,13 +735,24 @@ export const Patients: React.FC = () => {
       {/* Search and Actions */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex-1 max-w-md">
-          <Input
-            icon="search"
-            placeholder={t('search_patients_placeholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            variant="default"
-          />
+          <div className="relative">
+            <Input
+              icon="search"
+              placeholder={t('search_patients_placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              variant="default"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-neutral-200 transition-colors"
+                aria-label={t('close')}
+              >
+                <span className="material-icons-round text-neutral-400 text-lg">close</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -907,13 +918,25 @@ export const Patients: React.FC = () => {
   }
 
   const renderGridView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="relative">
+      {isLoading && patients.length > 0 && (
+        <div className="absolute inset-0 bg-white/60 z-10 flex items-start justify-center pt-16 rounded-xl">
+          <div className="loading-spinner w-8 h-8"></div>
+        </div>
+      )}
+      <div className={`grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6${isLoading && patients.length > 0 ? ' opacity-50 pointer-events-none' : ''}`}>
       {displayedPatients.map((patient, index) => renderPatientCard(patient, index))}
+    </div>
     </div>
   );
 
   const renderListView = () => (
-    <div className="card overflow-hidden">
+    <div className="card overflow-hidden relative">
+      {isLoading && patients.length > 0 && (
+        <div className="absolute inset-0 bg-white/60 z-10 flex items-start justify-center pt-16">
+          <div className="loading-spinner w-8 h-8"></div>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gradient-to-r from-neutral-50 to-white border-b border-neutral-200">

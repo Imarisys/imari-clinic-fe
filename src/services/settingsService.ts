@@ -85,12 +85,9 @@ export class SettingsService {
    */
   static getClinicName(): string | null {
     const currentDoctorId = authService.getDoctorId();
-    
-    // Return null if cache is for a different doctor
     if (this.cachedDoctorId !== currentDoctorId) {
       return null;
     }
-    
     return this.cachedSettings?.clinic_name || null;
   }
 
@@ -100,15 +97,11 @@ export class SettingsService {
   static async getSettingsFieldValues(): Promise<SettingsFieldValues> {
     try {
       const url = buildApiUrl('/api/v1/settings/fields/values');
-
       const response = await fetch(url, { headers: authService.getAuthHeaders() });
-
       if (!response.ok) {
         throw new Error(`Failed to fetch settings field values: ${response.status} ${response.statusText}`);
       }
-
-      const data: SettingsFieldValues = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Error fetching settings field values:', error);
       throw error;
@@ -124,27 +117,19 @@ export class SettingsService {
       if (!doctorId) {
         throw new Error('Doctor ID not found. Please log in again.');
       }
-
       const response = await fetch(buildApiUrl(`/api/v1/settings/${doctorId}`), {
         method: 'PUT',
         headers: authService.getAuthHeaders(),
         body: JSON.stringify(updates),
       });
-
       if (!response.ok) {
         throw new Error('Failed to update settings');
       }
-
       const data: Settings = await response.json();
-      
-      // Update cache with new settings
       this.cachedSettings = data;
       this.cacheTimestamp = Date.now();
       this.cachedDoctorId = doctorId;
-      
-      // Dispatch settings update event
       settingsEventDispatcher.dispatchSettingsUpdate(data);
-      
       return data;
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -158,12 +143,7 @@ export class SettingsService {
   static async exportSettings(): Promise<Blob> {
     try {
       const settings = await this.getSettings();
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        version: '1.0',
-        settings: settings
-      };
-
+      const exportData = { exportDate: new Date().toISOString(), version: '1.0', settings };
       const jsonString = JSON.stringify(exportData, null, 2);
       return new Blob([jsonString], { type: 'application/json' });
     } catch (error) {
@@ -179,15 +159,10 @@ export class SettingsService {
     try {
       const fileContent = await this.readFileAsText(file);
       const importData = JSON.parse(fileContent);
-
-      // Validate the imported data structure
       if (!importData.settings) {
         throw new Error('Invalid settings file format');
       }
-
-      // Update the settings via API
       const updatedSettings = await this.updateSettings(importData.settings);
-
       return { data: updatedSettings };
     } catch (error) {
       console.error('Error importing settings:', error);
